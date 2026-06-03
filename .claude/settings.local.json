@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(powershell -ExecutionPolicy Bypass -File \"c:\\\\Ajith\\\\ActiveBoost\\\\start-dev.ps1\")"
+    ]
+  }
+}
