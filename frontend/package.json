@@ -1,13 +1,12 @@
 {
   "name": "activeboost-frontend",
   "version": "1.0.0",
-  "description": "ActiveBoost Multi-Tenant Gym Management SaaS - React/Vite Frontend",
+  "description": "ActiveBoost Multi-Tenant Gym Management SaaS - Next.js Frontend",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -39,7 +38,6 @@
     "@eslint/eslintrc": "^3.3.5",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.9",
@@ -47,7 +45,6 @@
     "playwright": "^1.60.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
-    "typescript": "^5.4.5",
-    "vite": "^5.2.10"
+    "typescript": "^5.4.5"
   }
 }
