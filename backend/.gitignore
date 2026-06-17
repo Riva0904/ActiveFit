@@ -14,3 +14,6 @@ logs/
 
 # Uploads (local disk, not for git)
 uploads/
+
+# Test coverage reports
+coverage/
