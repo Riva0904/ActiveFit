@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(powershell -ExecutionPolicy Bypass -File \"c:\\\\Ajith\\\\ActiveBoost\\\\start-dev.ps1\")"
+      "PowerShell(powershell -ExecutionPolicy Bypass -File \"c:\\\\Ajith\\\\ActiveBoost\\\\start-dev.ps1\")",
+      "Bash(git subtree *)",
+      "Bash(git remote *)"
     ]
   }
 }
