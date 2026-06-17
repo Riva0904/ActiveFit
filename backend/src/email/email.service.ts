@@ -312,18 +312,12 @@ export class EmailService {
   }
 
   async verifyConnection(): Promise<boolean> {
+    // Send-only API keys (the common case) get a 401 from /domains even though
+    // sending works fine — so just confirm a key is configured, don't probe Resend.
     if (!this.resendApiKey) {
       this.logger.error('RESEND_API_KEY not configured');
       return false;
     }
-    try {
-      const res = await fetch('https://api.resend.com/domains', {
-        headers: { Authorization: `Bearer ${this.resendApiKey}` },
-      });
-      return res.ok;
-    } catch (err) {
-      this.logger.error(`Resend verification failed: ${err.message}`);
-      return false;
-    }
+    return true;
   }
 }
