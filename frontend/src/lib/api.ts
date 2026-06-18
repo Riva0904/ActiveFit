@@ -47,6 +47,7 @@ export const authApi = {
   register: (data: any) => api.post('/auth/register', data),
   registerGym: (data: any) => api.post('/auth/register-gym', data),
   profile: () => api.get('/auth/profile'),
+  getSocketToken: () => api.get('/auth/socket-token'),
   logout: () => api.post('/auth/logout', {}),
   refresh: () => axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true }),
   changePassword: (data: any) => api.patch('/auth/change-password', data),
