@@ -75,6 +75,7 @@ export default function ReportsPage() {
   const [memberGrowth, setMemberGrowth]   = useState<any[]>([]);
   const [memberStats, setMemberStats]     = useState<any>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [attendanceAnalytics, setAttendanceAnalytics] = useState<any>(null);
 
   // ── Financial state ───────────────────────────────────────────────────────
   const { info: subInfo, loading: subLoading } = useSubscription();
@@ -103,6 +104,8 @@ export default function ReportsPage() {
       setMemberGrowth(growth ?? []);
       setMemberStats(mStats);
     }).catch(() => {}).finally(() => setAnalyticsLoading(false));
+
+    attendanceApi.getAnalytics().then((a: any) => setAttendanceAnalytics(a)).catch(() => {});
   }, []);
 
   // ── Fetch financial ───────────────────────────────────────────────────────
@@ -352,6 +355,91 @@ export default function ReportsPage() {
               )}
             </div>
           </div>
+
+          {/* Attendance analytics: avg duration, peak hours, most active members, monthly trend */}
+          {attendanceAnalytics && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <div className="bg-card border border-border/60 rounded-2xl p-6 shadow-card">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="font-bold text-lg">Peak Hours</h3>
+                    <p className="text-sm text-muted-foreground">Busiest check-in hours, all time</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Avg Visit Duration</p>
+                    <p className="text-lg font-extrabold">{attendanceAnalytics.avgVisitDuration} min</p>
+                  </div>
+                </div>
+                {attendanceAnalytics.peakHours.length === 0 ? (
+                  <div className="flex items-center justify-center h-[180px] text-muted-foreground text-sm">No check-in data yet</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={attendanceAnalytics.peakHours.map((p: any) => ({ ...p, label: `${p.hour}:00` }))} barSize={20}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }} />
+                      <Bar dataKey="count" fill="#f97316" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              <div className="bg-card border border-border/60 rounded-2xl p-6 shadow-card">
+                <h3 className="font-bold text-lg mb-5">Most Active Members</h3>
+                {attendanceAnalytics.mostActiveMembers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[180px] text-muted-foreground">
+                    <Users className="w-10 h-10 opacity-20 mb-3" />
+                    <p>No visits recorded yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {attendanceAnalytics.mostActiveMembers.map((m: any, i: number) => {
+                      const maxVisits = Math.max(...attendanceAnalytics.mostActiveMembers.map((x: any) => x.visitCount), 1);
+                      const pct = Math.round((m.visitCount / maxVisits) * 100);
+                      const grads = ['gradient-brand', 'gradient-blue', 'gradient-purple', 'gradient-green', 'gradient-teal'];
+                      return (
+                        <div key={m.memberId} className="flex items-center gap-3">
+                          <div className={`w-8 h-8 ${grads[i % grads.length]} rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0`}>
+                            {m.name[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="font-semibold truncate">{m.name}</span>
+                              <span className="font-bold text-muted-foreground ml-2">{m.visitCount} visits</span>
+                            </div>
+                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                              <div className={`progress-fill ${grads[i % grads.length]}`} style={{ '--progress-width': `${pct}%` } as React.CSSProperties} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="xl:col-span-2 bg-card border border-border/60 rounded-2xl p-6 shadow-card">
+                <h3 className="font-bold text-lg mb-1">Monthly Attendance Trend</h3>
+                <p className="text-sm text-muted-foreground mb-5">Last 12 months</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={attendanceAnalytics.monthlyTrend} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+                    <defs>
+                      <linearGradient id="monthlyTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }} />
+                    <Area type="monotone" dataKey="count" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#monthlyTrendGrad)" dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </>
       )}
 

@@ -13,7 +13,7 @@ import { attendanceApi, gymsApi, membershipsApi, paymentsApi, usersApi } from '@
 import { useAuthStore } from '@/store/authStore';
 import { useSubscription } from '@/hooks/useSubscription';
 import { UpgradeModal } from '@/components/shared/UpgradeModal';
-import { formatCurrency, daysUntil } from '@/lib/utils';
+import { formatCurrency, daysUntil, cn } from '@/lib/utils';
 import Link from 'next/link';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -44,6 +44,7 @@ export default function AdminDashboard() {
   const [upgradeOpen, setUpgradeOpen]   = useState(false);
   const [atRiskMembers, setAtRiskMembers] = useState<any[]>([]);
   const [winbackLoading, setWinbackLoading] = useState<string | null>(null);
+  const [occupancy, setOccupancy] = useState<any>(null);
 
   useEffect(() => {
     if (!user?.gymId) return;
@@ -67,6 +68,8 @@ export default function AdminDashboard() {
     usersApi.getAtRisk({ days: 14 }).then((data: any) => {
       setAtRiskMembers((data ?? []).slice(0, 5));
     }).catch(() => {});
+
+    attendanceApi.getOccupancy().then((o: any) => setOccupancy(o)).catch(() => {});
   }, [user?.gymId]);
 
   const sendWinback = async (memberId: string) => {
@@ -223,6 +226,37 @@ export default function AdminDashboard() {
           <StatsCard key={s.title} {...s} className="animate-slide-up" />
         ))}
       </div>
+
+      {/* Live occupancy widget */}
+      {occupancy && (
+        <div className="bg-card rounded-2xl border border-border/60 shadow-card p-5 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold text-muted-foreground">Current Occupancy</p>
+            <p className="text-2xl font-extrabold mt-0.5">
+              {occupancy.currentlyIn} <span className="text-muted-foreground text-base font-semibold">/ {occupancy.capacity} Members</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all',
+                  occupancy.level === 'LOW' ? 'bg-emerald-500' : occupancy.level === 'MEDIUM' ? 'bg-amber-500' : 'bg-rose-500',
+                )}
+                style={{ width: `${Math.min(occupancy.occupancyPercent, 100)}%` }}
+              />
+            </div>
+            <span className={cn(
+              'inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full',
+              occupancy.level === 'LOW' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400'
+                : occupancy.level === 'MEDIUM' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+                : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400',
+            )}>
+              {occupancy.level === 'LOW' ? '🟢 Low Crowd' : occupancy.level === 'MEDIUM' ? '🟡 Medium Crowd' : '🔴 High Crowd'}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Attendance chart */}

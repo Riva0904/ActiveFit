@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, LogOut, Zap, QrCode, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
+import { CheckCircle, LogOut, Zap, QrCode, Loader2, AlertCircle, RotateCcw, Dumbbell } from 'lucide-react';
 import { attendanceApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -26,12 +26,14 @@ const RESET_DELAY = 4000;
 export default function CheckInPage() {
   const { user } = useAuthStore();
   const router = useRouter();
+  const isMember = user?.role === 'MEMBER';
 
-  const [phase, setPhase]           = useState<Phase>('loading');
+  const [phase, setPhase]             = useState<Phase>('loading');
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
-  const [result, setResult]         = useState<{ action: 'CHECKIN' | 'CHECKOUT'; userName: string; userRole: string } | null>(null);
-  const [errMsg, setErrMsg]         = useState('');
+  const [membershipActive, setMembershipActive] = useState(true);
+  const [result, setResult]           = useState<{ action: 'CHECKIN' | 'CHECKOUT'; userName: string; userRole: string } | null>(null);
+  const [errMsg, setErrMsg]           = useState('');
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -63,9 +65,16 @@ export default function CheckInPage() {
 
   const fetchStatus = async () => {
     try {
-      const status: any = await attendanceApi.getMyStatus();
-      setIsCheckedIn(status.isCheckedIn ?? false);
-      setCheckInTime(status.checkInTime ?? null);
+      if (isMember) {
+        const status: any = await attendanceApi.getStatus();
+        setIsCheckedIn(status.checkedIn ?? false);
+        setCheckInTime(status.checkInTime ?? null);
+        setMembershipActive(status.membershipActive ?? false);
+      } else {
+        const status: any = await attendanceApi.getMyStatus();
+        setIsCheckedIn(status.isCheckedIn ?? false);
+        setCheckInTime(status.checkInTime ?? null);
+      }
       setPhase('ready');
     } catch {
       setPhase('ready');
@@ -75,10 +84,23 @@ export default function CheckInPage() {
   const handleCheckIn = async () => {
     setPhase('processing');
     try {
-      const res: any = await attendanceApi.selfCheckIn();
-      setResult({ action: res.action, userName: res.userName, userRole: res.userRole });
-      setIsCheckedIn(res.action === 'CHECKIN');
-      setPhase('success');
+      if (isMember) {
+        if (isCheckedIn) {
+          const res: any = await attendanceApi.smartCheckOut();
+          setResult({ action: 'CHECKOUT', userName: `${user!.firstName} ${user!.lastName}`, userRole: user!.role });
+          setIsCheckedIn(false);
+        } else {
+          const res: any = await attendanceApi.smartCheckIn();
+          setResult({ action: 'CHECKIN', userName: `${user!.firstName} ${user!.lastName}`, userRole: user!.role });
+          setIsCheckedIn(true);
+        }
+        setPhase('success');
+      } else {
+        const res: any = await attendanceApi.selfCheckIn();
+        setResult({ action: res.action, userName: res.userName, userRole: res.userRole });
+        setIsCheckedIn(res.action === 'CHECKIN');
+        setPhase('success');
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Check-in failed. Please try again.';
       setErrMsg(Array.isArray(msg) ? msg[0] : msg);
@@ -114,8 +136,21 @@ export default function CheckInPage() {
 
       <div className="w-full max-w-sm">
 
+        {/* ── Member: membership inactive gate ───────────────────────── */}
+        {isMember && (phase === 'ready' || phase === 'processing') && !membershipActive && (
+          <div className="bg-card border-2 border-amber-200 dark:border-amber-800/50 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="bg-amber-500 p-8 text-center text-white space-y-3">
+              <div className="w-20 h-20 bg-white/20 rounded-full mx-auto flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-white" />
+              </div>
+              <p className="text-2xl font-extrabold">Membership inactive.</p>
+              <p className="text-sm opacity-90">Please renew your membership.</p>
+            </div>
+          </div>
+        )}
+
         {/* ── READY phase ─────────────────────────────────────────── */}
-        {(phase === 'ready' || phase === 'processing') && (
+        {(phase === 'ready' || phase === 'processing') && (!isMember || membershipActive) && (
           <div className="bg-card border border-border/60 rounded-3xl shadow-2xl overflow-hidden">
 
             {/* User identity bar */}
@@ -128,7 +163,7 @@ export default function CheckInPage() {
                     {user.firstName?.[0]}{user.lastName?.[0]}
                   </span>
                 </div>
-                <p className="text-white font-extrabold text-xl">{user.firstName} {user.lastName}</p>
+                <p className="text-white font-extrabold text-xl">Welcome {user.firstName}</p>
                 <span className={cn(
                   'inline-flex items-center text-xs font-bold px-2.5 py-0.5 rounded-full mt-1',
                   ROLE_COLOR[user.role] ?? 'bg-gray-100 text-gray-700',
@@ -140,18 +175,30 @@ export default function CheckInPage() {
 
             <div className="p-6 space-y-5">
 
+              {isMember && (
+                <div className="flex items-center gap-3 p-3 rounded-2xl text-sm font-semibold border bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-emerald-500" />
+                  Membership: Active
+                </div>
+              )}
+
               {/* Current status chip */}
-              <div className={cn(
-                'flex items-center gap-3 p-3 rounded-2xl text-sm font-semibold border',
-                isCheckedIn
-                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
-                  : 'bg-muted/60 text-muted-foreground border-border/40',
-              )}>
-                <div className={cn('w-2.5 h-2.5 rounded-full shrink-0', isCheckedIn ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40')} />
-                {isCheckedIn
-                  ? <>Currently in gym{checkInTime ? ` · Since ${formatTime(checkInTime)}` : ''}</>
-                  : 'Not checked in today'}
-              </div>
+              {isCheckedIn ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 rounded-2xl text-sm font-semibold border bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-emerald-500 animate-pulse" />
+                    Checked In At: {checkInTime ? formatTime(checkInTime) : '—'}
+                  </div>
+                  <div className="flex items-center gap-2 justify-center text-xs font-bold text-primary">
+                    <Dumbbell className="w-4 h-4" /> Workout Session Active
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-2xl text-sm font-semibold border bg-muted/60 text-muted-foreground border-border/40">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-muted-foreground/40" />
+                  Not checked in today
+                </div>
+              )}
 
               {/* QR icon + instruction */}
               <div className="text-center">
@@ -169,7 +216,7 @@ export default function CheckInPage() {
                 disabled={phase === 'processing'}
                 className={cn(
                   'w-full h-14 rounded-2xl font-extrabold text-white flex items-center justify-center gap-3 text-base transition-all shadow-brand',
-                  isCheckedIn ? 'bg-blue-500 hover:bg-blue-600' : 'gradient-brand hover:opacity-90',
+                  isCheckedIn ? 'bg-orange-500 hover:bg-orange-600' : 'bg-emerald-500 hover:bg-emerald-600',
                   phase === 'processing' && 'opacity-60 cursor-not-allowed',
                 )}
               >
@@ -180,9 +227,11 @@ export default function CheckInPage() {
                     : <><CheckCircle className="w-5 h-5" /> Check In</>}
               </button>
 
-              <p className="text-center text-xs text-muted-foreground">
-                First scan = Check-in · Second scan = Check-out
-              </p>
+              {!isMember && (
+                <p className="text-center text-xs text-muted-foreground">
+                  First scan = Check-in · Second scan = Check-out
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -191,7 +240,7 @@ export default function CheckInPage() {
         {phase === 'success' && result && (
           <div className={cn(
             'rounded-3xl shadow-2xl overflow-hidden',
-            result.action === 'CHECKIN' ? 'bg-emerald-500' : 'bg-blue-500',
+            result.action === 'CHECKIN' ? 'bg-emerald-500' : 'bg-orange-500',
           )}>
             <div className="p-10 text-center text-white space-y-4">
               <div className="w-24 h-24 bg-white/20 rounded-full mx-auto flex items-center justify-center">

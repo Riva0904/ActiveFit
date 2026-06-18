@@ -115,6 +115,15 @@ export const attendanceApi = {
   selfCheckIn: () => api.post('/attendance/self-check-in'),
   getMyStatus: () => api.get('/attendance/my-status'),
   adminManualCheckIn: (code: string) => api.post('/attendance/admin-manual-check-in', { code }),
+  // Smart QR flow — explicit (non-toggle) member check-in/check-out
+  smartCheckIn: () => api.post('/attendance/check-in'),
+  smartCheckOut: () => api.post('/attendance/check-out'),
+  getStatus: () => api.get('/attendance/status'),
+  getHistory: (params?: any) => api.get('/attendance/history', { params }),
+  manualCheckIn: (code: string) => api.post('/attendance/manual-check-in', { code }),
+  manualCheckOut: (code: string) => api.post('/attendance/manual-check-out', { code }),
+  getOccupancy: () => api.get('/attendance/occupancy'),
+  getAnalytics: () => api.get('/attendance/analytics'),
 };
 
 // Trainers
