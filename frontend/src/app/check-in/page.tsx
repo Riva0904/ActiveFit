@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, LogOut, Zap, QrCode, Loader2, AlertCircle, RotateCcw, Dumbbell } from 'lucide-react';
 import { attendanceApi } from '@/lib/api';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore, useAuthHydrated } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 
 type Phase = 'loading' | 'ready' | 'processing' | 'success' | 'error' | 'unauthenticated';
@@ -25,6 +25,7 @@ const RESET_DELAY = 4000;
 
 export default function CheckInPage() {
   const { user } = useAuthStore();
+  const hydrated = useAuthHydrated();
   const router = useRouter();
   const isMember = user?.role === 'MEMBER';
 
@@ -35,8 +36,11 @@ export default function CheckInPage() {
   const [result, setResult]           = useState<{ action: 'CHECKIN' | 'CHECKOUT'; userName: string; userRole: string } | null>(null);
   const [errMsg, setErrMsg]           = useState('');
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated — wait for Zustand to finish hydrating from
+  // localStorage first, otherwise a logged-in user reads as null on the first render and
+  // gets bounced through /login before the persisted session is restored.
   useEffect(() => {
+    if (!hydrated) return;
     if (!user) {
       router.replace('/login?redirect=/check-in');
       return;
@@ -48,7 +52,7 @@ export default function CheckInPage() {
       return;
     }
     fetchStatus();
-  }, [user]);
+  }, [hydrated, user]);
 
   // Auto-reset after success/error
   useEffect(() => {

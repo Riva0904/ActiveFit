@@ -60,8 +60,9 @@ export function middleware(request: NextRequest) {
 
   const allowedPrefixes = ROLE_PREFIX_MAP[role] ?? [];
 
-  // /settings is accessible to every authenticated role
-  const SHARED_ROUTES = ['/settings'];
+  // /settings and /check-in (smart QR attendance) are accessible to every authenticated role —
+  // /check-in itself redirects admin/super-admin to /admin/attendance client-side.
+  const SHARED_ROUTES = ['/settings', '/check-in'];
 
   // Check if the current path is allowed for this role
   const isAllowed =

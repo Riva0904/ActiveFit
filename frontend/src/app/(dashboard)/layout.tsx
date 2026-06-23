@@ -4,20 +4,24 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore, useAuthHydrated } from '@/store/authStore';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuthStore();
+  const hydrated = useAuthHydrated();
   const router = useRouter();
   const pathname = usePathname();
 
+  // Wait for Zustand to finish hydrating from localStorage before deciding the user is
+  // logged out — otherwise a hard reload / deep link reads `user` as null on the first
+  // render and bounces a logged-in session through /login before hydration restores it.
   useEffect(() => {
-    if (!user) router.replace('/login');
-  }, [user, router]);
+    if (hydrated && !user) router.replace('/login');
+  }, [hydrated, user, router]);
 
-  if (!user) return null;
+  if (!hydrated || !user) return null;
 
   return (
     <div className="min-h-screen bg-background mesh-bg">
