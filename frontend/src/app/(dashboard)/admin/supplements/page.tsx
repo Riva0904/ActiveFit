@@ -251,8 +251,8 @@ function ProductCard({
 
   return (
     <div
-      className="product-card group bg-card border border-border/60 rounded-2xl overflow-hidden animate-slide-up"
-      style={{ animationDelay: `${index * 60}ms` }}
+      className="product-card group bg-card border border-border/60 rounded-2xl overflow-hidden animate-slide-up stagger-delay"
+      style={{ '--delay': `${index * 60}ms` } as React.CSSProperties}
     >
       {/* Visual Header */}
       <div className={`relative h-44 bg-gradient-to-br ${meta.grad} overflow-hidden`}>
@@ -331,8 +331,8 @@ function ProductCard({
           </div>
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full bg-gradient-to-r ${isLow ? 'from-rose-500 to-rose-400' : meta.grad} transition-[width] duration-700 ease-out`}
-              style={{ width: `${Math.min(s.stock, 100)}%` }}
+              className={`h-full rounded-full bg-gradient-to-r ${isLow ? 'from-rose-500 to-rose-400' : meta.grad} progress-fill`}
+              style={{ '--progress-width': `${Math.min(s.stock, 100)}%` } as React.CSSProperties}
             />
           </div>
         </div>
@@ -409,6 +409,14 @@ export default function SupplementsPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const advanceOrder = async (orderId: string, status: 'CONFIRMED' | 'DELIVERED') => {
+    try {
+      await supplementsApi.updateOrderStatus(orderId, status);
+      toast.success(status === 'CONFIRMED' ? 'Order confirmed' : 'Order marked delivered');
+      fetchData();
+    } catch (e: any) { toast.error(e.response?.data?.message ?? 'Failed to update order'); }
+  };
 
   const handleSeedProducts = async () => {
     setSeeding(true);
@@ -557,7 +565,7 @@ export default function SupplementsPage() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="shimmer-card h-80" style={{ animationDelay: `${i * 80}ms` }} />
+                <div key={i} className="shimmer-card h-80 stagger-delay" style={{ '--delay': `${i * 80}ms` } as React.CSSProperties} />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -611,9 +619,12 @@ export default function SupplementsPage() {
                   <div className="text-right shrink-0">
                     <p className="font-extrabold text-xl">{formatCurrency(o.totalAmount)}</p>
                     <div className="flex gap-2 mt-1.5 justify-end">
-                      {['Confirm', 'Ship', 'Deliver'].map(action => (
-                        <button key={action} className="text-xs font-bold text-primary hover:underline transition-all">{action}</button>
-                      ))}
+                      {o.status === 'PENDING' && (
+                        <button onClick={() => advanceOrder(o.id, 'CONFIRMED')} className="text-xs font-bold text-primary hover:underline transition-all">Confirm</button>
+                      )}
+                      {o.status === 'CONFIRMED' && (
+                        <button onClick={() => advanceOrder(o.id, 'DELIVERED')} className="text-xs font-bold text-primary hover:underline transition-all">Mark Delivered</button>
+                      )}
                     </div>
                   </div>
                 </div>

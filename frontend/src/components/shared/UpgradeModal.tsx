@@ -46,7 +46,7 @@ export function UpgradeModal({ open, onClose, featureName }: UpgradeModalProps) 
             <p className="text-white/80 text-sm mt-1.5">
               {featureName
                 ? `${featureName} requires a Pro or Enterprise plan`
-                : 'Unlock the full power of ActiveFit'}
+                : 'Unlock the full power of ActiveBoost'}
             </p>
           </div>
         </div>

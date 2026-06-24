@@ -6,7 +6,7 @@ import { motion, LayoutGroup } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useSubscription } from '@/hooks/useSubscription';
-import { chatApi } from '@/lib/api';
+import { chatApi, authApi } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { UpgradeModal } from '@/components/shared/UpgradeModal';
 import { useState, useEffect } from 'react';
@@ -55,11 +55,12 @@ const adminNav: NavItem[] = [
 ];
 
 const staffNav: NavItem[] = [
-  { label: 'Dashboard',    href: '/staff',            icon: LayoutDashboard, color: 'text-orange-500' },
-  { label: 'My Attendance', href: '/staff/check-in',  icon: Activity,        color: 'text-green-500' },
-  { label: 'Leave',        href: '/staff/leave',      icon: CalendarOff,     color: 'text-rose-500' },
-  { label: 'Chat',         href: '/staff/chat',       icon: MessageSquare,   color: 'text-cyan-500' },
-  { label: 'Settings',     href: '/settings',         icon: Settings,        color: 'text-gray-500' },
+  { label: 'Dashboard',    href: '/staff',                icon: LayoutDashboard, color: 'text-orange-500' },
+  { label: 'My Attendance', href: '/staff/check-in',      icon: Activity,        color: 'text-green-500' },
+  { label: 'Leave',        href: '/staff/leave',          icon: CalendarOff,     color: 'text-rose-500' },
+  { label: 'Chat',         href: '/staff/chat',           icon: MessageSquare,   color: 'text-cyan-500' },
+  { label: 'Notifications', href: '/staff/notifications', icon: Bell,            color: 'text-indigo-500' },
+  { label: 'Settings',     href: '/settings',             icon: Settings,        color: 'text-gray-500' },
 ];
 
 const trainerNav: NavItem[] = [
@@ -69,6 +70,7 @@ const trainerNav: NavItem[] = [
   { label: 'PT Sessions',  href: '/trainer/sessions',     icon: Calendar,        color: 'text-purple-500' },
   { label: 'Leave',        href: '/trainer/leave',        icon: CalendarOff,     color: 'text-rose-500' },
   { label: 'Chat',         href: '/trainer/chat',         icon: MessageSquare,   color: 'text-cyan-500' },
+  { label: 'Notifications', href: '/trainer/notifications', icon: Bell,          color: 'text-indigo-500' },
   { label: 'Settings',     href: '/settings',             icon: Settings,        color: 'text-gray-500' },
 ];
 
@@ -161,7 +163,8 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     userNav;
   const role = roleConfig[user?.role ?? 'MEMBER'] ?? roleConfig['MEMBER'];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try { await authApi.logout(); } catch { /* cookie may already be gone */ }
     logout();
     toast.success('Signed out successfully');
     router.push('/login');
@@ -190,15 +193,15 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
         {/* Logo */}
         <div className="flex items-center justify-between px-5 h-[var(--header-height)] border-b border-border/60 shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
             <div className="relative">
               <div className="w-9 h-9 gradient-brand rounded-md flex items-center justify-center logo-pulse">
-                <Zap className="w-5 h-5 text-white" />
+                <Dumbbell className="w-5 h-5 text-white" />
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
             </div>
             <div>
-              <span className="font-black text-base tracking-tighter uppercase">ActiveFit</span>
+              <span className="font-black text-base tracking-tight">ActiveBoost</span>
               <div className={cn('inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-sm ml-1 uppercase tracking-wide', role.badgeColor)}>
                 {role.badge}
               </div>
@@ -284,8 +287,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                       <motion.div
                         layoutId="nav-active-pill"
                         transition={{ type: 'spring', stiffness: 420, damping: 38 }}
-                        className="absolute inset-0 bg-gradient-to-r from-primary/[0.14] via-primary/[0.06] to-transparent"
-                        style={{ borderLeft: '3px solid #FF4D00' }}
+                        className="nav-active-pill absolute inset-0 bg-gradient-to-r from-primary/[0.14] via-primary/[0.06] to-transparent"
                       />
                     )}
                     <div className={cn(

@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Zap, ArrowRight, Phone, Dumbbell, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Dumbbell, ArrowRight, Phone, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -90,13 +90,13 @@ function LoginForm() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="relative z-10 flex items-center gap-3"
+          className="relative z-10 flex items-center gap-2"
         >
           <div className="w-11 h-11 bg-white/[0.12] rounded-md flex items-center justify-center border border-white/20">
-            <Zap className="w-6 h-6 text-white" />
+            <Dumbbell className="w-6 h-6 text-white" />
           </div>
           <div>
-            <div className="text-white font-black text-[22px] tracking-tighter uppercase">ActiveFit</div>
+            <div className="text-white font-black text-[22px] tracking-tight">ActiveBoost</div>
             <div className="text-white/50 text-xs uppercase tracking-wide">Gym Management Platform</div>
           </div>
         </motion.div>
@@ -131,7 +131,7 @@ function LoginForm() {
         </motion.div>
 
         <div className="relative z-10 text-white/30 text-xs uppercase tracking-wide">
-          © 2026 ActiveFit · Privacy · Terms
+          © 2026 ActiveBoost · Privacy · Terms
         </div>
       </div>
 
@@ -147,11 +147,11 @@ function LoginForm() {
         >
 
           {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
             <div className="w-10 h-10 rounded-md gradient-brand flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
+              <Dumbbell className="w-5 h-5 text-white" />
             </div>
-            <span className="font-black text-xl tracking-tighter uppercase">ActiveFit</span>
+            <span className="font-black text-xl tracking-tight">ActiveBoost</span>
           </div>
 
           {/* Heading */}

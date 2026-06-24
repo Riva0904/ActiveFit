@@ -240,10 +240,10 @@ export default function AdminDashboard() {
             <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
               <div
                 className={cn(
-                  'h-full rounded-full transition-all',
+                  'h-full rounded-full transition-all progress-fill',
                   occupancy.level === 'LOW' ? 'bg-emerald-500' : occupancy.level === 'MEDIUM' ? 'bg-amber-500' : 'bg-rose-500',
                 )}
-                style={{ width: `${Math.min(occupancy.occupancyPercent, 100)}%` }}
+                style={{ '--progress-width': `${Math.min(occupancy.occupancyPercent, 100)}%` } as React.CSSProperties}
               />
             </div>
             <span className={cn(
@@ -435,8 +435,8 @@ export default function AdminDashboard() {
           <Link key={label} href={href}
             className={`group relative overflow-hidden rounded-2xl bg-card border border-border/60 p-5 hover:shadow-lifted hover:-translate-y-1.5 transition-all duration-300 animate-slide-up ${glow}`}>
             {/* decorative orb */}
-            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-400 blur-xl pointer-events-none"
-              style={{ background: orb }} />
+            <div className="action-orb absolute -bottom-6 -right-6 w-24 h-24 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-400 blur-xl pointer-events-none"
+              style={{ '--orb-color': orb } as React.CSSProperties} />
             <div className={`w-11 h-11 ${gradient} rounded-xl flex items-center justify-center text-white mb-4 shadow-sm group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300`}>
               <Icon className="w-5 h-5" />
             </div>

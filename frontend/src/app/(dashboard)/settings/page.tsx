@@ -7,7 +7,7 @@ import {
   ZoomIn, ZoomOut, RotateCcw, ChevronDown, Globe,
   MapPin, Phone, Sparkles, Shield, Pencil, Bell, Building2, Send,
 } from 'lucide-react';
-import { usersApi, trainersApi, authApi, gymsApi, renewalRemindersApi } from '@/lib/api';
+import { usersApi, trainersApi, authApi, gymsApi, renewalRemindersApi, chatApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -215,6 +215,8 @@ function ImagePickerModal({ current, onConfirm, onClose }: { current: string; on
     return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
   }, [handleMouseMove, handleMouseUp]);
 
+  const [uploading, setUploading] = useState(false);
+
   const handleConfirm = () => {
     if (!imageSrc) { onClose(); return; }
     if (fileUrl === imageSrc) {
@@ -228,7 +230,19 @@ function ImagePickerModal({ current, onConfirm, onClose }: { current: string; on
         canvas.width = 300; canvas.height = 300;
         canvas.getContext('2d')!.drawImage(img, (visL / scaledW) * img.naturalWidth, (visT / scaledH) * img.naturalHeight,
           (S / scaledW) * img.naturalWidth, (S / scaledH) * img.naturalHeight, 0, 0, 300, 300);
-        onConfirm(canvas.toDataURL('image/jpeg', 0.88));
+        canvas.toBlob(async (blob) => {
+          if (!blob) { onClose(); return; }
+          setUploading(true);
+          try {
+            const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+            const { url } = await chatApi.uploadFile(file);
+            onConfirm(url);
+          } catch {
+            toast.error('Avatar upload failed');
+          } finally {
+            setUploading(false);
+          }
+        }, 'image/jpeg', 0.88);
       };
       img.src = imageSrc;
     } else { onConfirm(urlInput || imageSrc); }
@@ -292,9 +306,9 @@ function ImagePickerModal({ current, onConfirm, onClose }: { current: string; on
                       onMouseDown={handleMouseDown}>
                       <img src={imageSrc} alt="adjust" draggable={false}
                         onLoad={e => { const t = e.currentTarget; setImgDims({ w: t.naturalWidth, h: t.naturalHeight }); }}
-                        style={{ position: 'absolute', width: `${base.w * zoom}px`, height: `${base.h * zoom}px`,
-                          left: `${(220 - base.w * zoom) / 2 + pan.x}px`, top: `${(220 - base.h * zoom) / 2 + pan.y}px`,
-                          pointerEvents: 'none', transition: isDragging ? 'none' : 'left .1s, top .1s' }} />
+                        className={cn('avatar-crop-img', isDragging && 'is-dragging')}
+                        style={{ width: `${base.w * zoom}px`, height: `${base.h * zoom}px`,
+                          left: `${(220 - base.w * zoom) / 2 + pan.x}px`, top: `${(220 - base.h * zoom) / 2 + pan.y}px` }} />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -323,9 +337,10 @@ function ImagePickerModal({ current, onConfirm, onClose }: { current: string; on
 
         <div className="flex gap-2 px-4 pb-4">
           <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-border/60 text-sm font-semibold hover:bg-muted/50 transition">Cancel</button>
-          <button onClick={handleConfirm} disabled={!imageSrc}
-            className="flex-1 py-2 rounded-lg gradient-brand text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-40 shadow-brand">
-            Use this ✓
+          <button onClick={handleConfirm} disabled={!imageSrc || uploading}
+            className="flex-1 py-2 rounded-lg gradient-brand text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-40 shadow-brand flex items-center justify-center gap-1.5">
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {uploading ? 'Uploading…' : 'Use this ✓'}
           </button>
         </div>
       </div>

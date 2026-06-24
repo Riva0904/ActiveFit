@@ -74,16 +74,13 @@ export function StatsCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      style={{ borderLeft: `3px solid ${config.accent}` }}
+      style={{ '--accent': config.accent } as React.CSSProperties}
       className={cn('stats-card group', className)}
     >
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-4">
-          <div
-            className="w-11 h-11 rounded-md flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105"
-            style={{ backgroundColor: `${config.accent}1A` }}
-          >
-            <Icon className="w-5 h-5" style={{ color: config.accent }} />
+          <div className="stats-card-icon-chip w-11 h-11 rounded-md flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105">
+            <Icon className="w-5 h-5" />
           </div>
           {trend && (
             <span className={cn('trend-badge', isUp ? 'trend-up' : 'trend-down')}>

@@ -74,7 +74,7 @@ function RecordPaymentModal({ onClose, onSuccess }: { onClose: () => void; onSuc
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-card border border-border rounded-3xl shadow-lifted w-full max-w-md animate-zoom-in">
+      <div className="bg-card border border-border rounded-3xl shadow-lifted w-full max-w-md max-h-[90vh] overflow-y-auto animate-zoom-in">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-green-600 p-6 rounded-t-3xl relative overflow-hidden">
           <div className="absolute inset-0 bg-black/10" />
@@ -216,7 +216,7 @@ export default function PaymentsPage() {
   const filtered = payments.filter(p => {
     const matchStatus = !filterStatus || p.status === filterStatus;
     const matchSearch = !search ||
-      `${p.user?.firstName} ${p.user?.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
+      `${p.member?.user?.firstName} ${p.member?.user?.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
       p.type?.toLowerCase().includes(search.toLowerCase());
     return matchStatus && matchSearch;
   });
@@ -256,7 +256,7 @@ export default function PaymentsPage() {
             <p className="text-xs text-muted-foreground mt-1">Monthly Revenue</p>
           </div>
         </div>
-        <div className="relative bg-card border border-border/60 rounded-2xl p-5 overflow-hidden stat-highlight animate-slide-up" style={{ animationDelay: '60ms' }}>
+        <div className="relative bg-card border border-border/60 rounded-2xl p-5 overflow-hidden stat-highlight animate-slide-up delay-60">
           <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-700 opacity-10 rounded-full -translate-y-6 translate-x-6" />
           <div className="relative">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-sm mb-3">
@@ -266,7 +266,7 @@ export default function PaymentsPage() {
             <p className="text-xs text-muted-foreground mt-1">Yearly Revenue</p>
           </div>
         </div>
-        <div className="relative bg-card border border-border/60 rounded-2xl p-5 overflow-hidden stat-highlight animate-slide-up" style={{ animationDelay: '120ms' }}>
+        <div className="relative bg-card border border-border/60 rounded-2xl p-5 overflow-hidden stat-highlight animate-slide-up delay-120">
           <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-rose-500 to-red-600 opacity-10 rounded-full -translate-y-6 translate-x-6" />
           <div className="relative">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center shadow-sm mb-3">
@@ -326,7 +326,7 @@ export default function PaymentsPage() {
             <tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} style={{ animationDelay: `${i * 50}ms` }}>
+                  <tr key={i} className="stagger-delay" style={{ '--delay': `${i * 50}ms` } as React.CSSProperties}>
                     <td colSpan={6} className="py-3 px-4">
                       <div className="h-9 shimmer-card" />
                     </td>
@@ -353,16 +353,16 @@ export default function PaymentsPage() {
                 return (
                   <tr
                     key={p.id}
-                    className="border-b border-border/30 hover:bg-muted/20 transition-colors animate-slide-up group"
-                    style={{ animationDelay: `${i * 30}ms` }}
+                    className="border-b border-border/30 hover:bg-muted/20 transition-colors animate-slide-up group stagger-delay"
+                    style={{ '--delay': `${i * 30}ms` } as React.CSSProperties}
                   >
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 gradient-brand rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0">
-                          {p.user?.firstName?.[0]}{p.user?.lastName?.[0]}
+                          {p.member?.user?.firstName?.[0]}{p.member?.user?.lastName?.[0]}
                         </div>
                         <div>
-                          <p className="font-semibold text-sm leading-tight">{p.user?.firstName} {p.user?.lastName}</p>
+                          <p className="font-semibold text-sm leading-tight">{p.member?.user?.firstName} {p.member?.user?.lastName}</p>
                           {p.description && <p className="text-xs text-muted-foreground truncate max-w-[140px]">{p.description}</p>}
                         </div>
                       </div>

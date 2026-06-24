@@ -469,11 +469,10 @@ export function ChatWindow({
             <div>
               <span className="text-xs text-muted-foreground mb-1 block">{typingUser}</span>
               <div className="bg-muted/70 border border-border/30 px-4 py-3 rounded-2xl rounded-tl-none flex gap-1 items-center">
-                {[0, 1, 2].map((i) => (
+                {[1, 2, 3].map((i) => (
                   <span
                     key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce"
-                    style={{ animationDelay: `${i * 150}ms` }}
+                    className={`w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce typing-dot-${i}`}
                   />
                 ))}
               </div>

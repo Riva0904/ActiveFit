@@ -11,7 +11,9 @@ async function loginApi(email, password) {
     body: JSON.stringify({ email, password }),
   });
   const json = await res.json();
-  return { token: json.accessToken, user: json.user };
+  const setCookie = res.headers.get('set-cookie') || '';
+  const match = setCookie.match(/ab_token=([^;]+)/);
+  return { token: match ? match[1] : null, user: json.user };
 }
 
 const browser = await chromium.launch({
@@ -20,7 +22,7 @@ const browser = await chromium.launch({
   args: ['--no-sandbox', '--disable-setuid-sandbox'],
 });
 
-const shot = async (page, name) => page.screenshot({ path: `c:/Ajith/ActiveFit/${name}.png` });
+const shot = async (page, name) => page.screenshot({ path: `c:/Ajith/ActiveBoost/${name}.png` });
 
 async function makeAuthPage(token, user) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 820 } });
@@ -33,7 +35,7 @@ async function makeAuthPage(token, user) {
   await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded' });
   // Inject Zustand persisted auth state into localStorage
   await page.evaluate(({ token, user }) => {
-    localStorage.setItem('activefit-auth', JSON.stringify({ state: { user, token }, version: 0 }));
+    localStorage.setItem('activeboost-auth', JSON.stringify({ state: { user, token }, version: 0 }));
   }, { token, user });
   return { page, ctx };
 }

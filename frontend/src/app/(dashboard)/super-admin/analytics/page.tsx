@@ -83,15 +83,15 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight">Platform Analytics</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">Real-time insights across the ActiveFit network</p>
+        <p className="text-muted-foreground text-sm mt-0.5">Real-time insights across the ActiveBoost network</p>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="bg-card rounded-2xl border border-border/60 shadow-card p-5">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: bg }}>
-              <Icon className="w-5 h-5" style={{ color }} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 accent-bg" style={{ '--accent-bg': bg, '--accent-color': color } as React.CSSProperties}>
+              <Icon className="w-5 h-5 accent-text" />
             </div>
             {loading ? (
               <div className="h-7 w-16 rounded-md bg-muted shimmer-bg mb-1" />

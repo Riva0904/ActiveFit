@@ -70,15 +70,13 @@ export default function UserMembershipPage() {
   const activeMembership = memberships.find(m => m.status === 'ACTIVE');
   const daysLeft = activeMembership ? daysUntil(activeMembership.endDate) : null;
 
-  const handleRenew = async (id: string) => {
-    setRenewing(id);
-    try {
-      await membershipsApi.renew(id);
-      toast.success('Membership renewed successfully!');
-      const res: any = await membershipsApi.getAll({ limit: 10 });
-      setMemberships(res.data ?? []);
-    } catch { }
-    setRenewing(null);
+  // Renewal is a paid action for members (the free PATCH /memberships/:id/renew endpoint
+  // is admin-only — manual extension, not a member self-service path). Select the current
+  // plan and let the existing purchase flow below collect payment, same as buying any plan.
+  const handleRenew = () => {
+    if (!activeMembership?.plan?.type) return;
+    setSelectedPlan(activeMembership.plan.type);
+    document.getElementById('plan-picker')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handlePurchase = async () => {
@@ -102,7 +100,7 @@ export default function UserMembershipPage() {
           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: orderRes.amount * 100,
           currency: 'INR',
-          name: 'ActiveFit',
+          name: 'ActiveBoost',
           description: `${getLabel(selectedPlan)} Membership`,
           order_id: orderRes.orderId,
           handler: async (response: any) => {
@@ -144,8 +142,8 @@ export default function UserMembershipPage() {
               <Star className="w-4 h-4" />
               <span className="text-sm font-medium opacity-90">Active Membership</span>
             </div>
-            <h2 className="text-3xl font-extrabold">{activeMembership.type} Plan</h2>
-            <p className="text-orange-100 mt-1">{formatCurrency(activeMembership.price)}</p>
+            <h2 className="text-3xl font-extrabold">{activeMembership.plan?.type} Plan</h2>
+            <p className="text-orange-100 mt-1">{formatCurrency(activeMembership.plan?.price)}</p>
 
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div>
@@ -171,8 +169,7 @@ export default function UserMembershipPage() {
 
             <Button
               className="mt-4 bg-white text-orange-600 hover:bg-orange-50 font-bold gap-2"
-              onClick={() => handleRenew(activeMembership.id)}
-              loading={renewing === activeMembership.id}
+              onClick={handleRenew}
             >
               <RefreshCw className="w-4 h-4" />
               Renew Membership
@@ -190,14 +187,14 @@ export default function UserMembershipPage() {
       )}
 
       {/* Plan selector */}
-      <div>
+      <div id="plan-picker">
         <h2 className="text-lg font-bold mb-4">
           {activeMembership ? 'Upgrade or Renew' : 'Choose a Plan'}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {displayPlans.map((p: any) => {
             const isSelected = selectedPlan === p.type;
-            const isCurrent = activeMembership?.type === p.type;
+            const isCurrent = activeMembership?.plan?.type === p.type;
             const months = p.durationMonths ?? (p.type === 'MONTHLY' ? 1 : p.type === 'QUARTERLY' ? 3 : p.type === 'HALF_YEARLY' ? 6 : 12);
             return (
               <button
@@ -213,10 +210,13 @@ export default function UserMembershipPage() {
                   {isCurrent && <Badge variant="success" className="text-xs">Current</Badge>}
                   {isSelected && !isCurrent && <CheckCircle className="w-5 h-5 text-primary" />}
                 </div>
-                <p className="text-2xl font-extrabold">{formatCurrency(p.price)}</p>
-                {p.discount > 0 && <p className="text-xs text-green-600 font-semibold">{p.discount}% off</p>}
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-extrabold">{formatCurrency(p.price - (p.discount ?? 0))}</p>
+                  {p.discount > 0 && <p className="text-sm text-muted-foreground line-through">{formatCurrency(p.price)}</p>}
+                </div>
+                {p.discount > 0 && <p className="text-xs text-green-600 font-semibold">{formatCurrency(p.discount)} off</p>}
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formatCurrency(Math.round(p.price / months))} / month
+                  {formatCurrency(Math.round((p.price - (p.discount ?? 0)) / months))} / month
                 </p>
               </button>
             );

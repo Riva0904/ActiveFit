@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, KeyboardEvent, ClipboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Zap, ArrowRight, ArrowLeft, Phone, Shield, RefreshCw, CheckCircle } from 'lucide-react';
+import { Dumbbell, ArrowRight, ArrowLeft, Phone, Shield, RefreshCw, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFirebasePhoneAuth } from '@/hooks/useFirebasePhoneAuth';
 import { authApi } from '@/lib/api';
@@ -171,12 +171,12 @@ export default function PhoneLoginPage() {
         <div className="auth-hero-grid" />
 
         {/* Logo */}
-        <div className="relative z-10 flex items-center gap-3">
+        <div className="relative z-10 flex items-center gap-2">
           <div className="w-11 h-11 bg-white/[0.22] rounded-[14px] flex items-center justify-center border border-white/35">
-            <Zap className="w-6 h-6 text-white" />
+            <Dumbbell className="w-6 h-6 text-white" />
           </div>
           <div>
-            <div className="text-white font-extrabold text-[22px] tracking-tight">ActiveFit</div>
+            <div className="text-white font-black text-[22px] tracking-tight">ActiveBoost</div>
             <div className="text-white/60 text-xs">Gym Management Platform</div>
           </div>
         </div>
@@ -207,7 +207,7 @@ export default function PhoneLoginPage() {
         </div>
 
         <div className="relative z-10 text-white/35 text-xs">
-          © 2025 ActiveFit · Privacy · Terms
+          © 2025 ActiveBoost · Privacy · Terms
         </div>
       </div>
 
@@ -218,11 +218,11 @@ export default function PhoneLoginPage() {
         <div className="w-full max-w-[440px] relative z-10">
 
           {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
             <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
+              <Dumbbell className="w-5 h-5 text-white" />
             </div>
-            <span className="font-extrabold text-xl">ActiveFit</span>
+            <span className="font-black text-xl tracking-tight">ActiveBoost</span>
           </div>
 
           {/* ── Step: PHONE ── */}

@@ -194,9 +194,9 @@ export default function ExpensesPage() {
                 <button
                   key={cat.value}
                   onClick={() => setCatFilter(catFilter === cat.value ? '' : cat.value)}
-                  className={cn('w-full text-left transition-all rounded-xl p-3 border',
+                  className={cn('w-full text-left transition-all rounded-xl p-3 border stagger-delay',
                     catFilter === cat.value ? `${cat.border} ${cat.bg}` : 'border-transparent hover:bg-muted/40')}
-                  style={{ animationDelay: `${i * 50}ms` }}
+                  style={{ '--delay': `${i * 50}ms` } as React.CSSProperties}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${cat.grad} flex items-center justify-center shrink-0`}>
@@ -212,8 +212,8 @@ export default function ExpensesPage() {
                       </div>
                       <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full bg-gradient-to-r ${cat.grad} transition-[width] duration-700 ease-out`}
-                          style={{ width: `${(cat.total / topTotal) * 100}%` }}
+                          className={`h-full rounded-full bg-gradient-to-r ${cat.grad} progress-fill`}
+                          style={{ '--progress-width': `${(cat.total / topTotal) * 100}%` } as React.CSSProperties}
                         />
                       </div>
                     </div>
@@ -288,8 +288,8 @@ export default function ExpensesPage() {
                 const CatIcon = cat.icon;
                 return (
                   <tr key={e.id}
-                    className="border-b border-border/30 hover:bg-muted/20 transition-colors animate-slide-up group"
-                    style={{ animationDelay: `${i * 35}ms` }}
+                    className="border-b border-border/30 hover:bg-muted/20 transition-colors animate-slide-up group stagger-delay"
+                    style={{ '--delay': `${i * 35}ms` } as React.CSSProperties}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2.5">
@@ -347,7 +347,7 @@ export default function ExpensesPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowModal(false)} />
-          <div className="relative bg-card border border-border rounded-3xl shadow-lifted w-full max-w-md animate-zoom-in">
+          <div className="relative bg-card border border-border rounded-3xl shadow-lifted w-full max-w-md max-h-[90vh] overflow-y-auto animate-zoom-in">
             {/* Header */}
             {(() => {
               const catMeta = getCatMeta(form.category);

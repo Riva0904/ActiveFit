@@ -53,7 +53,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     <div className="bg-card border border-border rounded-xl px-4 py-2.5 shadow-lifted text-sm">
       <p className="text-muted-foreground mb-1">{label}</p>
       {payload.map((p: any) => (
-        <p key={p.name} className="font-bold" style={{ color: p.color }}>
+        <p key={p.name} className="font-bold accent-text" style={{ '--accent-color': p.color } as React.CSSProperties}>
           {p.name}: {formatCurrency(p.value)}
         </p>
       ))}

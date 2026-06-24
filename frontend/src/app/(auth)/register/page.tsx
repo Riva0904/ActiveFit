@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Zap, Building2, User, ArrowRight, ArrowLeft, Eye, EyeOff, CheckCircle, Loader2 } from 'lucide-react';
+import { Dumbbell, Building2, User, ArrowRight, ArrowLeft, Eye, EyeOff, CheckCircle, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -91,11 +91,11 @@ export default function RegisterPage() {
       <div className="w-full max-w-[500px] relative z-10">
 
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-7">
+        <div className="flex items-center justify-center gap-1.5 mb-7">
           <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
+            <Dumbbell className="w-5 h-5 text-white" />
           </div>
-          <span className="font-extrabold text-xl">ActiveFit</span>
+          <span className="font-black text-xl tracking-tight">ActiveBoost</span>
         </div>
 
         {/* Step progress */}

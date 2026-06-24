@@ -162,8 +162,8 @@ function PhoneInput({ value, onChange, placeholder = 'Phone number' }: { value: 
         placeholder={placeholder}
         className="flex-1 bg-background border-2 border-border rounded-r-xl px-3 py-2.5 text-sm font-medium outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" />
       {open && typeof document !== 'undefined' && createPortal(
-        <div style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
-          className="bg-card border border-border/60 rounded-xl shadow-2xl overflow-y-auto max-h-52">
+        <div style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
+          className="dial-code-dropdown bg-card border border-border/60 rounded-xl shadow-2xl overflow-y-auto max-h-52">
           {DIAL_CODES.map((dc, i) => (
             <button key={dc.code} type="button" onClick={() => { setDialCode(dc.code); setOpen(false); }}
               className={cn('w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/70 transition text-left',
@@ -299,9 +299,9 @@ function ImagePickerModal({ current, onConfirm, onClose }: { current: string; on
                       onMouseDown={handleMouseDown}>
                       <img src={imageSrc} alt="adjust" draggable={false}
                         onLoad={e => { const t = e.currentTarget; setImgDims({ w: t.naturalWidth, h: t.naturalHeight }); }}
-                        style={{ position: 'absolute', width: `${base.w * zoom}px`, height: `${base.h * zoom}px`,
-                          left: `${(220 - base.w * zoom) / 2 + pan.x}px`, top: `${(220 - base.h * zoom) / 2 + pan.y}px`,
-                          pointerEvents: 'none', transition: isDragging ? 'none' : 'left .1s, top .1s' }} />
+                        className={cn('avatar-crop-img', isDragging && 'is-dragging')}
+                        style={{ width: `${base.w * zoom}px`, height: `${base.h * zoom}px`,
+                          left: `${(220 - base.w * zoom) / 2 + pan.x}px`, top: `${(220 - base.h * zoom) / 2 + pan.y}px` }} />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">

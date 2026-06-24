@@ -98,7 +98,7 @@ export default function GymMapLeaflet({ gyms }: GymMapLeafletProps) {
     <MapContainer
       center={[20.5937, 78.9629]}
       zoom={5}
-      style={{ width: '100%', height: '100%', borderRadius: '1rem' }}
+      className="gym-map-container"
       zoomControl={false}
       attributionControl={false}
     >
@@ -114,23 +114,20 @@ export default function GymMapLeaflet({ gyms }: GymMapLeafletProps) {
           icon={createMarkerIcon(STATUS_COLORS[gym.status] ?? '#94a3b8', 14)}
         >
           <Popup className="gym-popup">
-            <div style={{ minWidth: 160, fontFamily: 'inherit' }}>
-              <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{gym.name}</p>
-              <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>{gym.city}, {gym.state}</p>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                  background: STATUS_COLORS[gym.status] + '22',
-                  color: STATUS_COLORS[gym.status],
-                  border: `1px solid ${STATUS_COLORS[gym.status]}44`,
-                }}>{gym.status}</span>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                  background: '#f97316' + '22', color: '#f97316',
-                  border: '1px solid #f9731644',
-                }}>{PLAN_LABELS[gym.subscriptionPlan] ?? gym.subscriptionPlan}</span>
+            <div className="gym-popup-body">
+              <p className="gym-popup-title">{gym.name}</p>
+              <p className="gym-popup-location">{gym.city}, {gym.state}</p>
+              <div className="gym-popup-badges">
+                <span
+                  className="gym-popup-badge"
+                  style={{ '--badge-color': STATUS_COLORS[gym.status] ?? '#94a3b8' } as React.CSSProperties}
+                >{gym.status}</span>
+                <span
+                  className="gym-popup-badge"
+                  style={{ '--badge-color': '#f97316' } as React.CSSProperties}
+                >{PLAN_LABELS[gym.subscriptionPlan] ?? gym.subscriptionPlan}</span>
               </div>
-              <p style={{ fontSize: 11, marginTop: 6, color: '#64748b' }}>
+              <p className="gym-popup-members">
                 {gym._count?.members ?? 0} members
               </p>
             </div>

@@ -35,7 +35,9 @@ api.interceptors.response.use(
     }
 
     if (err.response?.status !== 401 && err.response?.status !== 404) {
-      toast.error(Array.isArray(message) ? message[0] : message);
+      // Dedupe by status: identical/repeat errors (e.g. a 429 burst from several
+      // parallel widget fetches) replace the existing toast instead of stacking unbounded.
+      toast.error(Array.isArray(message) ? message[0] : message, { id: `api-error-${err.response?.status}` });
     }
     return Promise.reject(err);
   },
@@ -183,7 +185,7 @@ export const supplementsApi = {
   update: (id: string, data: any) => api.patch(`/supplements/${id}`, data),
   delete: (id: string) => api.delete(`/supplements/${id}`),
   updateStock: (id: string, quantity: number) => api.patch(`/supplements/${id}/stock`, { quantity }),
-  createOrder: (items: any[]) => api.post('/supplements/order', { items }),
+  createCheckout: (items: any[]) => api.post('/supplements/checkout', { items }),
   getOrders: (params?: any) => api.get('/supplements/orders', { params }),
   updateOrderStatus: (orderId: string, status: string) =>
     api.patch(`/supplements/orders/${orderId}/status`, { status }),

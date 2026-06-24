@@ -33,7 +33,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
     <div className="bg-card border border-border rounded-xl px-4 py-2.5 shadow-lifted text-sm">
       <p className="text-muted-foreground mb-1 text-xs">{label}</p>
       {payload.map((p: any, i: number) => (
-        <p key={i} className="font-bold" style={{ color: p.color }}>
+        <p key={i} className="font-bold accent-text" style={{ '--accent-color': p.color } as React.CSSProperties}>
           {p.name}: {p.name === 'earnings' ? `₹${p.value}` : p.value}
         </p>
       ))}
@@ -56,10 +56,10 @@ function PerformanceRing({ score }: { score: number }) {
         strokeDasharray={`${dash} ${circ}`}
         strokeDashoffset={circ / 4}
         transform="rotate(-90 55 55)"
-        style={{ transition: 'stroke-dasharray 1s ease' }}
+        className="perf-ring-arc"
       />
-      <text x="55" y="50" textAnchor="middle" dominantBaseline="middle" className="text-foreground" style={{ fontSize: 22, fontWeight: 800, fill: color }}>{score}</text>
-      <text x="55" y="68" textAnchor="middle" style={{ fontSize: 10, fill: '#888' }}>/ 100</text>
+      <text x="55" y="50" textAnchor="middle" dominantBaseline="middle" className="text-foreground perf-ring-score accent-fill" style={{ '--accent-color': color } as React.CSSProperties}>{score}</text>
+      <text x="55" y="68" textAnchor="middle" className="perf-ring-max">/ 100</text>
     </svg>
   );
 }

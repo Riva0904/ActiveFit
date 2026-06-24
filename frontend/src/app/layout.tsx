@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'react-hot-toast';
-import './globals.css';
+import './globals.scss';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -19,7 +19,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: { default: 'ActiveFit', template: '%s — ActiveFit' },
+  title: { default: 'ActiveBoost', template: '%s — ActiveBoost' },
   description: 'Premium Gym Management SaaS Platform for modern fitness businesses',
 };
 

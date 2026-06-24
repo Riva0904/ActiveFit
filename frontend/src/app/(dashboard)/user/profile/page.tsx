@@ -47,7 +47,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Profile hero */}
-      <div className="relative overflow-hidden rounded-2xl gradient-brand p-8 shadow-brand animate-slide-up" style={{ animationDelay: '80ms' }}>
+      <div className="relative overflow-hidden rounded-2xl gradient-brand p-8 shadow-brand animate-slide-up delay-80">
         <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/10 animate-card-float" />
         <div className="absolute bottom-0 left-24 w-40 h-40 rounded-full bg-black/15 blur-2xl" />
         <div className="absolute top-4 left-1/2 w-24 h-24 rounded-full bg-white/5" />

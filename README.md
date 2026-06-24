@@ -1,4 +1,4 @@
-# ActiveFit — Gym Management SaaS Platform
+# ActiveBoost — Gym Management SaaS Platform
 
 A modern, full-stack Gym Management SaaS with 3-tier role-based access.
 
@@ -28,7 +28,7 @@ A modern, full-stack Gym Management SaaS with 3-tier role-based access.
 ## Project Structure
 
 ```
-ActiveFit/
+ActiveBoost/
 ├── backend/                    # NestJS API
 │   ├── src/
 │   │   ├── auth/               # JWT auth + strategies
@@ -175,7 +175,7 @@ After running the seed:
 
 ### Backend (.env)
 ```
-DATABASE_URL=postgresql://user:pass@localhost:5432/activefit_db
+DATABASE_URL=postgresql://user:pass@localhost:5432/activeboost_db
 JWT_SECRET=your-secret-key
 PORT=3001
 CLOUDINARY_CLOUD_NAME=...

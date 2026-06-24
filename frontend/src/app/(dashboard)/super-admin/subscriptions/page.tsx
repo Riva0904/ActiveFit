@@ -259,7 +259,7 @@ export default function SubscriptionsPage() {
                     <div className="h-5 w-16 bg-muted rounded shimmer-bg" />
                   </div>
                   <div className="flex gap-2 ml-8">
-                    {[72, 72, 72, 72].map((w, i) => <div key={i} className="h-14 rounded-xl bg-muted shimmer-bg" style={{ width: w }} />)}
+                    {[0, 1, 2, 3].map((i) => <div key={i} className="h-14 w-[72px] rounded-xl bg-muted shimmer-bg" />)}
                   </div>
                 </div>
               </div>

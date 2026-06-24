@@ -186,7 +186,7 @@ function AddMemberModal({ onClose, onSuccess, plans = [] }: any) {
   const stepGrads = ['gradient-brand','gradient-blue','gradient-green'];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg animate-pop overflow-hidden">
+      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-pop">
         <div className={`${stepGrads[step-1]} p-5 relative overflow-hidden transition-all duration-700`}>
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 pointer-events-none" />
           <div className="relative flex items-center justify-between">
@@ -551,7 +551,7 @@ function AddTrainerModal({ onClose, onSuccess }: any) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg animate-pop overflow-hidden">
+      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-pop">
         <div className={`${step===1?'gradient-purple':'gradient-blue'} p-5 relative overflow-hidden transition-all duration-700`}>
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 pointer-events-none"/>
           <div className="relative flex items-center justify-between">
@@ -750,7 +750,7 @@ function AddStaffModal({ onClose, onSuccess }: any) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg animate-pop overflow-hidden">
+      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-pop">
         <div className={`${step===1?'gradient-teal':'gradient-green'} p-5 relative overflow-hidden transition-all duration-700`}>
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 pointer-events-none"/>
           <div className="relative flex items-center justify-between">
@@ -965,7 +965,7 @@ function PlanFormModal({ plan, onClose, onSuccess }: any) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md animate-pop overflow-hidden">
+      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-pop">
         <div className={`${isEdit ? 'gradient-teal' : 'gradient-brand'} p-5 relative overflow-hidden`}>
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 pointer-events-none"/>
           <div className="relative flex items-center justify-between">
@@ -1162,11 +1162,8 @@ function PeoplePageInner() {
       <div className="relative flex items-center gap-1 p-1.5 bg-muted/60 backdrop-blur rounded-2xl border border-border/40 w-fit">
         {/* Sliding background pill */}
         <div
-          className={`absolute inset-y-1.5 rounded-xl transition-all duration-300 ease-out bg-gradient-to-r ${current.accent} shadow-lg`}
-          style={{
-            left: `${TABS.findIndex(t=>t.key===tab) * (100/4)}%`,
-            width: `${100/4}%`,
-          }}
+          className={`absolute inset-y-1.5 rounded-xl transition-all duration-300 ease-out bg-gradient-to-r ${current.accent} shadow-lg tab-pill`}
+          style={{ '--pill-left': `${TABS.findIndex(t=>t.key===tab) * (100/4)}%` } as React.CSSProperties}
         />
         {TABS.map(({ key, label, icon: Icon }) => {
           const active = tab === key;
@@ -1189,8 +1186,7 @@ function PeoplePageInner() {
       {/* Tab content with slide animation */}
       <div
         key={tab}
-        className={cn('transition-all duration-300', animating ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0')}
-        style={{ animation: animating ? 'none' : undefined }}
+        className={cn('transition-all duration-300', animating ? 'opacity-0 translate-y-2 no-animation' : 'opacity-100 translate-y-0')}
       >
         {tab === 'members'  && <MembersTab />}
         {tab === 'trainers' && <TrainersTab />}

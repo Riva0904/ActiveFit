@@ -47,7 +47,7 @@ function PackageModal({ pkg, onClose, onSuccess }: any) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md animate-pop overflow-hidden">
+      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-pop">
         <div className={`${isEdit ? 'gradient-teal' : 'gradient-purple'} p-5 relative overflow-hidden`}>
           <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-white/10 pointer-events-none"/>
           <div className="relative flex items-center justify-between">

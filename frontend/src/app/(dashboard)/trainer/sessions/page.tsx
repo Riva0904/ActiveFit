@@ -136,7 +136,7 @@ function ScheduleModal({ members, onClose, onSuccess }: { members: Member[]; onC
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg animate-pop overflow-hidden">
+      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-pop">
         <div className="gradient-purple p-6 relative overflow-hidden">
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 pointer-events-none" />
           <div className="relative flex items-center justify-between">

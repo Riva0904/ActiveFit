@@ -56,8 +56,8 @@ function SessionStatCard({ label, value, icon: Icon, grad, delay = 0 }: {
 }) {
   return (
     <div
-      className="relative bg-card border border-border/60 rounded-2xl p-5 overflow-hidden hover:shadow-card transition-all animate-slide-up stat-highlight"
-      style={{ animationDelay: `${delay}ms` }}
+      className="relative bg-card border border-border/60 rounded-2xl p-5 overflow-hidden hover:shadow-card transition-all animate-slide-up stat-highlight stagger-delay"
+      style={{ '--delay': `${delay}ms` } as React.CSSProperties}
     >
       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${grad} opacity-10 rounded-full -translate-y-6 translate-x-6`} />
       <div className="relative">
@@ -91,11 +91,11 @@ function SessionRow({ s, index, onComplete, onCancel, onDelete }: {
 
   return (
     <div
-      className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all hover:shadow-card animate-slide-up cursor-default
+      className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all hover:shadow-card animate-slide-up cursor-default stagger-delay
         ${overdue ? 'border-red-200 dark:border-red-900/50 bg-red-500/5 hover:bg-red-500/8' :
           isToday && s.status === 'SCHEDULED' ? 'border-primary/30 bg-primary/5 hover:bg-primary/8' :
           'border-border/60 bg-card hover:bg-muted/20'}`}
-      style={{ animationDelay: `${index * 50}ms` }}
+      style={{ '--delay': `${index * 50}ms` } as React.CSSProperties}
     >
       {/* Member avatar */}
       <Avatar firstName={s.member?.user?.firstName} lastName={s.member?.user?.lastName} avatar={s.member?.user?.avatar} size={11} />
@@ -340,7 +340,7 @@ export default function PtSessionsPage() {
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-20 shimmer-card" style={{ animationDelay: `${i * 80}ms` }} />
+                <div key={i} className="h-20 shimmer-card stagger-delay" style={{ '--delay': `${i * 80}ms` } as React.CSSProperties} />
               ))}
             </div>
           ) : visibleSessions.length === 0 ? (

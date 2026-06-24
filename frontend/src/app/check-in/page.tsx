@@ -139,7 +139,7 @@ export default function CheckInPage() {
           <div className="w-12 h-12 gradient-brand rounded-md flex items-center justify-center shadow-brand">
             <Zap className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-3xl font-black tracking-tighter uppercase">ActiveFit</h1>
+          <h1 className="text-3xl font-black tracking-tighter uppercase">ActiveBoost</h1>
         </div>
         <p className="text-muted-foreground font-bold uppercase tracking-wide text-xs">Gym Check-in / Check-out</p>
       </div>

@@ -39,7 +39,7 @@ export const useAuthStore = create<AuthState>()(
       },
       updateUser: (data) => set((state) => ({ user: state.user ? { ...state.user, ...data } : null })),
     }),
-    { name: 'activefit-auth', partialize: (state) => ({ user: state.user }) },
+    { name: 'activeboost-auth', partialize: (state) => ({ user: state.user }) },
   ),
 );
 

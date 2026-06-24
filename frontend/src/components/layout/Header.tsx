@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Bell, Menu, Moon, Sun, Search, X, ChevronDown, Settings, LogOut, UserCog } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/store/authStore';
-import { notificationsApi } from '@/lib/api';
+import { notificationsApi, authApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -32,9 +32,14 @@ export function Header({ onMenuClick }: HeaderProps) {
   }, []);
 
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
-  const rolePath = user?.role === 'SUPER_ADMIN' ? '/super-admin' : user?.role === 'GYM_ADMIN' ? '/admin' : '/user';
+  const rolePath = user?.role === 'SUPER_ADMIN' ? '/super-admin'
+    : user?.role === 'GYM_ADMIN' ? '/admin'
+    : user?.role === 'STAFF' ? '/staff'
+    : user?.role === 'TRAINER' ? '/trainer'
+    : '/user';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try { await authApi.logout(); } catch { /* cookie may already be gone */ }
     logout();
     toast.success('Signed out successfully');
     router.push('/login');
