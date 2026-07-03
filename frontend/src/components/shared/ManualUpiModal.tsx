@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, CheckCircle2, Loader2 } from 'lucide-react';
+import { X, CheckCircle2, Loader2, Camera } from 'lucide-react';
 import { paymentsApi } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { QrScannerModal } from './QrScannerModal';
 
 interface ManualUpiModalProps {
   paymentId: string;
@@ -23,6 +24,7 @@ interface ManualUpiModalProps {
 export function ManualUpiModal({ paymentId, amount, vpa, payeeName, description, onClose, onMarkedPaid }: ManualUpiModalProps) {
   const [marking, setMarking] = useState(false);
   const [marked, setMarked] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   const upiUri = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(description)}`;
 
@@ -40,6 +42,18 @@ export function ManualUpiModal({ paymentId, amount, vpa, payeeName, description,
   };
 
   return (
+    <>
+    {showScanner && (
+      <QrScannerModal
+        expectedVpa={vpa}
+        onMatch={() => {
+          setShowScanner(false);
+          // VPA validated — open UPI deep link with amount pre-filled
+          window.location.href = upiUri;
+        }}
+        onClose={() => setShowScanner(false)}
+      />
+    )}
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto animate-pop">
         <div className="gradient-brand p-5 relative overflow-hidden">
@@ -70,6 +84,12 @@ export function ManualUpiModal({ paymentId, amount, vpa, payeeName, description,
                 Open in UPI app
               </a>
               <button
+                onClick={() => setShowScanner(true)}
+                className="w-full py-2.5 rounded-xl border border-border hover:bg-muted text-sm font-bold flex items-center justify-center gap-2"
+              >
+                <Camera className="w-4 h-4" /> Scan Gym QR instead
+              </button>
+              <button
                 onClick={handleMarkPaid}
                 disabled={marking}
                 className="w-full py-2.5 rounded-xl gradient-brand text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
@@ -93,6 +113,7 @@ export function ManualUpiModal({ paymentId, amount, vpa, payeeName, description,
         </div>
       </div>
     </div>
+    </>
   );
 }
 
