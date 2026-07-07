@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../common/services/push.service';
 
 const NOTIFICATION_RETENTION_DAYS = 90;
 
@@ -8,16 +9,19 @@ const NOTIFICATION_RETENTION_DAYS = 90;
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private push: PushService,
+  ) {}
 
   async findAll(userId: string, opts: { limit?: number; cursor?: string } = {}) {
-    const take = Math.min(opts.limit ?? 50, 100); // max 100 per page
+    const take = Math.min(opts.limit ?? 50, 100);
     const cursor = opts.cursor ? { id: opts.cursor } : undefined;
 
     const items = await this.prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: take + 1, // fetch one extra to detect next page
+      take: take + 1,
       ...(cursor ? { cursor, skip: 1 } : {}),
     });
 
@@ -51,7 +55,17 @@ export class NotificationsService {
     channel?: any;
     metadata?: any;
   }) {
-    return this.prisma.notification.create({ data: data as any });
+    const notification = await this.prisma.notification.create({ data: data as any });
+
+    if (data.userId) {
+      this.push.sendToUser(
+        data.userId,
+        { title: data.title, body: data.message },
+        { notificationId: notification.id, type: String(data.type) },
+      ).catch((err) => this.logger.error(`Push failed for user ${data.userId}: ${err.message}`));
+    }
+
+    return notification;
   }
 
   async broadcast(gymId: string, data: { title: string; message: string; type: any }) {
@@ -63,7 +77,7 @@ export class NotificationsService {
       select: { id: true },
     });
 
-    const batchSize = 50; // reduced from 100 for stability
+    const batchSize = 50;
     let totalCreated = 0;
     for (let i = 0; i < users.length; i += batchSize) {
       const batch = users.slice(i, i + batchSize);
@@ -79,6 +93,14 @@ export class NotificationsService {
       });
       totalCreated += result.count;
     }
+
+    // Send FCM push to all gym users (fire-and-forget)
+    this.push.sendToGym(
+      gymId,
+      { title: data.title.slice(0, 255), body: data.message.slice(0, 1000) },
+      { type: String(data.type) },
+    ).catch((err) => this.logger.error(`Gym push broadcast failed: ${err.message}`));
+
     return { count: totalCreated };
   }
 

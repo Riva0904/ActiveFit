@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../common/services/push.service';
 
 @Injectable()
 export class LeaveService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private push: PushService,
+  ) {}
 
   async applyLeave(gymId: string, userId: string, body: any) {
     const leave = await this.prisma.leaveRequest.create({
@@ -96,17 +100,22 @@ export class LeaveService {
     });
 
     const label = action === 'APPROVED' ? 'approved' : 'rejected';
+    const title = `Leave ${action === 'APPROVED' ? 'Approved' : 'Rejected'}`;
+    const message = `Your leave request from ${leave.startDate.toLocaleDateString()} to ${leave.endDate.toLocaleDateString()} has been ${label}.${adminNote ? ` Note: ${adminNote}` : ''}`;
+
     await this.prisma.notification.create({
       data: {
         gymId,
         userId: leave.userId,
         type: 'LEAVE_REQUEST' as const,
         channel: 'IN_APP' as const,
-        title: `Leave ${action === 'APPROVED' ? 'Approved' : 'Rejected'}`,
-        message: `Your leave request from ${leave.startDate.toLocaleDateString()} to ${leave.endDate.toLocaleDateString()} has been ${label}.${adminNote ? ` Note: ${adminNote}` : ''}`,
+        title,
+        message,
         metadata: { leaveId },
       },
     });
+
+    this.push.sendToUser(leave.userId, { title, body: message }).catch(() => {});
 
     return updated;
   }
