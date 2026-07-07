@@ -13,29 +13,31 @@ export default function ProfileScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
+  const soon = (label: string) => Alert.alert(label, 'Coming soon in the next update');
+
   const sections: { title: string; items: MenuItem[] }[] = [
     {
       title: 'Account',
       items: [
-        { label: 'Edit Profile', icon: '✏️' },
-        { label: 'Change Password', icon: '🔒' },
-        { label: 'Notifications', icon: '🔔' },
+        { label: 'Edit Profile', icon: '✏️', onPress: () => soon('Edit Profile') },
+        { label: 'Change Password', icon: '🔒', onPress: () => soon('Change Password') },
+        { label: 'Notifications', icon: '🔔', onPress: () => soon('Notifications') },
       ],
     },
     {
       title: 'Gym',
       items: [
-        { label: 'My Membership', icon: '🏅' },
-        { label: 'Payment History', icon: '💳' },
-        { label: 'Progress Log', icon: '📊' },
-        { label: 'Referrals', icon: '🎁' },
+        { label: 'My Membership', icon: '🏅', onPress: () => soon('My Membership') },
+        { label: 'Payment History', icon: '💳', onPress: () => soon('Payment History') },
+        { label: 'Progress Log', icon: '📊', onPress: () => soon('Progress Log') },
+        { label: 'Referrals', icon: '🎁', onPress: () => soon('Referrals') },
       ],
     },
     {
       title: 'Support',
       items: [
-        { label: 'Chat with Admin', icon: '💬' },
-        { label: 'Gamification & Badges', icon: '🏆' },
+        { label: 'Chat with Admin', icon: '💬', onPress: () => soon('Chat') },
+        { label: 'Gamification & Badges', icon: '🏆', onPress: () => soon('Gamification') },
       ],
     },
     {

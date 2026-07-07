@@ -44,7 +44,7 @@ function MembershipCard({ data }: { data: MobileHomeData }) {
   );
 }
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: any) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
 
@@ -137,10 +137,15 @@ export default function HomeScreen() {
           { label: 'Store', icon: '🛒', tab: 'Store' },
           { label: 'Profile', icon: '👤', tab: 'Profile' },
         ].map((action) => (
-          <View key={action.label} style={styles.quickCard}>
+          <TouchableOpacity
+            key={action.label}
+            style={styles.quickCard}
+            onPress={() => navigation.navigate(action.tab)}
+            activeOpacity={0.7}
+          >
             <Text style={styles.quickIcon}>{action.icon}</Text>
             <Text style={styles.quickLabel}>{action.label}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </ScrollView>
