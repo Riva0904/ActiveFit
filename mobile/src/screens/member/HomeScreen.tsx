@@ -70,6 +70,9 @@ export default function HomeScreen({ navigation }: any) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color="#FF4D00" size="large" />
+        <Text style={{ color: '#6B7280', marginTop: 16, fontSize: 13, textAlign: 'center' }}>
+          Connecting to server…{'\n'}First load may take up to 60s
+        </Text>
       </View>
     );
   }
