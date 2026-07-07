@@ -19,16 +19,16 @@ export default function ProfileScreen({ navigation }: any) {
     {
       title: 'Account',
       items: [
-        { label: 'Edit Profile', icon: '✏️', onPress: () => soon('Edit Profile') },
-        { label: 'Change Password', icon: '🔒', onPress: () => soon('Change Password') },
-        { label: 'Notifications', icon: '🔔', onPress: () => soon('Notifications') },
+        { label: 'Edit Profile', icon: '✏️', onPress: () => navigation.navigate('EditProfile') },
+        { label: 'Change Password', icon: '🔒', onPress: () => navigation.navigate('ChangePassword') },
+        { label: 'Notifications', icon: '🔔', onPress: () => navigation.navigate('Notifications') },
       ],
     },
     {
       title: 'Gym',
       items: [
-        { label: 'My Membership', icon: '🏅', onPress: () => soon('My Membership') },
-        { label: 'Payment History', icon: '💳', onPress: () => soon('Payment History') },
+        { label: 'My Membership', icon: '🏅', onPress: () => navigation.navigate('MyMembership') },
+        { label: 'Payment History', icon: '💳', onPress: () => navigation.navigate('PaymentHistory') },
         { label: 'Progress Log', icon: '📊', onPress: () => soon('Progress Log') },
         { label: 'Referrals', icon: '🎁', onPress: () => soon('Referrals') },
       ],

@@ -1,15 +1,21 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Text } from 'react-native';
 
-// Screens (will be populated in subsequent phases)
 import MemberHomeScreen from '../screens/member/HomeScreen';
 import AttendanceScreen from '../screens/member/AttendanceScreen';
 import PlansScreen from '../screens/member/PlansScreen';
 import StoreScreen from '../screens/member/StoreScreen';
 import ProfileScreen from '../screens/member/ProfileScreen';
+import EditProfileScreen from '../screens/member/EditProfileScreen';
+import ChangePasswordScreen from '../screens/member/ChangePasswordScreen';
+import MyMembershipScreen from '../screens/member/MyMembershipScreen';
+import PaymentHistoryScreen from '../screens/member/PaymentHistoryScreen';
+import NotificationsScreen from '../screens/member/NotificationsScreen';
 
 const Tab = createBottomTabNavigator();
+const ProfileStack = createStackNavigator();
 
 const ORANGE = '#FF4D00';
 const GRAY = '#9CA3AF';
@@ -19,6 +25,19 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
     Home: '🏠', Attendance: '📅', Plans: '💪', Store: '🛒', Profile: '👤',
   };
   return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{icons[name]}</Text>;
+}
+
+function ProfileStackNavigator() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+      <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+      <ProfileStack.Screen name="MyMembership" component={MyMembershipScreen} />
+      <ProfileStack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
+      <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
+    </ProfileStack.Navigator>
+  );
 }
 
 export default function MemberTabs() {
@@ -36,7 +55,7 @@ export default function MemberTabs() {
       <Tab.Screen name="Attendance" component={AttendanceScreen} />
       <Tab.Screen name="Plans" component={PlansScreen} />
       <Tab.Screen name="Store" component={StoreScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>
   );
 }
