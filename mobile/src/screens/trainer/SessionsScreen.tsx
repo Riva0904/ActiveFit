@@ -7,7 +7,7 @@ const STATUS_COLORS: Record<string, string> = {
   SCHEDULED: '#3B82F6', COMPLETED: '#22C55E', CANCELLED: '#EF4444', NO_SHOW: '#F59E0B',
 };
 
-export default function TrainerSessionsScreen() {
+export default function TrainerSessionsScreen({ navigation }: any) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['trainer-sessions'],
@@ -24,7 +24,15 @@ export default function TrainerSessionsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>PT Sessions</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, marginBottom: 4 }}>
+        <Text style={styles.header}>PT Sessions</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: '#FF4D00', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 }}
+          onPress={() => navigation.navigate('CreateSession')}
+        >
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>+ Create</Text>
+        </TouchableOpacity>
+      </View>
       {isLoading ? (
         <ActivityIndicator color="#FF4D00" style={{ marginTop: 32 }} />
       ) : (
@@ -70,7 +78,7 @@ export default function TrainerSessionsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { color: '#F9FAFB', fontSize: 22, fontWeight: '700', paddingHorizontal: 20, paddingTop: 56, marginBottom: 4 },
+  header: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
   card: {
     backgroundColor: '#1A1A1A', borderRadius: 14, padding: 14,
     marginBottom: 10, borderWidth: 1, borderColor: '#2A2A2A',

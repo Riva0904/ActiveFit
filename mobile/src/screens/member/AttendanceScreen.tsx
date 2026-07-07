@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import QRCode from 'react-native-qrcode-svg';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 
-export default function AttendanceScreen() {
+export default function AttendanceScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
 
   const { data: homeData, isLoading } = useQuery({
@@ -42,7 +44,6 @@ export default function AttendanceScreen() {
         )}
       </View>
 
-      {/* Streak */}
       <View style={styles.streakRow}>
         <View style={styles.streakCard}>
           <Text style={styles.streakNum}>{(streak as any)?.currentStreak ?? 0}</Text>
@@ -54,7 +55,20 @@ export default function AttendanceScreen() {
         </View>
       </View>
 
-      <Text style={styles.comingSoon}>Full calendar & leaderboard coming soon</Text>
+      <View style={styles.actionsGrid}>
+        <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('AttendanceHistory')}>
+          <Text style={styles.actionIcon}>📅</Text>
+          <Text style={styles.actionLabel}>History & Calendar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Insights')}>
+          <Text style={styles.actionIcon}>📊</Text>
+          <Text style={styles.actionLabel}>My Insights</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Leaderboard')}>
+          <Text style={styles.actionIcon}>🏆</Text>
+          <Text style={styles.actionLabel}>Leaderboard</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -78,5 +92,11 @@ const styles = StyleSheet.create({
   },
   streakNum: { color: '#FF4D00', fontSize: 36, fontWeight: '800', marginBottom: 4 },
   streakLabel: { color: '#9CA3AF', fontSize: 13, textAlign: 'center' },
-  comingSoon: { color: '#4B5563', fontSize: 13, textAlign: 'center', paddingHorizontal: 20 },
+  actionsGrid: { flexDirection: 'row', paddingHorizontal: 20, gap: 12 },
+  actionCard: {
+    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16,
+    alignItems: 'center', borderWidth: 1, borderColor: '#2A2A2A', gap: 8,
+  },
+  actionIcon: { fontSize: 28 },
+  actionLabel: { color: '#9CA3AF', fontSize: 11, fontWeight: '600', textAlign: 'center' },
 });

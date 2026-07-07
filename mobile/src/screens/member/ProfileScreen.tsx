@@ -13,7 +13,21 @@ export default function ProfileScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
-  const soon = (label: string) => Alert.alert(label, 'Coming soon in the next update');
+  const isTrainer = user?.role === 'TRAINER';
+
+  const gymItems: MenuItem[] = isTrainer
+    ? [
+        { label: 'Leave Requests', icon: '📋', onPress: () => navigation.navigate('Leave') },
+        { label: 'Salary History', icon: '💰', onPress: () => navigation.navigate('Salary') },
+      ]
+    : [
+        { label: 'My Membership', icon: '🏅', onPress: () => navigation.navigate('MyMembership') },
+        { label: 'Renew Membership', icon: '🔄', onPress: () => navigation.navigate('MembershipRenewal') },
+        { label: 'Payment History', icon: '💳', onPress: () => navigation.navigate('PaymentHistory') },
+        { label: 'Progress Log', icon: '📊', onPress: () => navigation.navigate('ProgressLog') },
+        { label: 'My Trainer', icon: '🏋️', onPress: () => navigation.navigate('MyTrainer') },
+        { label: 'Referrals', icon: '🎁', onPress: () => navigation.navigate('Referrals') },
+      ];
 
   const sections: { title: string; items: MenuItem[] }[] = [
     {
@@ -25,19 +39,14 @@ export default function ProfileScreen({ navigation }: any) {
       ],
     },
     {
-      title: 'Gym',
-      items: [
-        { label: 'My Membership', icon: '🏅', onPress: () => navigation.navigate('MyMembership') },
-        { label: 'Payment History', icon: '💳', onPress: () => navigation.navigate('PaymentHistory') },
-        { label: 'Progress Log', icon: '📊', onPress: () => soon('Progress Log') },
-        { label: 'Referrals', icon: '🎁', onPress: () => soon('Referrals') },
-      ],
+      title: isTrainer ? 'Work' : 'Gym',
+      items: gymItems,
     },
     {
       title: 'Support',
       items: [
-        { label: 'Chat with Admin', icon: '💬', onPress: () => soon('Chat') },
-        { label: 'Gamification & Badges', icon: '🏆', onPress: () => soon('Gamification') },
+        { label: 'Chat with Admin', icon: '💬', onPress: () => navigation.navigate('Chat') },
+        ...(!isTrainer ? [{ label: 'Gamification & Badges', icon: '🏆', onPress: () => navigation.navigate('Gamification') }] : []),
       ],
     },
     {
