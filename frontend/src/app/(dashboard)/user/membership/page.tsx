@@ -110,6 +110,7 @@ export default function UserMembershipPage() {
             await paymentsApi.verify({
               paymentId: orderRes.paymentId,
               razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
               signature: response.razorpay_signature,
             });
             toast.success('Payment successful! Membership activated.');
@@ -373,7 +374,7 @@ export default function UserMembershipPage() {
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${getMembershipBadgeColor(m.status)}`}>
                       {m.status}
                     </span>
-                    <p className="text-xs text-muted-foreground mt-1">{formatCurrency(m.price)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{formatCurrency(m.amount ?? m.price)}</p>
                   </div>
                 </div>
               ))}

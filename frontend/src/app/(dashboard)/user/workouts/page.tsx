@@ -68,6 +68,7 @@ export default function WorkoutsPage() {
             await paymentsApi.verify({
               paymentId: orderRes.paymentId,
               razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
               signature: response.razorpay_signature,
             });
             toast.success(`${pkg.name} activated! 💪`);

@@ -48,6 +48,7 @@ function BookingModal({ trainer, onClose, onSuccess }: any) {
               await paymentsApi.verify({
                 paymentId: res.payment.paymentId,
                 razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
                 signature: response.razorpay_signature,
               });
               toast.success('Session booked & payment confirmed!');

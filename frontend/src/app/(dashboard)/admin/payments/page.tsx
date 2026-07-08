@@ -43,7 +43,7 @@ function RecordPaymentModal({ onClose, onSuccess }: { onClose: () => void; onSuc
     const t = setTimeout(async () => {
       setSearching(true);
       try {
-        const res: any = await usersApi.getAll({ search: memberSearch, role: 'USER', limit: 5 });
+        const res: any = await usersApi.getAll({ search: memberSearch, role: 'MEMBER', limit: 5 });
         setMembers(res.data ?? []);
       } catch {}
       setSearching(false);

@@ -415,7 +415,10 @@ export default function AdminDashboard() {
                     }`}>
                       {days <= 0 ? 'Expired' : `${days}d left`}
                     </span>
-                    <button className="text-xs font-bold text-primary hover:underline">Renew</button>
+                    <button
+                      className="text-xs font-bold text-primary hover:underline"
+                      onClick={() => window.location.href = `/admin/members?renew=${m.userId ?? m.user?.id}`}
+                    >Renew</button>
                   </div>
                 </div>
               );

@@ -48,7 +48,7 @@ export default function DietPage() {
           description: `${pkg.name} — ${pkg.durationDays ?? 30} days`,
           order_id: orderRes.orderId,
           handler: async (response: any) => {
-            await paymentsApi.verify({ paymentId: orderRes.paymentId, razorpayPaymentId: response.razorpay_payment_id, signature: response.razorpay_signature });
+            await paymentsApi.verify({ paymentId: orderRes.paymentId, razorpayPaymentId: response.razorpay_payment_id, razorpayOrderId: response.razorpay_order_id, signature: response.razorpay_signature });
             toast.success(`${pkg.name} activated!`);
             dietPlansApi.getMyPlans().then((res: any) => { const p = Array.isArray(res) ? res.map((a: any) => a.dietPlan ?? a) : []; setPlans(p); if (p.length) setActivePlan(p[0]); }).catch(() => {});
           },

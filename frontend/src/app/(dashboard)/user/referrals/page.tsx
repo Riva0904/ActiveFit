@@ -18,7 +18,7 @@ export default function ReferralsPage() {
   }, []);
 
   const referralLink = info?.referralCode
-    ? `${window.location.origin}/register?ref=${info.referralCode}`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${info.referralCode}`
     : '';
 
   const copyLink = () => {

@@ -69,7 +69,7 @@ export default function UserSupplementsPage() {
           description: `Supplement order — ${cartCount} item${cartCount > 1 ? 's' : ''}`,
           order_id: orderRes.orderId,
           handler: async (response: any) => {
-            await paymentsApi.verify({ paymentId: orderRes.paymentId, razorpayPaymentId: response.razorpay_payment_id, signature: response.razorpay_signature });
+            await paymentsApi.verify({ paymentId: orderRes.paymentId, razorpayPaymentId: response.razorpay_payment_id, razorpayOrderId: response.razorpay_order_id, signature: response.razorpay_signature });
             toast.success('Order placed successfully! 🎉');
             setCart({});
           },

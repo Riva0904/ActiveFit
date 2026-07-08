@@ -58,7 +58,7 @@ function LoginForm() {
       }
     } catch (err: any) {
       const d = err?.response?.data;
-      if (d?.message?.code === 'EMAIL_NOT_VERIFIED') {
+      if (d?.code === 'EMAIL_NOT_VERIFIED' || d?.message?.code === 'EMAIL_NOT_VERIFIED') {
         toast('Verify your email — OTP resent.');
         router.push(`/verify-email?email=${encodeURIComponent(data.email!)}`);
       } else {

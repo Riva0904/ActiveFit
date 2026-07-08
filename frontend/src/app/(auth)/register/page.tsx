@@ -68,7 +68,8 @@ export default function RegisterPage() {
       await (authApi as any).registerGym(form);
       toast.success('Account created! Check your email for OTP.');
       router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
-    } catch {
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Registration failed. Please try again.');
     } finally {
       setSaving(false);
     }
