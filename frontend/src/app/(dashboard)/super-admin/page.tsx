@@ -55,7 +55,7 @@ export default function SuperAdminDashboard() {
       setTotalMembers(memberStats?.total ?? 0);
       const planCounts: Record<string, number> = {};
       full.forEach((g: any) => {
-        const plan = g.subscriptionPlan ?? 'STARTER';
+        const plan = g.saasPlan ?? 'STARTER';
         planCounts[plan] = (planCounts[plan] ?? 0) + 1;
       });
       setPlanData(Object.entries(planCounts).map(([name, value]) => ({
@@ -66,11 +66,11 @@ export default function SuperAdminDashboard() {
   }, []);
 
   const totalTrainers  = allGyms.reduce((s, g) => s + (g._count?.trainers ?? 0), 0);
-  const subscribedGyms = allGyms.filter(g => g.status === 'ACTIVE' && g.subscriptionPlan !== 'STARTER').length;
+  const subscribedGyms = allGyms.filter(g => g.status === 'ACTIVE' && g.saasPlan !== 'STARTER').length;
 
-  // Mock growth data (replace with real API if available)
+  // Simulated growth curve based on current total (no historical API)
   const growthData = ['Jan','Feb','Mar','Apr','May','Jun'].map((m, i) => ({
-    month: m, gyms: Math.max(1, totalGyms - (5 - i) * 2 + Math.floor(Math.random() * 2)),
+    month: m, gyms: Math.max(1, Math.round(totalGyms * (0.5 + 0.5 * (i / 5)))),
   }));
 
   return (
@@ -300,8 +300,8 @@ export default function SuperAdminDashboard() {
           ) : gyms.map((gym: any) => {
             const sc = STATUS_CFG[gym.status] ?? STATUS_CFG.INACTIVE;
             const StatusIcon = sc.icon;
-            const plan = PLAN_BADGE[gym.subscriptionPlan];
-            const isSubscribed = gym.status === 'ACTIVE' && gym.subscriptionPlan !== 'STARTER';
+            const plan = PLAN_BADGE[gym.saasPlan];
+            const isSubscribed = gym.status === 'ACTIVE' && gym.saasPlan !== 'STARTER';
             return (
               <div key={gym.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/30 transition-colors">
                 <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-rose-500 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow-sm">

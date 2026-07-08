@@ -73,7 +73,7 @@ export default function SubscriptionsPage() {
     try {
       const res: any = await gymsApi.getAll({ page, limit, search: search || undefined });
       let data = res.data ?? [];
-      if (filterPlan) data = data.filter((g: any) => g.subscriptionPlan === filterPlan);
+      if (filterPlan) data = data.filter((g: any) => g.saasPlan === filterPlan);
       setGyms(data);
       setTotal(res.total ?? 0);
     } catch { } finally { setLoading(false); }
@@ -182,7 +182,7 @@ export default function SubscriptionsPage() {
       {/* 3 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {stats.map(({ label, key }) => {
-          const count = gyms.filter(g => g.subscriptionPlan === key).length;
+          const count = gyms.filter(g => g.saasPlan === key).length;
           const p = getPlan(key);
           return (
             <div key={key} className="bg-card rounded-2xl border border-border/60 shadow-card p-5 flex items-center gap-4">
@@ -425,8 +425,8 @@ export default function SubscriptionsPage() {
                   </span>
                 </td>
                 <td>
-                  <span className={cn('text-xs font-bold px-3 py-1 rounded-full', planBadge[gym.subscriptionPlan] ?? planBadge.STARTER)}>
-                    {gym.subscriptionPlan}
+                  <span className={cn('text-xs font-bold px-3 py-1 rounded-full', planBadge[gym.saasPlan] ?? planBadge.STARTER)}>
+                    {gym.saasPlan}
                   </span>
                 </td>
                 <td>
@@ -439,7 +439,7 @@ export default function SubscriptionsPage() {
                 </td>
                 <td>
                   <select
-                    value={gym.subscriptionPlan}
+                    value={gym.saasPlan}
                     disabled={updating === gym.id}
                     onChange={e => changePlan(gym.id, e.target.value)}
                     className="h-[34px] rounded-lg border-[1.5px] border-border px-2.5 text-[13px] bg-card outline-none cursor-pointer focus:border-primary transition-colors disabled:opacity-60">

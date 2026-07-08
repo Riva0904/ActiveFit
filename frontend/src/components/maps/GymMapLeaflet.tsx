@@ -125,7 +125,7 @@ export default function GymMapLeaflet({ gyms }: GymMapLeafletProps) {
                 <span
                   className="gym-popup-badge"
                   style={{ '--badge-color': '#f97316' } as React.CSSProperties}
-                >{PLAN_LABELS[gym.subscriptionPlan] ?? gym.subscriptionPlan}</span>
+                >{PLAN_LABELS[gym.saasPlan] ?? gym.saasPlan}</span>
               </div>
               <p className="gym-popup-members">
                 {gym._count?.members ?? 0} members

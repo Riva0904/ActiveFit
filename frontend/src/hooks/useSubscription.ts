@@ -27,7 +27,7 @@ let _cache: { gymId: string; info: SubscriptionInfo } | null = null;
 export function useSubscription() {
   const { user } = useAuthStore();
   const [info, setInfo] = useState<SubscriptionInfo | null>(
-    _cache?.gymId === user?.gymId ? _cache.info : null,
+    _cache && _cache.gymId === user?.gymId ? _cache.info : null,
   );
   const [loading, setLoading] = useState(!info);
 
