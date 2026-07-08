@@ -214,10 +214,10 @@ export default function GymAdminChatScreen({ navigation }: any) {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tabBtn, tab === 'support' && styles.tabBtnActive]}
+            style={[styles.tabBtn, (tab as TabType) === 'support' && styles.tabBtnActive]}
             onPress={() => setTab('support')}
           >
-            <Text style={[styles.tabText, tab === 'support' && styles.tabTextActive]}>
+            <Text style={[styles.tabText, (tab as TabType) === 'support' && styles.tabTextActive]}>
               🛡️ Platform {supportUnread > 0 && `(${supportUnread})`}
             </Text>
           </TouchableOpacity>
