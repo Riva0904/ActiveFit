@@ -30,7 +30,9 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -38,14 +40,14 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-barcode-scanner",
-      "expo-status-bar",
+      "expo-camera",
       "expo-notifications"
     ],
     "extra": {
       "eas": {
-        "projectId": "activeboost-mobile"
+        "projectId": "6910a57c-75eb-4eee-94fe-98c2e03c34cc"
       }
-    }
+    },
+    "owner": "activeboost"
   }
 }

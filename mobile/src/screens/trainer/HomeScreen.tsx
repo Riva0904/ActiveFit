@@ -4,9 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { TrainerHomeData } from '../../types';
+import { usePushToken } from '../../hooks/usePushToken';
 
 export default function TrainerHomeScreen() {
   const user = useAuthStore((s) => s.user);
+  usePushToken();
 
   const { data, isLoading, refetch, isRefetching } = useQuery<TrainerHomeData>({
     queryKey: ['trainer-home'],

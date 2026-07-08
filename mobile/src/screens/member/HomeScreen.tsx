@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { MobileHomeData } from '../../types';
+import { usePushToken } from '../../hooks/usePushToken';
 
 function StatCard({ label, value, color = '#FF4D00' }: { label: string; value: string; color?: string }) {
   return (
@@ -47,6 +48,7 @@ function MembershipCard({ data }: { data: MobileHomeData }) {
 export default function HomeScreen({ navigation }: any) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  usePushToken();
 
   const { data, isLoading, refetch, isRefetching } = useQuery<MobileHomeData>({
     queryKey: ['mobile-home'],
