@@ -34,8 +34,11 @@ export default function TrainerChatScreen({ navigation }: any) {
         const socket = getSocket();
         if (!mounted) return;
         socketRef.current = socket;
-        socket.on('newMessage', (msg: any) => {
-          setMessages((prev) => [...prev, msg]);
+        socket.on('chat:message', (msg: any) => {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
           setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
         });
         socket.on('connect', () => setSocketReady(true));
@@ -47,19 +50,16 @@ export default function TrainerChatScreen({ navigation }: any) {
     })();
     return () => {
       mounted = false;
-      socketRef.current?.off('newMessage');
+      socketRef.current?.off('chat:message');
     };
   }, []);
 
-  async function sendMessage() {
+  function sendMessage() {
     if (!text.trim()) return;
     setSending(true);
     try {
-      const res: any = await api.post('/chat/send', {
-        message: text.trim(),
-        conversationType: 'SUPPORT',
-      });
-      setMessages((prev) => [...prev, res]);
+      const socket = getSocket();
+      socket.emit('chat:send', { content: text.trim() });
       setText('');
       setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
