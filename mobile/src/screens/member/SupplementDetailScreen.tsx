@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 import { useCartStore } from '../../store/cartStore';
 
 export default function SupplementDetailScreen({ route, navigation }: any) {
-  const { id } = route.params;
+  const { supplementId: id } = route.params;
   const addItem = useCartStore((s) => s.addItem);
 
   const { data: item, isLoading } = useQuery({

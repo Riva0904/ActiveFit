@@ -38,12 +38,12 @@ export default function ProfileScreen({ navigation }: any) {
 
   const chatTarget = role === 'SUPER_ADMIN'
     ? 'SuperAdminChat'
-    : (role === 'GYM_ADMIN' || role === 'STAFF')
+    : role === 'GYM_ADMIN'
     ? 'GymAdminChat'
     : 'Chat';
   const chatLabel = role === 'SUPER_ADMIN'
     ? 'Gym Admin Chats'
-    : (role === 'GYM_ADMIN' || role === 'STAFF')
+    : role === 'GYM_ADMIN'
     ? 'Member Messages'
     : 'Chat with Admin';
 

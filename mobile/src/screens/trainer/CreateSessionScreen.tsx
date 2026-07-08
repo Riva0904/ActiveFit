@@ -42,7 +42,7 @@ export default function CreateSessionScreen({ navigation }: any) {
     createMutation.mutate({
       memberId: selectedMember.memberId ?? selectedMember.id,
       scheduledAt,
-      durationMinutes: parseInt(durationMinutes) || 60,
+      duration: parseInt(durationMinutes) || 60,
       notes: notes || undefined,
     });
   }

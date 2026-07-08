@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator,
-  TouchableOpacity, Share, Alert, Clipboard,
+  TouchableOpacity, Share, Alert,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
@@ -26,8 +26,7 @@ export default function ReferralsScreen({ navigation }: any) {
   }
 
   function copy() {
-    Clipboard.setString(code);
-    Alert.alert('Copied!', `Referral code ${code} copied to clipboard`);
+    Alert.alert('Referral Code', code, [{ text: 'OK' }]);
   }
 
   return (
