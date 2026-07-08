@@ -18,6 +18,7 @@ import NotificationsScreen from '../screens/member/NotificationsScreen';
 import MembershipRenewalScreen from '../screens/member/MembershipRenewalScreen';
 import ChatScreen from '../screens/member/ChatScreen';
 import SuperAdminChatScreen from '../screens/member/SuperAdminChatScreen';
+import GymAdminChatScreen from '../screens/member/GymAdminChatScreen';
 import GamificationScreen from '../screens/member/GamificationScreen';
 import ReferralsScreen from '../screens/member/ReferralsScreen';
 import MyTrainerScreen from '../screens/member/MyTrainerScreen';
@@ -82,6 +83,7 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="MembershipRenewal" component={MembershipRenewalScreen} />
       <ProfileStack.Screen name="Chat" component={ChatScreen} />
       <ProfileStack.Screen name="SuperAdminChat" component={SuperAdminChatScreen} />
+      <ProfileStack.Screen name="GymAdminChat" component={GymAdminChatScreen} />
       <ProfileStack.Screen name="Gamification" component={GamificationScreen} />
       <ProfileStack.Screen name="Referrals" component={ReferralsScreen} />
       <ProfileStack.Screen name="MyTrainer" component={MyTrainerScreen} />

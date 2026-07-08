@@ -106,7 +106,7 @@ export default function TrainerChatScreen({ navigation }: any) {
                     {item.sender?.firstName ?? item.senderName ?? 'Admin'}
                   </Text>
                 )}
-                <Text style={[styles.msgText, own && styles.msgTextOwn]}>{item.message ?? item.content}</Text>
+                <Text style={[styles.msgText, own && styles.msgTextOwn]}>{item.content ?? item.message}</Text>
                 <Text style={[styles.ts, own && styles.tsOwn]}>{ts}</Text>
               </View>
             );

@@ -36,8 +36,16 @@ export default function ProfileScreen({ navigation }: any) {
         { label: 'Referrals', icon: '🎁', color: '#EC4899', onPress: () => navigation.navigate('Referrals') },
       ];
 
-  const chatTarget = role === 'SUPER_ADMIN' ? 'SuperAdminChat' : 'Chat';
-  const chatLabel = role === 'SUPER_ADMIN' ? 'Gym Admin Chats' : 'Chat with Admin';
+  const chatTarget = role === 'SUPER_ADMIN'
+    ? 'SuperAdminChat'
+    : (role === 'GYM_ADMIN' || role === 'STAFF')
+    ? 'GymAdminChat'
+    : 'Chat';
+  const chatLabel = role === 'SUPER_ADMIN'
+    ? 'Gym Admin Chats'
+    : (role === 'GYM_ADMIN' || role === 'STAFF')
+    ? 'Member Messages'
+    : 'Chat with Admin';
 
   type Section = { title: string; items: MenuItem[] };
   const sections: Section[] = [
