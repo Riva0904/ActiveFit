@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Dumbbell, Star, Phone, Mail, Award, Calendar, X, Clock, CheckCircle, CreditCard } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ptSessionsApi, paymentsApi } from '@/lib/api';
+import { ptSessionsApi } from '@/lib/api';
+import { openRazorpay } from '@/lib/razorpay';
 import { formatDateTime, getInitials } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -36,31 +37,17 @@ function BookingModal({ trainer, onClose, onSuccess }: any) {
       });
 
       if (res.payment && price > 0) {
-        if (typeof window !== 'undefined' && (window as any).Razorpay) {
-          const rzp = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: res.payment.amount * 100,
-            currency: 'INR',
-            name: 'ActiveBoost',
-            description: `PT Session with ${user.firstName} — ${form.duration} min`,
-            order_id: res.payment.orderId,
-            handler: async (response: any) => {
-              await paymentsApi.verify({
-                paymentId: res.payment.paymentId,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpayOrderId: response.razorpay_order_id,
-                signature: response.razorpay_signature,
-              });
-              toast.success('Session booked & payment confirmed!');
-              onSuccess();
-              onClose();
-            },
-            theme: { color: '#f97316' },
-          });
-          rzp.open();
-        } else {
-          toast.error('Razorpay not loaded');
-        }
+        await openRazorpay({
+          orderId: res.payment.orderId,
+          paymentId: res.payment.paymentId,
+          amount: res.payment.amount,
+          description: `PT Session with ${user.firstName} — ${form.duration} min`,
+          onSuccess: async () => {
+            toast.success('Session booked & payment confirmed!');
+            onSuccess();
+            onClose();
+          },
+        });
       } else {
         toast.success('Session booked!');
         onSuccess();

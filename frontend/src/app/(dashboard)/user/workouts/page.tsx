@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Dumbbell, Zap, ChevronRight, Target, Clock, BarChart2, ShoppingBag, CreditCard, CheckCircle } from 'lucide-react';
-import { workoutPlansApi, paymentsApi } from '@/lib/api';
+import { workoutPlansApi } from '@/lib/api';
+import { openRazorpay } from '@/lib/razorpay';
 import { ManualUpiModal } from '@/components/shared/ManualUpiModal';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -56,30 +57,17 @@ export default function WorkoutsPage() {
     setBuyingId(pkg.id);
     try {
       const orderRes: any = await workoutPlansApi.buyPackage(pkg.id);
-      if (typeof window !== 'undefined' && (window as any).Razorpay) {
-        const rzp = new (window as any).Razorpay({
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: orderRes.amount * 100,
-          currency: 'INR',
-          name: 'ActiveBoost',
-          description: `${pkg.name} — ${pkg.durationDays ?? 30} days`,
-          order_id: orderRes.orderId,
-          handler: async (response: any) => {
-            await paymentsApi.verify({
-              paymentId: orderRes.paymentId,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpayOrderId: response.razorpay_order_id,
-              signature: response.razorpay_signature,
-            });
-            toast.success(`${pkg.name} activated! 💪`);
-            fetchMyPlans();
-          },
-          theme: { color: '#8b5cf6' },
-        });
-        rzp.open();
-      } else {
-        toast.error('Razorpay not loaded');
-      }
+      await openRazorpay({
+        orderId: orderRes.orderId,
+        paymentId: orderRes.paymentId,
+        amount: orderRes.amount,
+        description: `${pkg.name} — ${pkg.durationDays ?? 30} days`,
+        theme: '#8b5cf6',
+        onSuccess: async () => {
+          toast.success(`${pkg.name} activated! 💪`);
+          fetchMyPlans();
+        },
+      });
     } catch (e: any) {
       toast.error(e.response?.data?.message ?? 'Purchase failed');
     }

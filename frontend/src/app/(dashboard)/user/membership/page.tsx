@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { membershipsApi, paymentsApi, promoCodesApi, referralsApi, membershipPlansApi } from '@/lib/api';
+import { openRazorpay } from '@/lib/razorpay';
 import { ManualUpiModal } from '@/components/shared/ManualUpiModal';
 import { formatDate, formatCurrency, daysUntil, getMembershipBadgeColor } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -97,33 +98,18 @@ export default function UserMembershipPage() {
         referralCreditToApply,
       });
 
-      // Open Razorpay
-      if (typeof window !== 'undefined' && (window as any).Razorpay) {
-        const rzp = new (window as any).Razorpay({
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: orderRes.amount * 100,
-          currency: 'INR',
-          name: 'ActiveBoost',
-          description: `${getLabel(selectedPlan)} Membership`,
-          order_id: orderRes.orderId,
-          handler: async (response: any) => {
-            await paymentsApi.verify({
-              paymentId: orderRes.paymentId,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpayOrderId: response.razorpay_order_id,
-              signature: response.razorpay_signature,
-            });
-            toast.success('Payment successful! Membership activated.');
-            setSelectedPlan(null);
-            const res: any = await membershipsApi.getAll({ limit: 10 });
-            setMemberships(res.data ?? []);
-          },
-          theme: { color: '#f97316' },
-        });
-        rzp.open();
-      } else {
-        toast.error('Razorpay not loaded. Please refresh.');
-      }
+      await openRazorpay({
+        orderId: orderRes.orderId,
+        paymentId: orderRes.paymentId,
+        amount: orderRes.amount,
+        description: `${getLabel(selectedPlan)} Membership`,
+        onSuccess: async () => {
+          toast.success('Payment successful! Membership activated.');
+          setSelectedPlan(null);
+          const res: any = await membershipsApi.getAll({ limit: 10 });
+          setMemberships(res.data ?? []);
+        },
+      });
     } catch { }
     setPurchasing(false);
   };

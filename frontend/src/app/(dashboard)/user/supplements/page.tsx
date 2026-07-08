@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { ShoppingBag, Plus, Minus, ShoppingCart, Star, Search, Package, Zap, CheckCircle, Tag } from 'lucide-react';
-import { supplementsApi, paymentsApi } from '@/lib/api';
+import { supplementsApi } from '@/lib/api';
+import { openRazorpay } from '@/lib/razorpay';
 import { ManualUpiModal } from '@/components/shared/ManualUpiModal';
 import { formatCurrency } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -60,23 +61,16 @@ export default function UserSupplementsPage() {
     try {
       const items = Object.entries(cart).map(([supplementId, quantity]) => ({ supplementId, quantity }));
       const orderRes: any = await supplementsApi.createCheckout(items);
-      if (typeof window !== 'undefined' && (window as any).Razorpay) {
-        const rzp = new (window as any).Razorpay({
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: orderRes.amount * 100,
-          currency: 'INR',
-          name: 'ActiveBoost',
-          description: `Supplement order — ${cartCount} item${cartCount > 1 ? 's' : ''}`,
-          order_id: orderRes.orderId,
-          handler: async (response: any) => {
-            await paymentsApi.verify({ paymentId: orderRes.paymentId, razorpayPaymentId: response.razorpay_payment_id, razorpayOrderId: response.razorpay_order_id, signature: response.razorpay_signature });
-            toast.success('Order placed successfully! 🎉');
-            setCart({});
-          },
-          theme: { color: '#f97316' },
-        });
-        rzp.open();
-      } else { toast.error('Razorpay not loaded'); }
+      await openRazorpay({
+        orderId: orderRes.orderId,
+        paymentId: orderRes.paymentId,
+        amount: orderRes.amount,
+        description: `Supplement order — ${cartCount} item${cartCount > 1 ? 's' : ''}`,
+        onSuccess: async () => {
+          toast.success('Order placed successfully! 🎉');
+          setCart({});
+        },
+      });
     } catch (e: any) { toast.error(e.response?.data?.message ?? 'Checkout failed'); }
     setOrdering(false);
   };

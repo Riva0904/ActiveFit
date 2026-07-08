@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Utensils, Zap, Plus, Flame, Apple, Clock, ShoppingBag, CreditCard, CheckCircle } from 'lucide-react';
-import { dietPlansApi, paymentsApi } from '@/lib/api';
+import { dietPlansApi } from '@/lib/api';
+import { openRazorpay } from '@/lib/razorpay';
 import { ManualUpiModal } from '@/components/shared/ManualUpiModal';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -39,23 +40,16 @@ export default function DietPage() {
     setBuyingId(pkg.id);
     try {
       const orderRes: any = await dietPlansApi.buyPackage(pkg.id);
-      if (typeof window !== 'undefined' && (window as any).Razorpay) {
-        const rzp = new (window as any).Razorpay({
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: orderRes.amount * 100,
-          currency: 'INR',
-          name: 'ActiveBoost',
-          description: `${pkg.name} — ${pkg.durationDays ?? 30} days`,
-          order_id: orderRes.orderId,
-          handler: async (response: any) => {
-            await paymentsApi.verify({ paymentId: orderRes.paymentId, razorpayPaymentId: response.razorpay_payment_id, razorpayOrderId: response.razorpay_order_id, signature: response.razorpay_signature });
-            toast.success(`${pkg.name} activated!`);
-            dietPlansApi.getMyPlans().then((res: any) => { const p = Array.isArray(res) ? res.map((a: any) => a.dietPlan ?? a) : []; setPlans(p); if (p.length) setActivePlan(p[0]); }).catch(() => {});
-          },
-          theme: { color: '#f97316' },
-        });
-        rzp.open();
-      } else { toast.error('Razorpay not loaded'); }
+      await openRazorpay({
+        orderId: orderRes.orderId,
+        paymentId: orderRes.paymentId,
+        amount: orderRes.amount,
+        description: `${pkg.name} — ${pkg.durationDays ?? 30} days`,
+        onSuccess: async () => {
+          toast.success(`${pkg.name} activated!`);
+          dietPlansApi.getMyPlans().then((res: any) => { const p = Array.isArray(res) ? res.map((a: any) => a.dietPlan ?? a) : []; setPlans(p); if (p.length) setActivePlan(p[0]); }).catch(() => {});
+        },
+      });
     } catch (e: any) { toast.error(e.response?.data?.message ?? 'Purchase failed'); }
     setBuyingId(null);
   };
