@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Alert, TextInput,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { useCartStore } from '../../store/cartStore';
 import { api } from '../../lib/api';
@@ -9,9 +9,6 @@ import { useMutation } from '@tanstack/react-query';
 
 export default function CartScreen({ navigation }: any) {
   const { items, removeItem, updateQty, clear, total, count } = useCartStore();
-  const [upiId, setUpiId] = useState('');
-  const [showUpi, setShowUpi] = useState(false);
-
   const checkoutMutation = useMutation({
     mutationFn: (body: any) => api.post('/supplements/checkout', body) as any,
     onSuccess: (data: any) => {
