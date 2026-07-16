@@ -3,14 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 
-const TIME_SLOTS = [
-  { key: 'BREAKFAST', label: '🌅 Breakfast', time: '7:00 AM' },
-  { key: 'MORNING_SNACK', label: '🍎 Morning Snack', time: '10:30 AM' },
-  { key: 'LUNCH', label: '☀️ Lunch', time: '1:00 PM' },
-  { key: 'EVENING_SNACK', label: '🫐 Snack', time: '4:00 PM' },
-  { key: 'DINNER', label: '🌙 Dinner', time: '8:00 PM' },
-  { key: 'POST_WORKOUT', label: '💪 Post Workout', time: 'After workout' },
-];
+const MEAL_ICONS: Record<string, string> = {
+  Breakfast: '🌅',
+  Lunch: '☀️',
+  Snack: '🫐',
+  Dinner: '🌙',
+};
 
 export default function DietDetailScreen({ route, navigation }: any) {
   const { planId, planName } = route.params;
@@ -23,15 +21,6 @@ export default function DietDetailScreen({ route, navigation }: any) {
 
   const plan: any = data ?? {};
   const meals: any[] = plan.meals ?? plan.dietMeals ?? [];
-
-  const mealsBySlot = TIME_SLOTS.map((slot) => ({
-    ...slot,
-    meals: meals.filter((m: any) => m.mealTime === slot.key || m.timeSlot === slot.key),
-  })).filter((s) => s.meals.length > 0);
-
-  const otherMeals = meals.filter(
-    (m: any) => !TIME_SLOTS.some((s) => s.key === m.mealTime || s.key === m.timeSlot),
-  );
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -50,34 +39,30 @@ export default function DietDetailScreen({ route, navigation }: any) {
 
       {isLoading ? <ActivityIndicator color="#FF4D00" style={{ marginTop: 40 }} /> : (
         <>
-          {mealsBySlot.map((slot) => (
-            <View key={slot.key} style={styles.slotSection}>
+          {meals.map((meal: any, i: number) => (
+            <View key={i} style={styles.slotSection}>
               <View style={styles.slotHeader}>
-                <Text style={styles.slotLabel}>{slot.label}</Text>
-                <Text style={styles.slotTime}>{slot.time}</Text>
+                <Text style={styles.slotLabel}>{MEAL_ICONS[meal.meal] ?? '🍽️'} {meal.meal ?? `Meal ${i + 1}`}</Text>
+                {meal.calories && <Text style={styles.slotTime}>{meal.calories} kcal</Text>}
               </View>
-              {slot.meals.map((meal: any, i: number) => (
-                <View key={i} style={styles.mealCard}>
+              {Array.isArray(meal.items) && meal.items.map((item: string, j: number) => (
+                <View key={j} style={styles.mealCard}>
+                  <Text style={styles.mealName}>{item}</Text>
+                </View>
+              ))}
+              {!Array.isArray(meal.items) && (meal.name ?? meal.foodItem) && (
+                <View style={styles.mealCard}>
                   <Text style={styles.mealName}>{meal.name ?? meal.foodItem}</Text>
                   <View style={styles.macroRow}>
-                    {meal.quantity && <Text style={styles.macro}>{meal.quantity}{meal.unit ?? 'g'}</Text>}
                     {meal.calories && <Text style={[styles.macro, { color: '#FF4D00' }]}>{meal.calories} kcal</Text>}
                     {meal.protein && <Text style={styles.macro}>P:{meal.protein}g</Text>}
                     {meal.carbs && <Text style={styles.macro}>C:{meal.carbs}g</Text>}
                     {meal.fat && <Text style={styles.macro}>F:{meal.fat}g</Text>}
                   </View>
-                  {meal.notes && <Text style={styles.mealNotes}>{meal.notes}</Text>}
                 </View>
-              ))}
+              )}
             </View>
           ))}
-
-          {otherMeals.map((meal: any, i: number) => (
-            <View key={`other${i}`} style={styles.mealCard}>
-              <Text style={styles.mealName}>{meal.name ?? meal.foodItem}</Text>
-            </View>
-          ))}
-
           {meals.length === 0 && (
             <Text style={styles.empty}>No meals defined in this plan</Text>
           )}

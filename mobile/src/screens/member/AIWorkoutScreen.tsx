@@ -28,7 +28,7 @@ export default function AIWorkoutScreen({ navigation }: any) {
     if (!level) return Alert.alert('Required', 'Select your fitness level');
     genMutation.mutate({
       goal: goal.toUpperCase().replace(/ /g, '_'),
-      fitnessLevel: level.toUpperCase(),
+      level: level.toUpperCase(),
       daysPerWeek,
       equipment: equipment || undefined,
     });
@@ -56,20 +56,27 @@ export default function AIWorkoutScreen({ navigation }: any) {
             <Row label="Difficulty" value={generated.difficulty} />
             <Row label="Days/Week" value={daysPerWeek.toString()} />
           </View>
-          {(generated.workoutDays ?? []).slice(0, 3).map((day: any, i: number) => (
-            <View key={i} style={styles.dayCard}>
-              <Text style={styles.dayName}>{day.dayName ?? `Day ${i + 1}`}</Text>
-              <Text style={styles.dayExCount}>{day.exercises?.length ?? 0} exercises</Text>
-              {(day.exercises ?? []).slice(0, 2).map((ex: any, j: number) => (
-                <Text key={j} style={styles.exPreview}>· {ex.name ?? ex.exerciseName}</Text>
-              ))}
-              {(day.exercises?.length ?? 0) > 2 && (
-                <Text style={styles.exMore}>+{day.exercises.length - 2} more</Text>
-              )}
-            </View>
-          ))}
-          {(generated.workoutDays?.length ?? 0) > 3 && (
-            <Text style={styles.moreText}>+{generated.workoutDays.length - 3} more days — tap View Full</Text>
+          {(() => {
+            const allEx: any[] = generated.exercises ?? [];
+            const days = Array.from(new Set(allEx.map((e: any) => e.day))).slice(0, 3);
+            return days.map((day: any, i: number) => {
+              const dayEx = allEx.filter((e: any) => e.day === day);
+              return (
+                <View key={i} style={styles.dayCard}>
+                  <Text style={styles.dayName}>{day}</Text>
+                  <Text style={styles.dayExCount}>{dayEx.length} exercises</Text>
+                  {dayEx.slice(0, 2).map((ex: any, j: number) => (
+                    <Text key={j} style={styles.exPreview}>· {ex.name}</Text>
+                  ))}
+                  {dayEx.length > 2 && <Text style={styles.exMore}>+{dayEx.length - 2} more</Text>}
+                </View>
+              );
+            });
+          })()}
+          {Array.from(new Set((generated.exercises ?? []).map((e: any) => e.day))).length > 3 && (
+            <Text style={styles.moreText}>
+              +{Array.from(new Set((generated.exercises ?? []).map((e: any) => e.day))).length - 3} more days — tap View Full
+            </Text>
           )}
         </ScrollView>
       </View>

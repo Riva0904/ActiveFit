@@ -66,6 +66,12 @@ export class WorkoutPlansService {
     return plan;
   }
 
+  async findById(id: string, gymId: string) {
+    const plan = await this.prisma.workoutPlan.findFirst({ where: { id, gymId } });
+    if (!plan) throw new NotFoundException('Workout plan not found');
+    return plan;
+  }
+
   async update(id: string, data: any, gymId: string) {
     const plan = await this.prisma.workoutPlan.findFirst({ where: { id, gymId } });
     if (!plan) throw new NotFoundException('Workout plan not found');

@@ -66,6 +66,12 @@ export class DietPlansService {
     return plan;
   }
 
+  async findById(id: string, gymId: string) {
+    const plan = await this.prisma.dietPlan.findFirst({ where: { id, gymId } });
+    if (!plan) throw new NotFoundException('Diet plan not found');
+    return plan;
+  }
+
   // ── Premium Diet Plan Packages ────────────────────────────────────────────
 
   async listPackages(gymId: string) {

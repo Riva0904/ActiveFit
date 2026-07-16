@@ -19,7 +19,8 @@ export default function GamificationScreen({ navigation }: any) {
     queryFn: () => api.get('/gamification/my/badges') as any,
   });
 
-  const badgeList: any[] = Array.isArray(badges) ? badges : (badges as any)?.badges ?? [];
+  const allBadges: any[] = Array.isArray(badges) ? badges : (badges as any)?.badges ?? [];
+  const badgeList = allBadges.filter((b: any) => b.earnedAt != null || b.isEarned === true);
   const points: number = (pts as any)?.points ?? (pts as any)?.totalPoints ?? 0;
   const rank: string = (pts as any)?.rank ?? '';
 
@@ -46,7 +47,7 @@ export default function GamificationScreen({ navigation }: any) {
           <View style={styles.badgeGrid}>
             {badgeList.map((b: any, i: number) => (
               <View key={i} style={styles.badge}>
-                <Text style={styles.badgeIcon}>{BADGE_ICONS[b.type] ?? '🏅'}</Text>
+                <Text style={styles.badgeIcon}>{b.icon ?? BADGE_ICONS[b.type] ?? '🏅'}</Text>
                 <Text style={styles.badgeName}>{b.name ?? b.type?.replace(/_/g, ' ')}</Text>
                 <Text style={styles.badgeDate}>
                   {b.earnedAt ? new Date(b.earnedAt).toLocaleDateString('en-IN') : ''}

@@ -32,7 +32,7 @@ export default function AIDietScreen({ navigation }: any) {
       dietaryPreference: preference.toUpperCase().replace(/ /g, '_'),
       mealsPerDay,
       allergies: allergies || undefined,
-      targetCalories: calories ? parseInt(calories) : undefined,
+      calories: calories ? parseInt(calories) : undefined,
     });
   }
 
@@ -61,8 +61,8 @@ export default function AIDietScreen({ navigation }: any) {
           </View>
           {meals.slice(0, 4).map((meal: any, i: number) => (
             <View key={i} style={styles.mealCard}>
-              <Text style={styles.mealTime}>{meal.mealTime ?? meal.timeSlot ?? `Meal ${i + 1}`}</Text>
-              <Text style={styles.mealName}>{meal.name ?? meal.foodItem}</Text>
+              <Text style={styles.mealTime}>{meal.meal ?? `Meal ${i + 1}`}</Text>
+              <Text style={styles.mealName}>{Array.isArray(meal.items) ? meal.items.join(', ') : (meal.name ?? meal.foodItem ?? '')}</Text>
               {meal.calories && <Text style={styles.mealCals}>{meal.calories} kcal</Text>}
             </View>
           ))}

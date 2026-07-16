@@ -33,6 +33,11 @@ export class DietPlansController {
     return this.dietPlansService.listPackages(user.gymId);
   }
 
+  @Get(':id')
+  findById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.dietPlansService.findById(id, user.gymId);
+  }
+
   @Post('packages')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.TRAINER)

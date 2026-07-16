@@ -6,7 +6,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 
-const LEAVE_TYPES = ['Sick Leave', 'Casual Leave', 'Emergency', 'Other'];
+const LEAVE_TYPES = ['Sick', 'Casual', 'Emergency', 'Other'];
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: '#F59E0B',

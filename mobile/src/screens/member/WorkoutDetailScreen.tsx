@@ -16,7 +16,7 @@ export default function WorkoutDetailScreen({ route, navigation }: any) {
   });
 
   const plan: any = data ?? {};
-  const exercises: any[] = (plan.workoutDays ?? []).find((d: any) => d.dayIndex === selectedDay || d.day === selectedDay + 1)?.exercises ?? [];
+  const exercises: any[] = (plan.exercises ?? []).filter((ex: any) => ex.day === DAYS[selectedDay]);
 
   return (
     <View style={styles.container}>

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 
 const STATUS_COLOR: Record<string, string> = {
-  PENDING: '#F59E0B', CONFIRMED: '#3B82F6', SHIPPED: '#8B5CF6',
+  PENDING: '#F59E0B', CONFIRMED: '#3B82F6',
   DELIVERED: '#22C55E', CANCELLED: '#EF4444',
 };
 

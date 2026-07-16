@@ -11,6 +11,8 @@ export default function MyMembershipScreen({ navigation }: any) {
     queryFn: () => api.get('/memberships/my') as any,
   });
 
+  const membership = (data as any)?.data?.[0] ?? (Array.isArray(data) ? data[0] : data);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
@@ -24,7 +26,7 @@ export default function MyMembershipScreen({ navigation }: any) {
         <ActivityIndicator color="#FF4D00" style={{ marginTop: 40 }} />
       ) : error ? (
         <Text style={styles.empty}>No membership data found</Text>
-      ) : !data ? (
+      ) : !membership ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>🏅</Text>
           <Text style={styles.emptyTitle}>No Active Membership</Text>
@@ -33,18 +35,18 @@ export default function MyMembershipScreen({ navigation }: any) {
       ) : (
         <>
           <View style={[styles.card, { borderColor: '#FF4D00' }]}>
-            <Text style={styles.planName}>{data.plan?.name ?? 'Membership Plan'}</Text>
-            <Text style={styles.planType}>{data.plan?.type}</Text>
-            <View style={[styles.badge, { backgroundColor: data.status === 'ACTIVE' ? '#22C55E' : '#EF4444' }]}>
-              <Text style={styles.badgeText}>{data.status}</Text>
+            <Text style={styles.planName}>{membership.plan?.name ?? 'Membership Plan'}</Text>
+            <Text style={styles.planType}>{membership.plan?.type}</Text>
+            <View style={[styles.badge, { backgroundColor: membership.status === 'ACTIVE' ? '#22C55E' : '#EF4444' }]}>
+              <Text style={styles.badgeText}>{membership.status}</Text>
             </View>
           </View>
 
           {[
-            { label: 'Start Date', value: data.startDate ? new Date(data.startDate).toLocaleDateString('en-IN') : '-' },
-            { label: 'End Date', value: data.endDate ? new Date(data.endDate).toLocaleDateString('en-IN') : '-' },
-            { label: 'Duration', value: data.plan?.durationMonths ? `${data.plan.durationMonths} month(s)` : '-' },
-            { label: 'Amount Paid', value: data.amountPaid != null ? `₹${data.amountPaid}` : '-' },
+            { label: 'Start Date', value: membership.startDate ? new Date(membership.startDate).toLocaleDateString('en-IN') : '-' },
+            { label: 'End Date', value: membership.endDate ? new Date(membership.endDate).toLocaleDateString('en-IN') : '-' },
+            { label: 'Duration', value: membership.plan?.durationMonths ? `${membership.plan.durationMonths} month(s)` : '-' },
+            { label: 'Amount Paid', value: membership.amount != null ? `₹${membership.amount}` : '-' },
           ].map(({ label, value }) => (
             <View key={label} style={styles.row}>
               <Text style={styles.rowLabel}>{label}</Text>

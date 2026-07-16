@@ -38,6 +38,11 @@ export class WorkoutPlansController {
     return this.workoutPlansService.listPackages(user.gymId);
   }
 
+  @Get(':id')
+  findById(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.workoutPlansService.findById(id, user.gymId);
+  }
+
   @Post('packages')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.TRAINER)
