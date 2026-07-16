@@ -245,7 +245,7 @@ export default function GymAdminChatScreen({ navigation }: any) {
                     <Image source={{ uri: conv.user.avatar }} style={styles.convAvatarImg} />
                   ) : (
                     <Text style={[styles.convAvatarText, { color: roleColor(conv.user.role) }]}>
-                      {conv.user.firstName[0]}{conv.user.lastName[0]}
+                      {conv.user.firstName?.[0]}{conv.user.lastName?.[0]}
                     </Text>
                   )}
                 </View>
@@ -378,7 +378,7 @@ export default function GymAdminChatScreen({ navigation }: any) {
         <View style={styles.headerInfo}>
           <View style={[styles.convAvatar, { backgroundColor: roleColor(selectedConv?.user.role ?? '') + '25', width: 36, height: 36, borderRadius: 10 }]}>
             <Text style={[styles.convAvatarText, { color: roleColor(selectedConv?.user.role ?? ''), fontSize: 13 }]}>
-              {selectedConv?.user.firstName[0]}{selectedConv?.user.lastName[0]}
+              {selectedConv?.user.firstName?.[0]}{selectedConv?.user.lastName?.[0]}
             </Text>
           </View>
           <View>

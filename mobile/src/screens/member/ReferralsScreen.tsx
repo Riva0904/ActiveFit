@@ -13,7 +13,7 @@ export default function ReferralsScreen({ navigation }: any) {
   });
 
   const code: string = (data as any)?.referralCode ?? '';
-  const credits: number = (data as any)?.credits ?? 0;
+  const credits: number = (data as any)?.referralCredit ?? 0;
   const history: any[] = (data as any)?.referrals ?? [];
 
   async function share() {

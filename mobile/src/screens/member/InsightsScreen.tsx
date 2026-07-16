@@ -24,7 +24,7 @@ export default function InsightsScreen({ navigation }: any) {
           <View style={styles.grid}>
             {[
               { label: 'Total Visits', value: d.totalVisits ?? 0, icon: '📅', suffix: '' },
-              { label: 'Avg Duration', value: d.avgDurationMinutes ? `${Math.round(d.avgDurationMinutes)}` : '—', icon: '⏱️', suffix: d.avgDurationMinutes ? ' min' : '' },
+              { label: 'Avg Duration', value: d.avgDuration ? `${Math.round(d.avgDuration)}` : '—', icon: '⏱️', suffix: d.avgDuration ? ' min' : '' },
               { label: 'Current Streak', value: d.currentStreak ?? 0, icon: '🔥', suffix: ' days' },
               { label: 'Best Streak', value: d.bestStreak ?? 0, icon: '🏆', suffix: ' days' },
             ].map(({ label, value, icon, suffix }) => (
@@ -42,16 +42,10 @@ export default function InsightsScreen({ navigation }: any) {
               <Text style={styles.infoValue}>{d.favoriteDay}</Text>
             </View>
           )}
-          {d.favoritePeakHour !== undefined && (
+          {d.favoriteHour !== undefined && d.favoriteHour !== null && (
             <View style={styles.infoCard}>
               <Text style={styles.infoLabel}>Peak Time</Text>
-              <Text style={styles.infoValue}>{d.favoritePeakHour}:00 – {d.favoritePeakHour + 1}:00</Text>
-            </View>
-          )}
-          {d.attendanceRate !== undefined && (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>Attendance Rate (30 days)</Text>
-              <Text style={styles.infoValue}>{Math.round(d.attendanceRate * 100)}%</Text>
+              <Text style={styles.infoValue}>{d.favoriteHour}</Text>
             </View>
           )}
         </>

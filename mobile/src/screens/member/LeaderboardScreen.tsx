@@ -28,13 +28,12 @@ export default function LeaderboardScreen({ navigation }: any) {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
           renderItem={({ item, index }) => (
             <View style={[styles.card, index === 0 && styles.cardFirst]}>
-              <Text style={styles.rank}>{MEDALS[index] ?? `#${index + 1}`}</Text>
+              <Text style={styles.rank}>{MEDALS[index] ?? `#${item.rank ?? index + 1}`}</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
-                <Text style={styles.code}>{item.memberCode}</Text>
+                <Text style={styles.name}>{item.memberName ?? `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim()}</Text>
               </View>
               <View style={styles.visitsWrap}>
-                <Text style={styles.visitsNum}>{item.visitCount ?? item.count ?? 0}</Text>
+                <Text style={styles.visitsNum}>{item.visits ?? item.visitCount ?? 0}</Text>
                 <Text style={styles.visitsSub}>visits</Text>
               </View>
             </View>

@@ -63,9 +63,12 @@ export default function AttendanceHistoryScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
   const [tab, setTab] = useState<'calendar' | 'history'>('calendar');
 
+  const now = new Date();
   const { data: calendar, isLoading: calLoading } = useQuery({
-    queryKey: ['attendance-calendar'],
-    queryFn: () => api.get('/attendance/calendar') as any,
+    queryKey: ['attendance-calendar', now.getMonth(), now.getFullYear()],
+    queryFn: () => api.get('/attendance/calendar', {
+      params: { month: now.getMonth() + 1, year: now.getFullYear() },
+    }) as any,
     enabled: !!user,
   });
 
@@ -75,7 +78,7 @@ export default function AttendanceHistoryScreen({ navigation }: any) {
     enabled: !!user && tab === 'history',
   });
 
-  const presentDates: string[] = Array.isArray(calendar) ? calendar : (calendar as any)?.dates ?? [];
+  const presentDates: string[] = (calendar as any)?.presentDates ?? [];
   const historyItems: any[] = Array.isArray(history) ? history : (history as any)?.data ?? [];
 
   return (
