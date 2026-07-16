@@ -97,8 +97,6 @@ export class PaymentsController {
   // ── Manual UPI (no gateway, gym admin's own VPA) ──────────────────────────
 
   @Post(':id/mark-paid')
-  @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN)
   markPaid(@Param('id') id: string, @CurrentUser() user: any) {
     return this.paymentsService.markMemberPaid(id, user.id);
   }

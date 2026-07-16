@@ -39,7 +39,7 @@ export default function MembershipRenewalScreen({ navigation }: any) {
 
   const markPaidMutation = useMutation({
     mutationFn: (paymentId: string) =>
-      api.patch(`/payments/${paymentId}/mark-paid`, { paymentMethod: 'UPI' }) as any,
+      api.post(`/payments/${paymentId}/mark-paid`, {}) as any,
     onSuccess: () => {
       Alert.alert('Done!', 'Membership renewal submitted. Admin will confirm shortly.');
       navigation.goBack();
