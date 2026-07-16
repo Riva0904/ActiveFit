@@ -116,6 +116,7 @@ export default function SuperAdminChatScreen({ navigation }: any) {
 
         socket.on('connect', () => setSocketReady(true));
         socket.on('disconnect', () => setSocketReady(false));
+        if (!socket.connected) socket.connect();
         setSocketReady(socket.connected);
       } catch (e) {
         console.warn('SuperAdmin chat socket error', e);

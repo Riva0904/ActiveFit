@@ -12,7 +12,7 @@ export default function TrainerChatScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
+  const [sending] = useState(false);
   const [socketReady, setSocketReady] = useState(false);
   const flatRef = useRef<FlatList>(null);
   const socketRef = useRef<any>(null);
@@ -29,43 +29,44 @@ export default function TrainerChatScreen({ navigation }: any) {
 
   useEffect(() => {
     let mounted = true;
-    (() => {
-      try {
-        const socket = getSocket();
+    try {
+      const socket = getSocket();
+      socketRef.current = socket;
+      socket.on('chat:message', (msg: any) => {
         if (!mounted) return;
-        socketRef.current = socket;
-        socket.on('chat:message', (msg: any) => {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === msg.id)) return prev;
-            return [...prev, msg];
-          });
-          setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id || (m._temp && m.content === msg.content))) return prev.map((m) => m._temp && m.content === msg.content ? msg : m);
+          return [...prev, msg];
         });
-        socket.on('connect', () => setSocketReady(true));
-        socket.on('disconnect', () => setSocketReady(false));
-        setSocketReady(socket.connected);
-      } catch (e) {
-        console.warn('Chat socket error', e);
-      }
-    })();
+        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+      });
+      socket.on('connect', () => { if (mounted) setSocketReady(true); });
+      socket.on('disconnect', () => { if (mounted) setSocketReady(false); });
+      if (!socket.connected) socket.connect();
+      setSocketReady(socket.connected);
+    } catch (e) {
+      console.warn('Chat socket init error', e);
+    }
     return () => {
       mounted = false;
       socketRef.current?.off('chat:message');
+      socketRef.current?.off('connect');
+      socketRef.current?.off('disconnect');
     };
   }, []);
 
   function sendMessage() {
-    if (!text.trim()) return;
-    setSending(true);
+    const content = text.trim();
+    if (!content || !socketReady) return;
+    const optimistic = { _temp: true, content, createdAt: new Date().toISOString(), senderId: user?.id };
+    setMessages((prev) => [...prev, optimistic]);
+    setText('');
+    setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 50);
     try {
-      const socket = getSocket();
-      socket.emit('chat:send', { content: text.trim() });
-      setText('');
-      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+      socketRef.current?.emit('chat:send', { content });
     } catch (e: any) {
       console.warn('Send failed', e?.message);
-    } finally {
-      setSending(false);
+      setMessages((prev) => prev.filter((m) => m !== optimistic));
     }
   }
 

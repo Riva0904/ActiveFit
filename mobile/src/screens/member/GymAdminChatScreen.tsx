@@ -151,6 +151,7 @@ export default function GymAdminChatScreen({ navigation }: any) {
 
         socket.on('connect', () => setSocketReady(true));
         socket.on('disconnect', () => setSocketReady(false));
+        if (!socket.connected) socket.connect();
         setSocketReady(socket.connected);
       } catch (e) {
         console.warn('GymAdmin chat socket error', e);

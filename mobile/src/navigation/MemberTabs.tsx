@@ -133,7 +133,7 @@ export default function MemberTabs() {
         headerShown: false,
         tabBarActiveTintColor: ORANGE,
         tabBarInactiveTintColor: GRAY,
-        tabBarStyle: { paddingBottom: 4, paddingTop: 4, height: 60, backgroundColor: '#0F0F0F', borderTopColor: '#1A1A1A' },
+        tabBarStyle: { paddingBottom: 8, paddingTop: 6, backgroundColor: '#0F0F0F', borderTopColor: '#1A1A1A' },
         tabBarIcon: ({ focused }) =>
           route.name === 'Store'
             ? <CartIcon focused={focused} />
