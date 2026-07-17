@@ -89,7 +89,7 @@ export default function UserDashboard() {
   return (
     <div className="space-y-5 animate-slide-up">
       {/* Greeting banner */}
-      <div className="relative overflow-hidden rounded-2xl gradient-brand p-6 shadow-brand">
+      <div className="relative overflow-hidden rounded-2xl gradient-blue p-6 shadow-blue">
         <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/20" />
         <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
         <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
@@ -108,7 +108,7 @@ export default function UserDashboard() {
               'flex items-center gap-2 font-bold px-5 py-2.5 rounded-xl text-sm transition-all',
               checkedInToday
                 ? 'bg-white/20 text-white border border-white/30 hover:bg-white/30 active:scale-95'
-                : 'bg-white text-orange-600 hover:bg-orange-50 shadow-lg active:scale-95',
+                : 'bg-white text-blue-600 hover:bg-blue-50 shadow-lg active:scale-95',
             )}
           >
             {checkingIn ? (

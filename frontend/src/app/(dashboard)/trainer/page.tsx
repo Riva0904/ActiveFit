@@ -190,7 +190,7 @@ export default function TrainerDashboard() {
     <div className="space-y-6 animate-slide-up">
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl gradient-brand p-7 shadow-brand">
+      <div className="relative overflow-hidden rounded-2xl gradient-green p-7 shadow-green">
         <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent" />
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative z-10 flex items-center justify-between flex-wrap gap-6">
@@ -223,7 +223,7 @@ export default function TrainerDashboard() {
           {/* right: quick actions */}
           <div className="flex flex-col gap-2">
             <Link href="/trainer/members"
-              className="flex items-center gap-2 bg-white text-orange-600 font-bold px-5 py-2.5 rounded-xl hover:bg-orange-50 transition-all text-sm shadow-lg">
+              className="flex items-center gap-2 bg-white text-green-700 font-bold px-5 py-2.5 rounded-xl hover:bg-green-50 transition-all text-sm shadow-lg">
               <Users className="w-4 h-4" /> My Members
             </Link>
             <Link href="/trainer/sessions"

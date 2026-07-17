@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { QrCode, Users, UserCheck, Clock, ArrowRight, Activity, CheckCircle } from 'lucide-react';
+import { QrCode, Users, UserCheck, Clock, ArrowRight, Activity, CheckCircle, Search, Bell } from 'lucide-react';
 import { StatsCard } from '@/components/shared/StatsCard';
 import { attendanceApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -35,7 +35,7 @@ export default function StaffDashboard() {
     <div className="space-y-6 animate-slide-up">
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl gradient-brand p-7 shadow-brand">
+      <div className="relative overflow-hidden rounded-2xl gradient-purple p-7 shadow-purple">
         <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent" />
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
@@ -51,7 +51,7 @@ export default function StaffDashboard() {
           </div>
           <Link
             href="/staff/check-in"
-            className="flex items-center gap-2 bg-white text-orange-600 font-bold px-5 py-2.5 rounded-xl hover:bg-orange-50 transition-all text-sm shadow-lg"
+            className="flex items-center gap-2 bg-white text-purple-700 font-bold px-5 py-2.5 rounded-xl hover:bg-purple-50 transition-all text-sm shadow-lg"
           >
             <QrCode className="w-4 h-4" /> Open Scanner
           </Link>
@@ -71,8 +71,10 @@ export default function StaffDashboard() {
           <h3 className="font-bold text-lg mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'QR Check-In', icon: QrCode, href: '/staff/check-in', gradient: 'gradient-brand' },
-              { label: 'View Attendance', icon: Activity, href: '/staff/check-in', gradient: 'gradient-green' },
+              { label: 'QR Check-In', icon: QrCode, href: '/staff/check-in', gradient: 'gradient-purple' },
+              { label: 'Attendance Log', icon: Activity, href: '/staff/check-in', gradient: 'gradient-green' },
+              { label: 'Leave Requests', icon: Users, href: '/staff/leave', gradient: 'gradient-blue' },
+              { label: 'Notifications', icon: Bell, href: '/staff/notifications', gradient: 'gradient-rose' },
             ].map(({ label, icon: Icon, href, gradient }) => (
               <Link key={label} href={href}
                 className="group relative overflow-hidden rounded-2xl bg-card border border-border/60 p-5 hover:shadow-lifted hover:-translate-y-1 transition-all duration-300">
