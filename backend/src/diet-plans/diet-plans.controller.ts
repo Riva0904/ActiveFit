@@ -20,8 +20,14 @@ export class DietPlansController {
   }
 
   @Post('ai-generate')
-  generateAi(@Body() body: { goal: string; calories: number }, @CurrentUser() user: any) {
-    return this.dietPlansService.generateAiDiet(user.id, user.gymId, body.goal, body.calories);
+  generateAi(
+    @Body() body: { goal: string; calories?: number; dietaryPreference?: string; mealsPerDay?: number; allergies?: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.dietPlansService.generateAiDiet(
+      user.id, user.gymId, body.goal, body.calories,
+      body.dietaryPreference, body.mealsPerDay, body.allergies,
+    );
   }
 
   // ── Premium Packages ──────────────────────────────────────────────────────

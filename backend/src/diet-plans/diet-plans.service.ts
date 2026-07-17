@@ -24,22 +24,75 @@ export class DietPlansService {
     });
   }
 
-  async generateAiDiet(userId: string, gymId: string, goal: string, calories: number) {
+  async generateAiDiet(
+    userId: string, gymId: string, goal: string, calories = 2000,
+    dietaryPreference = 'NO_RESTRICTION', mealsPerDay = 4, allergies?: string,
+  ) {
     const member = await this.prisma.member.findFirst({ where: { userId, gymId } });
+    const pref = (dietaryPreference ?? 'NO_RESTRICTION').toUpperCase();
+    const isVegan = pref === 'VEGAN';
+    const isVegetarian = isVegan || pref === 'VEGETARIAN';
+    const isKeto = pref === 'KETO';
+    const n = Math.min(Math.max(Number(mealsPerDay) || 4, 3), 6);
+    const cal = Number(calories) || 2000;
+
+    // Meal templates keyed by preference
+    const MEAL_POOLS: Record<string, { meal: string; items: string[]; ratio: number }[]> = {
+      VEGAN: [
+        { meal: 'Breakfast', items: ['Oats with oat milk', 'Mixed berries', 'Chia seeds', 'Banana'], ratio: 0.25 },
+        { meal: 'Mid-Morning', items: ['Apple', 'Mixed nuts', 'Green smoothie'], ratio: 0.10 },
+        { meal: 'Lunch', items: ['Brown rice', 'Lentil curry', 'Roasted vegetables', 'Salad'], ratio: 0.30 },
+        { meal: 'Afternoon Snack', items: ['Hummus', 'Carrot sticks', 'Whole grain crackers'], ratio: 0.10 },
+        { meal: 'Dinner', items: ['Quinoa', 'Chickpea curry', 'Steamed broccoli', 'Tofu'], ratio: 0.20 },
+        { meal: 'Evening', items: ['Almond milk', 'Dates', 'Walnuts'], ratio: 0.05 },
+      ],
+      VEGETARIAN: [
+        { meal: 'Breakfast', items: ['Oats with milk', 'Banana', 'Greek yogurt', 'Honey'], ratio: 0.25 },
+        { meal: 'Mid-Morning', items: ['Paneer cubes', 'Apple', 'Mixed nuts'], ratio: 0.10 },
+        { meal: 'Lunch', items: ['Brown rice', 'Dal', 'Paneer sabji', 'Salad'], ratio: 0.30 },
+        { meal: 'Afternoon Snack', items: ['Curd', 'Fruits', 'Whole grain bread'], ratio: 0.10 },
+        { meal: 'Dinner', items: ['Roti', 'Mixed vegetable curry', 'Rajma', 'Raita'], ratio: 0.20 },
+        { meal: 'Evening', items: ['Milk', 'Almonds', 'Dates'], ratio: 0.05 },
+      ],
+      KETO: [
+        { meal: 'Breakfast', items: ['3 Scrambled eggs', 'Avocado', 'Bacon', 'Butter coffee'], ratio: 0.25 },
+        { meal: 'Mid-Morning', items: ['Cheese cubes', 'Walnuts', 'Celery with cream cheese'], ratio: 0.10 },
+        { meal: 'Lunch', items: ['Grilled chicken breast', 'Leafy salad with olive oil', 'Avocado', 'Cheese'], ratio: 0.30 },
+        { meal: 'Afternoon Snack', items: ['Boiled eggs', 'Almonds', 'Pork rinds'], ratio: 0.10 },
+        { meal: 'Dinner', items: ['Grilled salmon', 'Roasted asparagus', 'Cauliflower rice', 'Butter'], ratio: 0.20 },
+        { meal: 'Evening', items: ['Bone broth', 'Macadamia nuts'], ratio: 0.05 },
+      ],
+      DEFAULT: [
+        { meal: 'Breakfast', items: ['Oats with milk', 'Banana', '2 Boiled eggs', 'Green tea'], ratio: 0.25 },
+        { meal: 'Mid-Morning', items: ['Protein shake', 'Apple', 'Almonds'], ratio: 0.10 },
+        { meal: 'Lunch', items: ['Brown rice', 'Grilled chicken', 'Mixed vegetables', 'Salad'], ratio: 0.30 },
+        { meal: 'Afternoon Snack', items: ['Greek yogurt', 'Mixed berries', 'Walnuts'], ratio: 0.10 },
+        { meal: 'Dinner', items: ['Grilled fish', 'Quinoa', 'Steamed broccoli', 'Olive oil'], ratio: 0.20 },
+        { meal: 'Evening', items: ['Milk', 'Dates', 'Cashews'], ratio: 0.05 },
+      ],
+    };
+
+    const poolKey = isVegan ? 'VEGAN' : isVegetarian ? 'VEGETARIAN' : isKeto ? 'KETO' : 'DEFAULT';
+    const pool = MEAL_POOLS[poolKey];
+    const selectedMeals = pool.slice(0, n);
+
+    // Redistribute calories proportionally across selected meals
+    const totalRatio = selectedMeals.reduce((s, m) => s + m.ratio, 0);
+    const meals = selectedMeals.map((m) => ({
+      meal: m.meal,
+      items: m.items,
+      calories: Math.round((m.ratio / totalRatio) * cal),
+    }));
+
     const aiPlan = {
-      name: `AI ${goal} Diet Plan`,
+      name: `AI ${goal.replace(/_/g, ' ')} Diet Plan`,
       goal,
-      totalCalories: calories,
+      totalCalories: cal,
       isAiGenerated: true,
       gymId,
       trainerId: null,
-      meals: [
-        { meal: 'Breakfast', items: ['Oats with milk', 'Banana', '2 Eggs'], calories: Math.round(calories * 0.25) },
-        { meal: 'Lunch', items: ['Brown rice', 'Grilled chicken', 'Salad'], calories: Math.round(calories * 0.35) },
-        { meal: 'Snack', items: ['Protein shake', 'Almonds'], calories: Math.round(calories * 0.15) },
-        { meal: 'Dinner', items: ['Quinoa', 'Fish', 'Vegetables'], calories: Math.round(calories * 0.25) },
-      ],
-      restrictions: [],
+      meals,
+      restrictions: [pref, ...(allergies ? [allergies] : [])],
     };
     const plan = await this.prisma.dietPlan.create({ data: aiPlan });
 
