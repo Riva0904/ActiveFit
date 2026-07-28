@@ -37,7 +37,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com https://www.gstatic.com",
       `connect-src 'self' ws://localhost:3001 wss://localhost:3001 http://localhost:3001${backendConnectSrc()}${apiUrlConnectSrc()} https://api.razorpay.com https://lumberjack.razorpay.com https://*.firebaseio.com https://*.googleapis.com`,
-      "img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com",
+      "img-src 'self' data: blob: https://images.unsplash.com",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self' data:",
       "frame-src https://api.razorpay.com https://*.firebaseapp.com",
@@ -86,7 +86,6 @@ const nextConfig = {
   },
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
   },

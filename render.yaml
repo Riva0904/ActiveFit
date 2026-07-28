@@ -36,9 +36,3 @@ services:
         sync: false
       - key: OTP_EXPIRY_MINUTES
         value: 10
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
-        sync: false

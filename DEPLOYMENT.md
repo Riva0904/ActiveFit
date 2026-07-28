@@ -153,7 +153,6 @@ Forgot Password ──► OTP sent ──► Verify OTP + new password ──►
 - [ ] Configure `CORS_ORIGIN` to your domain
 - [ ] Set up SSL certificate (Nginx config included)
 - [ ] Configure Razorpay live keys
-- [ ] Set up Cloudinary account
 - [ ] Run `prisma migrate deploy` (not `dev`) in production
 - [ ] Set up PM2 (`pm2 start ecosystem.config.js --env production`)
 - [ ] Configure log rotation

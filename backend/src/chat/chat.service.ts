@@ -18,6 +18,18 @@ const MSG_INCLUDE = {
 export class ChatService {
   constructor(private prisma: PrismaService) {}
 
+  // ─── Attachments (stored as bytes in Postgres) ────────────────────────────
+
+  async uploadAttachment(buffer: Buffer, mimeType: string, fileName: string) {
+    return this.prisma.chatAttachment.create({
+      data: { data: buffer, mimeType, fileName, fileSize: buffer.length },
+    });
+  }
+
+  async getAttachment(id: string) {
+    return this.prisma.chatAttachment.findUnique({ where: { id } });
+  }
+
   // ─── GYM conversations (member/trainer/staff ↔ gym admin) ────────────────
 
   async getOrCreateConversation(gymId: string, userId: string) {

@@ -995,6 +995,17 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+model ChatAttachment {
+  id        String   @id @default(uuid())
+  data      Bytes
+  mimeType  String
+  fileName  String
+  fileSize  Int
+  createdAt DateTime @default(now())
+
+  @@map("chat_attachments")
+}
+
 model LeaveRequest {
   id          String      @id @default(uuid())
   gymId       String

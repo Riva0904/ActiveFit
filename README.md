@@ -14,7 +14,7 @@ A modern, full-stack Gym Management SaaS with 3-tier role-based access.
 | ORM | Prisma |
 | Auth | JWT + Role-Based Access Control |
 | Payments | Razorpay |
-| File Storage | Cloudinary |
+| File Storage | PostgreSQL (bytea) |
 | Notifications | Email (Nodemailer) + WhatsApp (Twilio) |
 
 ## Roles
@@ -178,7 +178,6 @@ After running the seed:
 DATABASE_URL=postgresql://user:pass@localhost:5432/activeboost_db
 JWT_SECRET=your-secret-key
 PORT=3001
-CLOUDINARY_CLOUD_NAME=...
 RAZORPAY_KEY_ID=...
 RAZORPAY_KEY_SECRET=...
 SMTP_HOST=smtp.gmail.com
@@ -197,7 +196,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=...
 - **Backend**: Deploy to Railway, Render, or AWS EC2
 - **Frontend**: Deploy to Vercel (recommended)
 - **Database**: Neon, Supabase, or Railway PostgreSQL
-- **Files**: Cloudinary (already integrated)
+- **Files**: stored directly in PostgreSQL
 
 ---
 

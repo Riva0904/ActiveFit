@@ -1,13 +1,13 @@
 import {
-  Controller, Get, Patch, Post, Param, Query, UseGuards,
+  Controller, Get, Patch, Post, Param, Query, Req, UseGuards,
   ParseIntPipe, DefaultValuePipe, UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import type { Request } from 'express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { ChatService } from './chat.service';
-import { CloudinaryService } from '../common/services/cloudinary.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -20,13 +20,12 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class ChatController {
   constructor(
     private readonly chatService: ChatService,
-    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
     // Free-tier hosts wipe local disk on every redeploy — buffer in memory and
-    // push straight to Cloudinary instead of writing to /uploads.
+    // persist straight to the DB instead of writing to /uploads.
     storage: memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
@@ -37,11 +36,13 @@ export class ChatController {
       }
     },
   }))
-  async uploadFile(@UploadedFile() file: any) {
+  async uploadFile(@UploadedFile() file: any, @Req() req: Request) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const result = await this.cloudinaryService.uploadBuffer(file.buffer, 'chat');
+    const attachment = await this.chatService.uploadAttachment(file.buffer, file.mimetype, file.originalname);
     return {
-      url: result.secure_url,
+      // Absolute URL: consumed as-is by the mobile app's <Image>, which can't
+      // resolve a relative path the way a browser resolves a same-origin one.
+      url: `${req.protocol}://${req.get('host')}/api/v1/chat/attachments/${attachment.id}`,
       name: file.originalname,
       type: file.mimetype,
     };
