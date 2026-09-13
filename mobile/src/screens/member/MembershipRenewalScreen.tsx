@@ -3,11 +3,13 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert,
 } from 'react-native';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { presentUpiCheckout } from '../../lib/upiPrompt';
 
 export default function MembershipRenewalScreen({ navigation }: any) {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['membership-plans'],
@@ -16,49 +18,32 @@ export default function MembershipRenewalScreen({ navigation }: any) {
 
   const plans: any[] = Array.isArray(data) ? data : (data as any)?.data ?? [];
 
+  // POST /payments/create-order only accepts type MEMBERSHIP and re-prices from
+  // membershipPlanId server-side; `amount` here is just the client's expectation.
   const renewMutation = useMutation({
-    mutationFn: (planId: string) =>
-      api.post('/payments/create-order', { planId, paymentMethod: 'UPI' }) as any,
+    mutationFn: (plan: any) =>
+      api.post('/payments/create-order', {
+        amount: plan.price,
+        type: 'MEMBERSHIP',
+        membershipPlanId: plan.id,
+        useUpi: true,
+      }) as any,
     onSuccess: (res: any) => {
-      const upiId = res?.gymUpiId ?? res?.upiId ?? 'gym@upi';
-      const amount = selectedPlan?.price ?? res?.amount ?? 0;
-      Alert.alert(
-        'UPI Payment',
-        `Pay ₹${amount} to UPI ID:\n\n${upiId}\n\nReference: ${res?.orderId ?? ''}\n\nAfter payment, tap Confirm.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Confirm Payment',
-            onPress: () => markPaid(res?.paymentId ?? res?.id),
-          },
-        ],
-      );
+      presentUpiCheckout(res, {
+        note: `Membership ${selectedPlan?.name ?? ''}`.trim(),
+        onPaid: () => {
+          queryClient.invalidateQueries({ queryKey: ['mobile-home'] });
+          Alert.alert('Submitted', 'Your payment is awaiting gym confirmation. Membership activates once confirmed.');
+          navigation.goBack();
+        },
+      });
     },
-    onError: (e: any) => Alert.alert('Error', e?.message ?? 'Try again'),
+    onError: (e: any) => Alert.alert('Could not start payment', e?.message ?? 'Try again'),
   });
-
-  const markPaidMutation = useMutation({
-    mutationFn: (paymentId: string) =>
-      api.post(`/payments/${paymentId}/mark-paid`, {}) as any,
-    onSuccess: () => {
-      Alert.alert('Done!', 'Membership renewal submitted. Admin will confirm shortly.');
-      navigation.goBack();
-    },
-    onError: (e: any) => Alert.alert('Error', e?.message),
-  });
-
-  function markPaid(paymentId: string) {
-    if (!paymentId) {
-      Alert.alert('Done', 'Payment recorded. Your membership will be updated shortly.');
-      navigation.goBack();
-      return;
-    }
-    markPaidMutation.mutate(paymentId);
-  }
 
   function purchase() {
     if (!selectedPlan) return Alert.alert('Select a plan', 'Choose a membership plan to continue');
-    renewMutation.mutate(selectedPlan.id);
+    renewMutation.mutate(selectedPlan);
   }
 
   const DURATION_LABELS: Record<number, string> = {
@@ -137,9 +122,9 @@ export default function MembershipRenewalScreen({ navigation }: any) {
         <TouchableOpacity
           style={[styles.buyBtn, !selectedPlan && styles.buyBtnDisabled]}
           onPress={purchase}
-          disabled={!selectedPlan || renewMutation.isPending || markPaidMutation.isPending}
+          disabled={!selectedPlan || renewMutation.isPending}
         >
-          {renewMutation.isPending || markPaidMutation.isPending
+          {renewMutation.isPending
             ? <ActivityIndicator color="#fff" />
             : <Text style={styles.buyBtnText}>Pay via UPI</Text>}
         </TouchableOpacity>

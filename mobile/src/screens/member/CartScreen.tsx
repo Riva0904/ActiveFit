@@ -6,43 +6,35 @@ import {
 import { useCartStore } from '../../store/cartStore';
 import { api } from '../../lib/api';
 import { useMutation } from '@tanstack/react-query';
+import { presentUpiCheckout } from '../../lib/upiPrompt';
 
 export default function CartScreen({ navigation }: any) {
   const { items, removeItem, updateQty, clear, total, count } = useCartStore();
+
+  // POST /supplements/checkout prices the cart server-side and, with useUpi, returns
+  // { paymentId, amount, vpa, payeeName }. The SupplementOrder itself is only created
+  // once the gym admin confirms the payment — so the cart is cleared only after the
+  // member has marked it paid (which is what puts it in the admin's queue).
   const checkoutMutation = useMutation({
     mutationFn: (body: any) => api.post('/supplements/checkout', body) as any,
     onSuccess: (data: any) => {
-      if (data?.upiQr || data?.upiId) {
-        Alert.alert(
-          'UPI Payment',
-          `Pay ₹${total().toFixed(0)} to UPI ID: ${data.upiId ?? 'gym UPI ID'}\n\nAfter payment, tap Confirm.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Mark Paid',
-              onPress: () => {
-                clear();
-                navigation.navigate('OrderHistory');
-                Alert.alert('Order placed!', 'Admin will confirm your payment shortly');
-              },
-            },
-          ],
-        );
-      } else {
-        clear();
-        navigation.navigate('OrderHistory');
-        Alert.alert('Order placed!', 'Your supplement order is confirmed');
-      }
+      presentUpiCheckout(data, {
+        note: `Supplements ${count()} items`,
+        onPaid: () => {
+          clear();
+          navigation.navigate('OrderHistory');
+          Alert.alert('Order submitted', 'Your order will appear once the gym confirms your payment.');
+        },
+      });
     },
     onError: (e: any) => Alert.alert('Checkout failed', e?.message ?? 'Try again'),
   });
 
   function checkout() {
-    const body = {
+    checkoutMutation.mutate({
       items: items.map((i) => ({ supplementId: i.id, quantity: i.quantity })),
-      paymentMethod: 'UPI',
-    };
-    checkoutMutation.mutate(body);
+      useUpi: true,
+    });
   }
 
   if (items.length === 0) {

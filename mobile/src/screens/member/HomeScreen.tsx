@@ -60,14 +60,26 @@ export default function HomeScreen({ navigation }: any) {
   const daysLeft = end ? Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000)) : null;
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
 
-  const quickActions = [
-    { label: 'QR Code', icon: '📱', tab: 'Attendance' },
-    { label: 'Workout', icon: '🏋️', tab: 'Plans' },
-    { label: 'Diet', icon: '🥗', tab: 'Plans' },
-    { label: 'Progress', icon: '📊', tab: 'Plans' },
-    { label: 'Store', icon: '🛒', tab: 'Store' },
-    { label: 'Profile', icon: '👤', tab: 'Profile' },
-  ];
+  // This screen also serves STAFF / GYM_ADMIN / SUPER_ADMIN (they use the app for
+  // chat + notifications). Membership, plans and the store need a Member row, and
+  // self check-in is allowed only for MEMBER/TRAINER/STAFF on the backend.
+  const role = user?.role ?? 'MEMBER';
+  const isMember = role === 'MEMBER';
+  const canCheckIn = isMember || role === 'STAFF';
+
+  const quickActions = isMember
+    ? [
+        { label: 'QR Code', icon: '📱', tab: 'Attendance' },
+        { label: 'Workout', icon: '🏋️', tab: 'Plans' },
+        { label: 'Diet', icon: '🥗', tab: 'Plans' },
+        { label: 'Progress', icon: '📊', tab: 'Plans' },
+        { label: 'Store', icon: '🛒', tab: 'Store' },
+        { label: 'Profile', icon: '👤', tab: 'Profile' },
+      ]
+    : [
+        ...(canCheckIn ? [{ label: 'Attendance', icon: '📅', tab: 'Attendance' }] : []),
+        { label: 'Profile', icon: '👤', tab: 'Profile' },
+      ];
 
   return (
     <ScrollView
@@ -107,7 +119,7 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       {/* ── Check-in button ── */}
-      <TouchableOpacity
+      {canCheckIn && <TouchableOpacity
         style={[styles.checkBtn, isCheckedIn && styles.checkBtnOut]}
         onPress={() => isCheckedIn ? checkOutMutation.mutate() : checkInMutation.mutate()}
         disabled={checkInMutation.isPending || checkOutMutation.isPending}
@@ -128,10 +140,15 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </View>
         )}
-      </TouchableOpacity>
+      </TouchableOpacity>}
 
-      {/* ── Membership card ── */}
-      {data?.membership ? (
+      {/* ── Membership card (members only) ── */}
+      {!isMember ? (
+        <View style={[styles.memberCard, { borderColor: '#374151' }]}>
+          <Text style={styles.planName}>{role.replace(/_/g, ' ')} account</Text>
+          <Text style={[styles.expiry, { marginTop: 4 }]}>Chat and notifications are under Profile</Text>
+        </View>
+      ) : data?.membership ? (
         <View style={[styles.memberCard, daysLeft !== null && daysLeft < 7 && styles.memberCardWarn]}>
           <View style={styles.memberCardTop}>
             <View>
