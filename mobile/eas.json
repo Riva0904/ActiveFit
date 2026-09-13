@@ -17,8 +17,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://activefit-api.onrender.com/api/v1",
-        "EXPO_PUBLIC_BACKEND_ORIGIN": "https://activefit-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://activeboost-api.onrender.com/api/v1",
+        "EXPO_PUBLIC_BACKEND_ORIGIN": "https://activeboost-api.onrender.com"
       }
     },
     "production": {
@@ -26,8 +26,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://activefit-api.onrender.com/api/v1",
-        "EXPO_PUBLIC_BACKEND_ORIGIN": "https://activefit-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://activeboost-api.onrender.com/api/v1",
+        "EXPO_PUBLIC_BACKEND_ORIGIN": "https://activeboost-api.onrender.com"
       }
     }
   },
