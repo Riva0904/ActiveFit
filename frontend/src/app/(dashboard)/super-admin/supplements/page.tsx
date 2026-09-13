@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Package, Plus, Search, MoreVertical, AlertTriangle, Edit2, Eye, EyeOff, X } from 'lucide-react';
-import { supplementsApi } from '@/lib/api';
+import { supplementsApi, gymsApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
@@ -17,10 +17,18 @@ function SupplementModal({ mode, initial, onClose, onSaved }: { mode: 'add' | 'e
     brand: initial?.brand ?? '',
     price: initial?.price ?? '',
     stock: initial?.stock ?? '',
-    unit: initial?.unit ?? 'kg',
+    // Schema field is `weight` (free text, e.g. "2kg", "90 caps") — there is no `unit` column.
+    weight: initial?.weight ?? '',
     isActive: initial?.isActive ?? true,
+    gymId: initial?.gymId ?? '',
   });
   const [saving, setSaving] = useState(false);
+  // Super admin has no gym of their own — a new product must be filed under a specific gym.
+  const [gyms, setGyms] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (mode !== 'add') return;
+    gymsApi.getAll({ limit: 100 }).then((res: any) => setGyms(res.data ?? res ?? [])).catch(() => {});
+  }, [mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,13 +36,26 @@ function SupplementModal({ mode, initial, onClose, onSaved }: { mode: 'add' | 'e
       toast.error('Name, price and stock are required');
       return;
     }
+    if (mode === 'add' && !form.gymId) {
+      toast.error('Select the gym this product belongs to');
+      return;
+    }
     setSaving(true);
     try {
-      const payload = { ...form, price: Number(form.price), stock: Number(form.stock) };
+      const { gymId, ...fields } = form;
+      const payload = {
+        ...fields,
+        brand: fields.brand || null,
+        description: fields.description || null,
+        weight: fields.weight || null,
+        price: Number(fields.price),
+        stock: Number(fields.stock),
+      };
       if (mode === 'add') {
-        await supplementsApi.create(payload);
+        await supplementsApi.create({ ...payload, gymId });
         toast.success('Supplement added!');
       } else {
+        // gymId is not editable — a product cannot be moved between gyms.
         await supplementsApi.update(initial.id, payload);
         toast.success('Supplement updated!');
       }
@@ -57,6 +78,15 @@ function SupplementModal({ mode, initial, onClose, onSaved }: { mode: 'add' | 'e
         </div>
 
         <form onSubmit={handleSubmit} className="px-7 py-6 overflow-y-auto flex flex-col gap-3.5">
+          {mode === 'add' && (
+            <div>
+              <label className={labelCls}>Gym *</label>
+              <select className={cn(inputCls, 'cursor-pointer bg-card')} value={form.gymId} onChange={e => setForm(f => ({ ...f, gymId: e.target.value }))}>
+                <option value="">Select gym…</option>
+                {gyms.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label className={labelCls}>Name *</label>
             <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Whey Protein Gold" />
@@ -85,10 +115,8 @@ function SupplementModal({ mode, initial, onClose, onSaved }: { mode: 'add' | 'e
               <input className={inputCls} type="number" min="0" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} placeholder="50" />
             </div>
             <div>
-              <label className={labelCls}>Unit</label>
-              <select className={cn(inputCls, 'cursor-pointer bg-card')} value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
-                {['kg', 'g', 'lbs', 'capsules', 'tablets', 'ml', 'pieces'].map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
+              <label className={labelCls}>Weight / Size</label>
+              <input className={inputCls} value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder="e.g. 2kg, 90 caps" />
             </div>
           </div>
 
