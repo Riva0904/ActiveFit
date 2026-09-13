@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { scopedWhere } from '../common/utils/gym-scope';
+import { UpdateMembershipDto } from './dto/update-membership.dto';
 
 @Injectable()
 export class MembershipsService {
@@ -147,15 +149,16 @@ export class MembershipsService {
     });
   }
 
-  async update(id: string, data: any) {
-    const sub = await this.prisma.memberSubscription.findUnique({ where: { id } });
+  /** `gymId` = caller's tenant scope (undefined for SUPER_ADMIN); cross-tenant ids 404. */
+  async update(id: string, data: UpdateMembershipDto, gymId?: string) {
+    const sub = await this.prisma.memberSubscription.findFirst({ where: { id, ...scopedWhere(gymId) } });
     if (!sub) throw new NotFoundException('Membership not found');
     return this.prisma.memberSubscription.update({ where: { id }, data });
   }
 
-  async renew(id: string) {
-    const sub = await this.prisma.memberSubscription.findUnique({
-      where: { id },
+  async renew(id: string, gymId?: string) {
+    const sub = await this.prisma.memberSubscription.findFirst({
+      where: { id, ...scopedWhere(gymId) },
       include: { plan: true },
     });
     if (!sub) throw new NotFoundException('Membership not found');

@@ -5,6 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { AuditService } from '../common/services/audit.service';
+import { scopedWhere } from '../common/utils/gym-scope';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -223,9 +225,14 @@ export class UsersService {
     return { data, total, page: +page, limit: +limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+  /**
+   * `gymId` is the caller's tenant scope (see gymScopeOf): GYM_ADMINs only ever see
+   * users of their own gym; SUPER_ADMIN passes undefined. A cross-tenant id resolves
+   * to 404 rather than 403 so ids of other tenants are not enumerable.
+   */
+  async findOne(id: string, gymId?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...scopedWhere(gymId) },
       select: {
         id: true,
         email: true,
@@ -255,16 +262,25 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, data: any) {
-    await this.findOne(id);
-    return this.prisma.user.update({
-      where: { id },
-      data,
-      select: {
-        id: true, email: true, firstName: true, lastName: true,
-        phone: true, role: true, avatar: true, updatedAt: true,
-      },
-    });
+  async update(id: string, data: UpdateUserDto, gymId?: string) {
+    await this.findOne(id, gymId);
+    try {
+      return await this.prisma.user.update({
+        where: { id },
+        data,
+        select: {
+          id: true, email: true, firstName: true, lastName: true,
+          phone: true, role: true, avatar: true, updatedAt: true,
+        },
+      });
+    } catch (e: any) {
+      // email/phone are unique — surface a 409 the UI can show instead of a 500
+      if (e?.code === 'P2002') {
+        const field = (e.meta?.target as string[] | undefined)?.[0] ?? 'field';
+        throw new ConflictException(`A user with this ${field} already exists`);
+      }
+      throw e;
+    }
   }
 
   async updateOwnProfile(id: string, data: any) {
@@ -282,8 +298,8 @@ export class UsersService {
     });
   }
 
-  async deactivate(id: string) {
-    await this.findOne(id);
+  async deactivate(id: string, gymId?: string) {
+    await this.findOne(id, gymId);
     return this.prisma.user.update({
       where: { id },
       data: { isActive: false },
@@ -314,8 +330,8 @@ export class UsersService {
     return data;
   }
 
-  async activate(id: string) {
-    await this.findOne(id);
+  async activate(id: string, gymId?: string) {
+    await this.findOne(id, gymId);
     return this.prisma.user.update({
       where: { id },
       data: { isActive: true },
@@ -323,8 +339,8 @@ export class UsersService {
     });
   }
 
-  async remove(id: string) {
-    const snapshot = await this.findOne(id);
+  async remove(id: string, gymId?: string) {
+    const snapshot = await this.findOne(id, gymId);
     await this.prisma.$transaction(async (tx) => {
       const trainer = await tx.trainer.findUnique({ where: { userId: id } });
       if (trainer) {

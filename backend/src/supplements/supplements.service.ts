@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
+import { scopedWhere } from '../common/utils/gym-scope';
+import { UpdateSupplementDto } from './dto/update-supplement.dto';
 
 @Injectable()
 export class SupplementsService {
@@ -22,8 +24,9 @@ export class SupplementsService {
     return { data: supplements, total, page: +page, limit: +limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
-    const s = await this.prisma.supplement.findUnique({ where: { id } });
+  /** `gymId` = caller's tenant scope (undefined for SUPER_ADMIN); cross-tenant ids 404. */
+  async findOne(id: string, gymId?: string) {
+    const s = await this.prisma.supplement.findFirst({ where: { id, ...scopedWhere(gymId) } });
     if (!s) throw new NotFoundException('Supplement not found');
     return s;
   }
@@ -32,13 +35,13 @@ export class SupplementsService {
     return this.prisma.supplement.create({ data });
   }
 
-  async update(id: string, data: any) {
-    await this.findOne(id);
+  async update(id: string, data: UpdateSupplementDto, gymId?: string) {
+    await this.findOne(id, gymId);
     return this.prisma.supplement.update({ where: { id }, data });
   }
 
-  async updateStock(id: string, quantity: number) {
-    const s = await this.findOne(id);
+  async updateStock(id: string, quantity: number, gymId?: string) {
+    const s = await this.findOne(id, gymId);
     const newStock = s.stock + quantity;
     if (newStock < 0) throw new BadRequestException('Stock cannot go below zero');
     return this.prisma.supplement.update({ where: { id }, data: { stock: newStock } });
@@ -141,21 +144,20 @@ export class SupplementsService {
     return { data: orders, total, page: +page, limit: +limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async remove(id: string, gymId: string) {
-    const s = await this.prisma.supplement.findFirst({ where: { id, gymId } });
-    if (!s) throw new NotFoundException('Supplement not found');
+  async remove(id: string, gymId?: string) {
+    await this.findOne(id, gymId);
     await this.prisma.supplement.update({ where: { id }, data: { isActive: false } });
     return { message: 'Supplement removed successfully' };
   }
 
-  async updateOrderStatus(orderId: string, status: any) {
+  async updateOrderStatus(orderId: string, status: any, gymId?: string) {
     const VALID_TRANSITIONS: Record<string, string[]> = {
       PENDING: ['CONFIRMED', 'CANCELLED'],
       CONFIRMED: ['DELIVERED', 'CANCELLED'],
       DELIVERED: [],
       CANCELLED: [],
     };
-    const order = await this.prisma.supplementOrder.findUnique({ where: { id: orderId } });
+    const order = await this.prisma.supplementOrder.findFirst({ where: { id: orderId, ...scopedWhere(gymId) } });
     if (!order) throw new NotFoundException('Order not found');
     const allowed = VALID_TRANSITIONS[order.status] ?? [];
     if (!allowed.includes(status)) {

@@ -5,6 +5,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -16,6 +17,17 @@ import {
   RegisterDto, RegisterGymDto, LoginDto, ChangePasswordDto,
   ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto, Verify2FaDto,
 } from './dto/auth.dto';
+
+/**
+ * bcrypt silently truncates its input at 72 bytes. A refresh JWT is ~300 bytes and
+ * every token for the same user shares an identical prefix well past 72 bytes
+ * (header + `{"sub":"<uuid>",...`), so bcrypt(rawJwt) made ANY previously issued
+ * refresh token verify against the latest hash — rotation and reuse detection were
+ * no-ops. Hash the token down to a fixed 64-char digest first.
+ */
+export function refreshTokenDigest(rawRefreshToken: string): string {
+  return createHash('sha256').update(rawRefreshToken).digest('hex');
+}
 
 @Injectable()
 export class AuthService {
@@ -49,8 +61,10 @@ export class AuthService {
         email: dto.email,
         phone: dto.phone,
         password: hashedPassword,
-        role: (dto.role as any) ?? 'MEMBER',
-        gymId: dto.gymId,
+        // Public self-registration is always an unaffiliated MEMBER. Roles and gym
+        // membership are only ever assigned by an authenticated admin via POST /users.
+        role: 'MEMBER',
+        gymId: null,
         isEmailVerified: false,
       },
       select: {
@@ -246,7 +260,7 @@ export class AuthService {
       throw new UnauthorizedException('Session expired — please log in again');
     }
 
-    const isMatch = await bcrypt.compare(refreshTokenValue, user.refreshToken);
+    const isMatch = await bcrypt.compare(refreshTokenDigest(refreshTokenValue), user.refreshToken);
     if (!isMatch) throw new UnauthorizedException('Refresh token reuse detected — please log in again');
 
     return await this.generateTokens(user.id, user.email, user.role);
@@ -319,8 +333,9 @@ export class AuthService {
       expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', '7d'),
     });
     // Hash is awaited before returning — prevents race conditions where the token
-    // is used before the hash is persisted to the database.
-    const hashed = await bcrypt.hash(rawRefresh, 10);
+    // is used before the hash is persisted to the database. See refreshTokenDigest()
+    // for why the JWT is digested before bcrypt.
+    const hashed = await bcrypt.hash(refreshTokenDigest(rawRefresh), 10);
     await this.prisma.user.update({ where: { id: userId }, data: { refreshToken: hashed } });
 
     return { accessToken, refreshToken: rawRefresh, tokenType: 'Bearer', expiresIn: '15m' };

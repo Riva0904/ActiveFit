@@ -7,6 +7,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { gymScopeOf } from '../common/utils/gym-scope';
+import { UpdateStaffDto } from './dto/update-staff.dto';
 
 @ApiTags('Staffs')
 @ApiBearerAuth()
@@ -41,21 +43,21 @@ export class StaffsController {
   @Get(':id')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
-  findOne(@Param('id') id: string) {
-    return this.staffsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.staffsService.findOne(id, gymScopeOf(user));
   }
 
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.staffsService.update(id, body);
+  update(@Param('id') id: string, @Body() body: UpdateStaffDto, @CurrentUser() user: any) {
+    return this.staffsService.update(id, body, gymScopeOf(user));
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
-  remove(@Param('id') id: string) {
-    return this.staffsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.staffsService.remove(id, gymScopeOf(user));
   }
 }

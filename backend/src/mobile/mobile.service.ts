@@ -14,9 +14,22 @@ export class MobileService {
   /**
    * Compressed home data — all info the mobile home screen needs in a single DB round-trip.
    */
-  async getHomeData(userId: string, gymId: string) {
+  async getHomeData(userId: string, gymId: string | null) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // SUPER_ADMIN has no gym: return the account shell only. Passing null into the
+    // non-nullable gymId filters below is a Prisma validation error (500).
+    if (!gymId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true, avatar: true, role: true },
+      });
+      return {
+        user, membership: null, memberCode: null, qrToken: null,
+        activeWorkout: null, activeDiet: null, isCheckedInToday: false, checkedInAt: null,
+      };
+    }
 
     const [user, member, attendance] = await Promise.all([
       this.prisma.user.findUnique({

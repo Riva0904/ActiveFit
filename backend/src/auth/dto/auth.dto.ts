@@ -1,7 +1,6 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsEnum, Length, Matches, IsPhoneNumber } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, Length, Matches, IsPhoneNumber } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
 
 // Strips spaces from phone input so legacy-style formatting (e.g. '+91 9876543210')
 // still passes IsPhoneNumber('IN'), which expects no internal whitespace.
@@ -35,16 +34,6 @@ export class RegisterDto {
     message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
   })
   password: string;
-
-  @ApiProperty({ enum: Role, default: Role.MEMBER, required: false })
-  @IsOptional()
-  @IsEnum(Role)
-  role?: Role;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  gymId?: string;
 }
 
 export class LoginDto {

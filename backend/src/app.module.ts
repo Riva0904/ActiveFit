@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import * as Joi from 'joi';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { GymScopeGuard } from './common/guards/gym-scope.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { EmailModule } from './email/email.module';
@@ -35,6 +36,7 @@ import { ReferralsModule } from './referrals/referrals.module';
 import { PromoCodesModule } from './promo-codes/promo-codes.module';
 import { SaasPlansModule } from './saas-plans/saas-plans.module';
 import { CommonModule } from './common/common.module';
+import { isPrimaryInstance } from './common/utils/cluster';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { MobileModule } from './mobile/mobile.module';
@@ -56,11 +58,19 @@ import { MobileModule } from './mobile/mobile.module';
       }),
       validationOptions: { allowUnknown: true, abortEarly: false },
     }),
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 20 },   // max 20 req/sec per IP (dashboards fire several parallel GETs on mount)
-      { name: 'medium', ttl: 60000, limit: 300 }, // max 300 req/min per IP (general API)
-    ]),
-    ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        { name: 'short', ttl: 1000, limit: 20 },   // max 20 req/sec per IP (dashboards fire several parallel GETs on mount)
+        { name: 'medium', ttl: 60000, limit: 300 }, // max 300 req/min per IP (general API)
+      ],
+      // e2e suites hammer login/forgot-password faster than a human could; the limiter
+      // itself is covered by unit tests. Never set this in a deployed environment.
+      skipIf: () => process.env.DISABLE_THROTTLE === 'true',
+    }),
+    // Cron jobs are registered only on the primary worker — under PM2 cluster mode
+    // every other worker skips ScheduleModule so @Cron methods stay inert there.
+    // (They remain callable directly, e.g. renewal-reminders "send now".)
+    ...(isPrimaryInstance() ? [ScheduleModule.forRoot()] : []),
     EventEmitterModule.forRoot({ wildcard: false, delimiter: '.', maxListeners: 20 }),
     PrismaModule,
     EmailModule,
@@ -95,8 +105,13 @@ import { MobileModule } from './mobile/mobile.module';
     GamificationModule,
     MobileModule,
   ],
+  // Order matters: global guards execute in registration order, and all of them run
+  // before any controller-level @UseGuards(). JwtAuthGuard must therefore be global
+  // and precede GymScopeGuard, otherwise req.user is still undefined when the scope
+  // guard runs and it degrades to a no-op.
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: GymScopeGuard },
   ],
 })

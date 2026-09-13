@@ -7,6 +7,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { gymScopeOf } from '../common/utils/gym-scope';
+import { UpdateTrainerDto } from './dto/update-trainer.dto';
 
 @ApiTags('Trainers')
 @ApiBearerAuth()
@@ -46,15 +48,17 @@ export class TrainersController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.trainersService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.trainersService.findOne(id, gymScopeOf(user));
   }
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.trainersService.update(id, body);
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.TRAINER)
+  update(@Param('id') id: string, @Body() body: UpdateTrainerDto, @CurrentUser() user: any) {
+    // A trainer may edit only their own profile (settings page); admins edit any in their gym.
+    const selfUserId = user.role === Role.TRAINER ? user.id : undefined;
+    return this.trainersService.update(id, body, gymScopeOf(user), selfUserId);
   }
 
   @Post(':id/assign')
@@ -67,7 +71,7 @@ export class TrainersController {
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
-  remove(@Param('id') id: string) {
-    return this.trainersService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.trainersService.remove(id, gymScopeOf(user));
   }
 }

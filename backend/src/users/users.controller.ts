@@ -6,6 +6,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { SkipGymScope } from '../common/decorators/skip-gym-scope.decorator';
+import { gymScopeOf } from '../common/utils/gym-scope';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -30,12 +33,14 @@ export class UsersController {
   }
 
   @Get('me')
+  @SkipGymScope()
   @ApiOperation({ summary: 'Get own profile' })
   getMe(@CurrentUser('id') id: string) {
     return this.usersService.findOne(id);
   }
 
   @Get('me/export')
+  @SkipGymScope()
   @ApiOperation({ summary: 'Export all of the requesting user\'s own data (data portability)' })
   exportMyData(@CurrentUser('id') id: string) {
     return this.usersService.exportOwnData(id);
@@ -65,14 +70,18 @@ export class UsersController {
     return this.usersService.getAtRiskMembers(user.gymId, days);
   }
 
+  // Every /:id handler below is tenant-scoped: a GYM_ADMIN can only reach users of
+  // their own gym (other tenants' ids 404), SUPER_ADMIN is unscoped.
+
   @Get(':id')
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN)
   @ApiOperation({ summary: 'Get user by ID' })
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.findOne(id, gymScopeOf(user));
   }
 
   @Patch('me')
+  @SkipGymScope()
   @ApiOperation({ summary: 'Update own profile (role, gymId, isActive etc. are ignored)' })
   updateMe(@CurrentUser('id') id: string, @Body() body: any) {
     return this.usersService.updateOwnProfile(id, body);
@@ -80,30 +89,30 @@ export class UsersController {
 
   @Patch(':id')
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN)
-  @ApiOperation({ summary: 'Update user' })
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.usersService.update(id, body);
+  @ApiOperation({ summary: 'Update user (profile fields only — role/gymId/isActive are rejected)' })
+  update(@Param('id') id: string, @Body() body: UpdateUserDto, @CurrentUser() user: any) {
+    return this.usersService.update(id, body, gymScopeOf(user));
   }
 
   @Patch(':id/deactivate')
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN)
   @ApiOperation({ summary: 'Deactivate user' })
-  deactivate(@Param('id') id: string) {
-    return this.usersService.deactivate(id);
+  deactivate(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.deactivate(id, gymScopeOf(user));
   }
 
   @Patch(':id/activate')
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN)
   @ApiOperation({ summary: 'Activate user' })
-  activate(@Param('id') id: string) {
-    return this.usersService.activate(id);
+  activate(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.activate(id, gymScopeOf(user));
   }
 
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN)
   @ApiOperation({ summary: 'Permanently delete user' })
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.remove(id, gymScopeOf(user));
   }
 
   @Post(':id/send-winback')

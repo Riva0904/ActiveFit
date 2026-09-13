@@ -7,6 +7,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateMembershipPlanDto, UpdateMembershipPlanDto } from './dto/membership-plan.dto';
+import { UpdateMembershipDto } from './dto/update-membership.dto';
+import { gymScopeOf } from '../common/utils/gym-scope';
 
 @ApiTags('Memberships')
 @ApiBearerAuth()
@@ -94,14 +96,14 @@ export class MembershipsController {
 
   @Patch(':id')
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.membershipsService.update(id, body);
+  update(@Param('id') id: string, @Body() body: UpdateMembershipDto, @CurrentUser() user: any) {
+    return this.membershipsService.update(id, body, gymScopeOf(user));
   }
 
   @Patch(':id/renew')
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Renew membership' })
-  renew(@Param('id') id: string) {
-    return this.membershipsService.renew(id);
+  renew(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.membershipsService.renew(id, gymScopeOf(user));
   }
 }

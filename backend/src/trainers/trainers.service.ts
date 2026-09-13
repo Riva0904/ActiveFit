@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { scopedWhere } from '../common/utils/gym-scope';
+import { UpdateTrainerDto } from './dto/update-trainer.dto';
 
 @Injectable()
 export class TrainersService {
@@ -37,9 +39,10 @@ export class TrainersService {
     return { data: trainers, total, page: +page, limit: +limit, totalPages: Math.ceil(total / +limit) };
   }
 
-  async findOne(id: string) {
-    const trainer = await this.prisma.trainer.findUnique({
-      where: { id },
+  /** `gymId` = caller's tenant scope (undefined for SUPER_ADMIN); cross-tenant ids 404. */
+  async findOne(id: string, gymId?: string) {
+    const trainer = await this.prisma.trainer.findFirst({
+      where: { id, ...scopedWhere(gymId) },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, avatar: true } },
         memberAssignments: {
@@ -52,14 +55,19 @@ export class TrainersService {
     return trainer;
   }
 
-  async update(id: string, data: any) {
-    await this.findOne(id);
+  /**
+   * `selfUserId` is set when the caller is a TRAINER editing from their own settings
+   * page — they may only touch the trainer row linked to their own user account.
+   */
+  async update(id: string, data: UpdateTrainerDto, gymId?: string, selfUserId?: string) {
+    const trainer = await this.findOne(id, gymId);
+    if (selfUserId && trainer.userId !== selfUserId) throw new NotFoundException('Trainer not found');
     return this.prisma.trainer.update({ where: { id }, data });
   }
 
-  async remove(id: string) {
-    const trainer = await this.prisma.trainer.findUnique({
-      where: { id },
+  async remove(id: string, gymId?: string) {
+    const trainer = await this.prisma.trainer.findFirst({
+      where: { id, ...scopedWhere(gymId) },
       select: { userId: true },
     });
     if (!trainer) throw new NotFoundException('Trainer not found');

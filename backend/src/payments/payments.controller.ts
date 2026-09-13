@@ -9,14 +9,17 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RecordCashPaymentDto } from './dto/record-cash-payment.dto';
+import { Public } from '../common/decorators/public.decorator';
 
-// Webhook handler — NO auth guard (called by Razorpay server-to-server)
+// Webhook handler — NO auth guard (called by Razorpay server-to-server);
+// authenticity is established by the HMAC signature check in the service.
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentsWebhookController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('webhook')
+  @Public()
   @HttpCode(HttpStatus.OK)
   handleWebhook(
     @Req() req: Request & { rawBody?: Buffer },

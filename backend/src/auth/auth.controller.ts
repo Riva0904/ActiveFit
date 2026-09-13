@@ -9,6 +9,8 @@ import {
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
+import { SkipGymScope } from '../common/decorators/skip-gym-scope.decorator';
 
 const ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -31,7 +33,11 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
   res.cookie('ab_refresh', refreshToken, REFRESH_COOKIE_OPTIONS);
 }
 
+// Account-level endpoints: reachable by users that have no gym yet (freshly
+// self-registered members), so the global GymScopeGuard is skipped for the whole
+// controller. Unauthenticated routes additionally opt out of JwtAuthGuard with @Public().
 @ApiTags('Auth')
+@SkipGymScope()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -39,6 +45,7 @@ export class AuthController {
   // ─── Public Routes ─────────────────────────────────────────────────────────
 
   @Post('register')
+  @Public()
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Register new user — sends email verification OTP' })
   @ApiResponse({ status: 201, description: 'User created, OTP sent to email' })
@@ -48,6 +55,7 @@ export class AuthController {
   }
 
   @Post('register-gym')
+  @Public()
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: 'Self-register a gym + admin account' })
   registerGym(@Body() dto: RegisterGymDto) {
@@ -55,6 +63,7 @@ export class AuthController {
   }
 
   @Post('verify-email')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify email with OTP — sets httpOnly auth cookie on success' })
   @ApiResponse({ status: 200, description: 'Email verified, auth cookie set' })
@@ -67,6 +76,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ short: { ttl: 1000, limit: 2 }, medium: { ttl: 60000, limit: 10 } })
   @ApiOperation({ summary: 'Login — sets httpOnly auth cookie on success' })
@@ -80,6 +90,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token using httpOnly refresh cookie' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -93,6 +104,7 @@ export class AuthController {
   // ─── Mobile-specific endpoints (return tokens in body, no cookies) ─────────
 
   @Post('mobile-login')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ short: { ttl: 1000, limit: 2 }, medium: { ttl: 60000, limit: 10 } })
   @ApiOperation({ summary: 'Mobile login — returns accessToken + refreshToken in JSON body (no cookies)' })
@@ -101,6 +113,7 @@ export class AuthController {
   }
 
   @Post('mobile-refresh')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mobile token refresh — accepts refreshToken in body, returns new tokens in body' })
   async mobileRefresh(@Body() body: { refreshToken: string }) {
@@ -108,6 +121,7 @@ export class AuthController {
   }
 
   @Post('resend-otp')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60000, limit: 3 } })
   @ApiOperation({ summary: 'Resend OTP — rate limited to 3/min per IP' })
@@ -116,6 +130,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Throttle({ short: { ttl: 1000, limit: 1 }, medium: { ttl: 60000, limit: 3 } })
   @ApiOperation({ summary: 'Request password reset OTP' })
@@ -124,6 +139,7 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password with OTP' })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })

@@ -14,7 +14,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import * as cookieParse from 'cookie';
 
-@WebSocketGateway({ cors: { origin: process.env.CORS_ORIGIN || 'http://localhost:3000', credentials: true }, path: '/socket.io' })
+// CORS_ORIGIN is comma-separated (see main.ts) — split it the same way here, otherwise a
+// multi-origin deployment matches neither origin and every socket handshake is refused.
+const SOCKET_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map((o) => o.trim()).filter(Boolean);
+
+@WebSocketGateway({ cors: { origin: SOCKET_ORIGINS, credentials: true }, path: '/socket.io' })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 

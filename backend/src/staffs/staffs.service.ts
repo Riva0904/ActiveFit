@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { scopedWhere } from '../common/utils/gym-scope';
+import { UpdateStaffDto } from './dto/update-staff.dto';
 
 @Injectable()
 export class StaffsService {
@@ -36,9 +38,10 @@ export class StaffsService {
     return { data: staffs, total, page: +page, limit: +limit, totalPages: Math.ceil(total / +limit) };
   }
 
-  async findOne(id: string) {
-    const staff = await this.prisma.staff.findUnique({
-      where: { id },
+  /** `gymId` = caller's tenant scope (undefined for SUPER_ADMIN); cross-tenant ids 404. */
+  async findOne(id: string, gymId?: string) {
+    const staff = await this.prisma.staff.findFirst({
+      where: { id, ...scopedWhere(gymId) },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, avatar: true, isActive: true, payoutUpiVpa: true } },
         gym: { select: { id: true, name: true, logo: true } },
@@ -48,14 +51,14 @@ export class StaffsService {
     return staff;
   }
 
-  async update(id: string, data: any) {
-    await this.findOne(id);
+  async update(id: string, data: UpdateStaffDto, gymId?: string) {
+    await this.findOne(id, gymId);
     return this.prisma.staff.update({ where: { id }, data });
   }
 
-  async remove(id: string) {
-    const staff = await this.prisma.staff.findUnique({
-      where: { id },
+  async remove(id: string, gymId?: string) {
+    const staff = await this.prisma.staff.findFirst({
+      where: { id, ...scopedWhere(gymId) },
       select: { userId: true },
     });
     if (!staff) throw new NotFoundException('Staff not found');
