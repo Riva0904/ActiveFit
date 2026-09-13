@@ -2,32 +2,33 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { UsersService } from '../../../src/users/users.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
+import { EmailService } from '../../../src/email/email.service';
+import { AuditService } from '../../../src/common/services/audit.service';
 
 const mockUser = {
   id: 'user-001',
   email: 'user@example.com',
   firstName: 'John',
   lastName: 'Doe',
-  phone: '+91 9876543210',
-  role: 'USER',
+  phone: '+919876543210',
+  role: 'MEMBER',
   avatar: null,
   isActive: true,
   gymId: 'gym-001',
-  lastLogin: null,
+  lastLoginAt: null,
   createdAt: new Date(),
-  memberships: [],
 };
 
 const mockPrisma = {
   user: {
     findMany: jest.fn(),
+    findFirst: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
     count: jest.fn(),
   },
-  membership: {
-    count: jest.fn(),
-  },
+  member: { count: jest.fn() },
+  memberSubscription: { count: jest.fn() },
 };
 
 describe('UsersService', () => {
@@ -38,6 +39,8 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: EmailService, useValue: {} },
+        { provide: AuditService, useValue: { log: jest.fn() } },
       ],
     }).compile();
 
@@ -58,6 +61,7 @@ describe('UsersService', () => {
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
       expect(result.totalPages).toBe(1);
+      expect(mockPrisma.user.findMany.mock.calls[0][0].where.gymId).toBe('gym-001');
     });
 
     it('should apply search filter', async () => {
@@ -75,10 +79,11 @@ describe('UsersService', () => {
       mockPrisma.user.findMany.mockResolvedValue([]);
       mockPrisma.user.count.mockResolvedValue(0);
 
-      await service.findAll({ role: 'ADMIN' }, undefined);
+      await service.findAll({ role: 'GYM_ADMIN' }, undefined);
 
       const where = mockPrisma.user.findMany.mock.calls[0][0].where;
-      expect(where.role).toBe('ADMIN');
+      expect(where.role).toBe('GYM_ADMIN');
+      expect(where.gymId).toBeUndefined();
     });
 
     it('should calculate correct totalPages for large datasets', async () => {
@@ -93,18 +98,27 @@ describe('UsersService', () => {
   // ─── findOne ────────────────────────────────────────────────────────────────
 
   describe('findOne', () => {
-    it('should return user by id', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+    it('should return user by id (unscoped, e.g. SUPER_ADMIN or own profile)', async () => {
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser);
 
       const result = await service.findOne('user-001');
       expect(result).toEqual(mockUser);
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith(
+      expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'user-001' } }),
       );
     });
 
+    it('should add the gym filter when a tenant scope is given', async () => {
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser);
+
+      await service.findOne('user-001', 'gym-001');
+      expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'user-001', gymId: 'gym-001' } }),
+      );
+    });
+
     it('should throw NotFoundException if user does not exist', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findFirst.mockResolvedValue(null);
       await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
     });
   });
@@ -113,11 +127,10 @@ describe('UsersService', () => {
 
   describe('update', () => {
     it('should update user and return selected fields', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
-      const updatedUser = { ...mockUser, firstName: 'Updated' };
-      mockPrisma.user.update.mockResolvedValue(updatedUser);
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser);
+      mockPrisma.user.update.mockResolvedValue({ ...mockUser, firstName: 'Updated' });
 
-      const result = await service.update('user-001', { firstName: 'Updated' });
+      await service.update('user-001', { firstName: 'Updated' }, 'gym-001');
       expect(mockPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'user-001' },
@@ -127,8 +140,9 @@ describe('UsersService', () => {
     });
 
     it('should throw NotFoundException for nonexistent user', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      await expect(service.update('bad-id', {})).rejects.toThrow(NotFoundException);
+      mockPrisma.user.findFirst.mockResolvedValue(null);
+      await expect(service.update('bad-id', {}, 'gym-001')).rejects.toThrow(NotFoundException);
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
     });
   });
 
@@ -136,27 +150,25 @@ describe('UsersService', () => {
 
   describe('deactivate', () => {
     it('should set isActive to false', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+      mockPrisma.user.findFirst.mockResolvedValue(mockUser);
       mockPrisma.user.update.mockResolvedValue({ ...mockUser, isActive: false });
 
-      await service.deactivate('user-001');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-001' },
-        data: { isActive: false },
-      });
+      await service.deactivate('user-001', 'gym-001');
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'user-001' }, data: { isActive: false } }),
+      );
     });
   });
 
   describe('activate', () => {
     it('should set isActive to true', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser, isActive: false });
+      mockPrisma.user.findFirst.mockResolvedValue({ ...mockUser, isActive: false });
       mockPrisma.user.update.mockResolvedValue(mockUser);
 
-      await service.activate('user-001');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-001' },
-        data: { isActive: true },
-      });
+      await service.activate('user-001', 'gym-001');
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'user-001' }, data: { isActive: true } }),
+      );
     });
   });
 
@@ -164,12 +176,12 @@ describe('UsersService', () => {
 
   describe('getMemberStats', () => {
     it('should return member statistics for a gym', async () => {
-      mockPrisma.user.count
-        .mockResolvedValueOnce(100)  // total
+      mockPrisma.member.count
+        .mockResolvedValueOnce(100) // total
         .mockResolvedValueOnce(5);  // newThisMonth
-      mockPrisma.membership.count
-        .mockResolvedValueOnce(85)  // active memberships
-        .mockResolvedValueOnce(8);  // expiring soon
+      mockPrisma.memberSubscription.count
+        .mockResolvedValueOnce(85)  // active
+        .mockResolvedValueOnce(8);  // expiringSoon
 
       const result: any = await service.getMemberStats('gym-001');
 

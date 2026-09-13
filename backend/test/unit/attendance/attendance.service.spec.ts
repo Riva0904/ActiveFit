@@ -3,199 +3,172 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AttendanceService } from '../../../src/attendance/attendance.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 
-const mockAttendance = {
-  id: 'att-001',
-  userId: 'user-001',
-  gymId: 'gym-001',
-  checkInTime: new Date(),
-  checkOutTime: null,
-  checkInMethod: 'QR',
-  status: 'PRESENT',
-  createdAt: new Date(),
-};
+const activeUser = { id: 'user-001', firstName: 'John', lastName: 'Doe', role: 'MEMBER', isActive: true };
+const mockMember = { id: 'member-001', userId: 'user-001', gymId: 'gym-001', memberCode: 'FH-0001', qrToken: 'qr-token-1', user: activeUser };
+const mockMembership = { id: 'sub-001', status: 'ACTIVE' };
+const mockAttendance = { id: 'att-001', userId: 'user-001', memberId: 'member-001', gymId: 'gym-001', checkInTime: new Date(), checkOutTime: null, method: 'MANUAL' };
 
-const mockMembership = {
-  id: 'mem-001',
-  status: 'ACTIVE',
-  endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+const model = () => ({ findFirst: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), count: jest.fn() });
+const mockPrisma: any = {
+  member: model(), memberSubscription: model(), attendance: model(), trainer: model(), staff: model(), user: model(),
 };
-
-const mockPrisma = {
-  attendance: {
-    findFirst: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    count: jest.fn(),
-  },
-  membership: {
-    findFirst: jest.fn(),
-  },
-  user: {
-    findFirst: jest.fn(),
-    count: jest.fn(),
-  },
-};
+mockPrisma.$transaction = jest.fn(async (fn: any) => fn(mockPrisma));
 
 describe('AttendanceService', () => {
   let service: AttendanceService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AttendanceService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [AttendanceService, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
-
-    service = module.get<AttendanceService>(AttendanceService);
+    service = module.get(AttendanceService);
     jest.clearAllMocks();
+    mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(mockPrisma));
   });
 
-  // ─── checkIn ────────────────────────────────────────────────────────────────
-
   describe('checkIn', () => {
-    it('should check in user with active membership', async () => {
-      mockPrisma.attendance.findFirst.mockResolvedValue(null); // not already checked in
-      mockPrisma.membership.findFirst.mockResolvedValue(mockMembership);
+    it('checks a member with an active membership in (default method MANUAL)', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.attendance.findFirst.mockResolvedValue(null);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockMembership);
       mockPrisma.attendance.create.mockResolvedValue(mockAttendance);
 
-      const result = await service.checkIn('user-001', 'gym-001', 'QR');
+      const result = await service.checkIn('user-001', 'gym-001');
 
       expect(result).toEqual(mockAttendance);
-      expect(mockPrisma.attendance.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            userId: 'user-001',
-            gymId: 'gym-001',
-            checkInMethod: 'QR',
-          }),
-        }),
-      );
+      expect(mockPrisma.attendance.create.mock.calls[0][0].data).toEqual({ userId: 'user-001', memberId: 'member-001', gymId: 'gym-001', method: 'MANUAL' });
     });
 
-    it('should throw BadRequestException if already checked in today', async () => {
-      mockPrisma.attendance.findFirst.mockResolvedValue(mockAttendance);
+    it('records the QR_CODE method when passed', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.attendance.findFirst.mockResolvedValue(null);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockMembership);
+      mockPrisma.attendance.create.mockResolvedValue(mockAttendance);
+      await service.checkIn('user-001', 'gym-001', 'QR_CODE');
+      expect(mockPrisma.attendance.create.mock.calls[0][0].data.method).toBe('QR_CODE');
+    });
 
+    it('rejects a user with no member profile in the gym', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null);
       await expect(service.checkIn('user-001', 'gym-001')).rejects.toThrow(BadRequestException);
       expect(mockPrisma.attendance.create).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException with no active membership', async () => {
-      mockPrisma.attendance.findFirst.mockResolvedValue(null);
-      mockPrisma.membership.findFirst.mockResolvedValue(null);
+    it('rejects when already checked in today', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.attendance.findFirst.mockResolvedValue(mockAttendance);
+      await expect(service.checkIn('user-001', 'gym-001')).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.attendance.create).not.toHaveBeenCalled();
+    });
 
+    it('rejects when there is no active membership', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.attendance.findFirst.mockResolvedValue(null);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(null);
       await expect(service.checkIn('user-001', 'gym-001')).rejects.toThrow(BadRequestException);
     });
   });
 
-  // ─── checkOut ───────────────────────────────────────────────────────────────
-
   describe('checkOut', () => {
-    it('should set checkOutTime on check-out', async () => {
+    it('stamps checkOutTime on the member\'s own open record', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
       mockPrisma.attendance.findFirst.mockResolvedValue(mockAttendance);
       mockPrisma.attendance.update.mockResolvedValue({ ...mockAttendance, checkOutTime: new Date() });
 
       const result: any = await service.checkOut('att-001', 'user-001');
-      expect(result.checkOutTime).toBeDefined();
-      expect(mockPrisma.attendance.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { checkOutTime: expect.any(Date) } }),
-      );
+
+      expect(result.checkOutTime).toBeInstanceOf(Date);
+      expect(mockPrisma.attendance.findFirst.mock.calls[0][0].where).toEqual({ id: 'att-001', checkOutTime: null, memberId: 'member-001' });
+      expect(mockPrisma.attendance.update).toHaveBeenCalledWith({ where: { id: 'att-001' }, data: { checkOutTime: expect.any(Date) } });
     });
 
-    it('should throw NotFoundException if no active check-in', async () => {
+    it('throws NotFoundException when there is no open check-in', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
       mockPrisma.attendance.findFirst.mockResolvedValue(null);
       await expect(service.checkOut('att-001', 'user-001')).rejects.toThrow(NotFoundException);
     });
   });
 
-  // ─── checkInByQr ─────────────────────────────────────────────────────────────
-
-  describe('checkInByQr', () => {
-    it('should look up user by QR code and check in', async () => {
-      mockPrisma.user.findFirst.mockResolvedValue({ id: 'user-001' });
+  describe('checkInByQr (admin kiosk scan)', () => {
+    it('resolves the member by qrToken or memberCode within the gym', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockMembership);
       mockPrisma.attendance.findFirst.mockResolvedValue(null);
-      mockPrisma.membership.findFirst.mockResolvedValue(mockMembership);
       mockPrisma.attendance.create.mockResolvedValue(mockAttendance);
 
-      const result = await service.checkInByQr('qr-token', 'gym-001');
-      expect(result).toEqual(mockAttendance);
+      const res: any = await service.checkInByQr('qr-token-1', 'gym-001');
+
+      expect(res.action).toBe('CHECKIN');
+      expect(mockPrisma.member.findFirst.mock.calls[0][0].where).toEqual({ gymId: 'gym-001', OR: [{ qrToken: 'qr-token-1' }, { memberCode: 'qr-token-1' }] });
+      expect(mockPrisma.attendance.create.mock.calls[0][0].data.method).toBe('QR_CODE');
     });
 
-    it('should throw NotFoundException for invalid QR code', async () => {
-      mockPrisma.user.findFirst.mockResolvedValue(null);
-      await expect(service.checkInByQr('invalid-qr', 'gym-001')).rejects.toThrow(NotFoundException);
-    });
-  });
+    it('toggles to CHECKOUT when the member already has an open session', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockMembership);
+      mockPrisma.attendance.findFirst.mockResolvedValue(mockAttendance);
+      mockPrisma.attendance.update.mockResolvedValue({ ...mockAttendance, checkOutTime: new Date() });
 
-  // ─── getTodayStats ───────────────────────────────────────────────────────────
+      const res: any = await service.checkInByQr('FH-0001', 'gym-001');
 
-  describe('getTodayStats', () => {
-    it('should return today attendance statistics', async () => {
-      mockPrisma.attendance.count
-        .mockResolvedValueOnce(42)  // totalToday
-        .mockResolvedValueOnce(15); // currentlyIn
-      mockPrisma.user.count.mockResolvedValue(200);
-
-      const result: any = await service.getTodayStats('gym-001');
-
-      expect(result.totalToday).toBe(42);
-      expect(result.currentlyIn).toBe(15);
-      expect(result.totalMembers).toBe(200);
-    });
-  });
-
-  // ─── getWeeklyReport ─────────────────────────────────────────────────────────
-
-  describe('getWeeklyReport', () => {
-    it('should return 7 days of attendance data', async () => {
-      mockPrisma.attendance.count.mockResolvedValue(25);
-
-      const result: any = await service.getWeeklyReport('gym-001');
-
-      expect(result).toHaveLength(7);
-      result.forEach((day: any) => {
-        expect(day).toHaveProperty('date');
-        expect(day).toHaveProperty('count');
-        expect(typeof day.count).toBe('number');
-      });
+      expect(res.action).toBe('CHECKOUT');
+      expect(mockPrisma.attendance.update.mock.calls[0][0].where).toEqual({ id: 'att-001' });
+      expect(mockPrisma.attendance.create).not.toHaveBeenCalled();
     });
 
-    it('should return dates in chronological order (oldest first)', async () => {
-      mockPrisma.attendance.count.mockResolvedValue(0);
-      const result: any = await service.getWeeklyReport('gym-001');
+    it('404s on an unknown code (or a code from another gym)', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null);
+      await expect(service.checkInByQr('nope', 'gym-001')).rejects.toThrow(NotFoundException);
+    });
 
-      for (let i = 1; i < result.length; i++) {
-        expect(new Date(result[i].date).getTime()).toBeGreaterThan(
-          new Date(result[i - 1].date).getTime(),
-        );
-      }
+    it('rejects a deactivated member', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue({ ...mockMember, user: { ...activeUser, isActive: false } });
+      await expect(service.checkInByQr('qr-token-1', 'gym-001')).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when membership is not active', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(null);
+      await expect(service.checkInByQr('qr-token-1', 'gym-001')).rejects.toThrow(BadRequestException);
     });
   });
 
-  // ─── findAll ────────────────────────────────────────────────────────────────
-
-  describe('findAll', () => {
-    it('should return paginated attendance records', async () => {
-      mockPrisma.attendance.findMany.mockResolvedValue([mockAttendance]);
-      mockPrisma.attendance.count.mockResolvedValue(1);
-
-      const result: any = await service.findAll({ page: 1, limit: 20 }, 'gym-001');
-
-      expect(result.data).toHaveLength(1);
-      expect(result.total).toBe(1);
+  describe('adminManualCheckIn (member / trainer / staff by code)', () => {
+    it('checks in a member by memberCode', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockMembership);
+      mockPrisma.attendance.findFirst.mockResolvedValue(null);
+      mockPrisma.attendance.create.mockResolvedValue({});
+      const res = await service.adminManualCheckIn('FH-0001', 'gym-001');
+      expect(res).toEqual({ action: 'CHECKIN', userName: 'John Doe', userRole: 'MEMBER', code: 'FH-0001' });
     });
 
-    it('should filter by date', async () => {
-      mockPrisma.attendance.findMany.mockResolvedValue([]);
-      mockPrisma.attendance.count.mockResolvedValue(0);
+    it('falls through to a trainer by employeeId', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null);
+      mockPrisma.trainer.findFirst.mockResolvedValue({ userId: 'u-t', employeeId: 'EMP-7', user: { firstName: 'Tina', lastName: 'T', role: 'TRAINER', isActive: true } });
+      mockPrisma.attendance.findFirst.mockResolvedValue(null);
+      mockPrisma.attendance.create.mockResolvedValue({});
+      const res = await service.adminManualCheckIn('EMP-7', 'gym-001');
+      expect(res).toEqual({ action: 'CHECKIN', userName: 'Tina T', userRole: 'TRAINER', code: 'EMP-7' });
+      expect(mockPrisma.attendance.create.mock.calls[0][0].data).toEqual({ userId: 'u-t', gymId: 'gym-001', method: 'MANUAL' });
+    });
 
-      await service.findAll({ date: '2025-01-15' }, 'gym-001');
+    it('checks staff out when they already have an open session', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null);
+      mockPrisma.trainer.findFirst.mockResolvedValue(null);
+      mockPrisma.staff.findFirst.mockResolvedValue({ userId: 'u-s', employeeId: 'EMP-9', user: { firstName: 'Sam', lastName: 'S', role: 'STAFF', isActive: true } });
+      mockPrisma.attendance.findFirst.mockResolvedValue({ id: 'att-9' });
+      mockPrisma.attendance.update.mockResolvedValue({});
+      const res = await service.adminManualCheckIn('EMP-9', 'gym-001');
+      expect(res.action).toBe('CHECKOUT');
+      expect(mockPrisma.attendance.update).toHaveBeenCalledWith({ where: { id: 'att-9' }, data: { checkOutTime: expect.any(Date) } });
+    });
 
-      const where = mockPrisma.attendance.findMany.mock.calls[0][0].where;
-      expect(where.checkInTime).toBeDefined();
-      expect(where.checkInTime.gte).toBeInstanceOf(Date);
-      expect(where.checkInTime.lte).toBeInstanceOf(Date);
+    it('404s when nothing matches in this gym', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null);
+      mockPrisma.trainer.findFirst.mockResolvedValue(null);
+      mockPrisma.staff.findFirst.mockResolvedValue(null);
+      await expect(service.adminManualCheckIn('ghost', 'gym-001')).rejects.toThrow(NotFoundException);
     });
   });
 });

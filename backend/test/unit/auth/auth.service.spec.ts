@@ -5,10 +5,12 @@ import {
   ConflictException, UnauthorizedException,
   BadRequestException, NotFoundException,
 } from '@nestjs/common';
-import { AuthService } from '../../../src/auth/auth.service';
+import { AuthService, refreshTokenDigest } from '../../../src/auth/auth.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 import { OtpService } from '../../../src/otp/otp.service';
 import { EmailService } from '../../../src/email/email.service';
+import { TokenBlacklistService } from '../../../src/auth/token-blacklist.service';
+import { AuditService } from '../../../src/common/services/audit.service';
 
 // Mock bcrypt at module level so compare/hash are configurable
 jest.mock('bcrypt', () => ({
@@ -90,6 +92,8 @@ describe('AuthService', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: OtpService, useValue: mockOtpService },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: TokenBlacklistService, useValue: { add: jest.fn(), has: jest.fn().mockResolvedValue(false) } },
+        { provide: AuditService, useValue: { log: jest.fn() } },
       ],
     }).compile();
 
@@ -215,7 +219,7 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('mock.jwt.token');
       expect(result.user.password).toBeUndefined();
       expect(mockPrismaService.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { lastLogin: expect.any(Date) } }),
+        expect.objectContaining({ data: { lastLoginAt: expect.any(Date) } }),
       );
     });
 
@@ -339,16 +343,75 @@ describe('AuthService', () => {
   // ─── generateTokens ──────────────────────────────────────────────────────────
 
   describe('generateTokens', () => {
-    it('should return access token and metadata', () => {
-      const result = service.generateTokens('user-id', 'test@x.com', 'USER');
+    it('should return access + refresh tokens and persist a hash of the refresh token', async () => {
+      mockPrismaService.user.update.mockResolvedValue(mockUser);
+
+      const result = await service.generateTokens('user-id', 'test@x.com', 'MEMBER');
 
       expect(result.accessToken).toBeDefined();
+      expect(result.refreshToken).toBeDefined();
       expect(result.tokenType).toBe('Bearer');
       expect(result.expiresIn).toBeDefined();
+      // Every token carries a jti so it can be revoked via the blacklist
       expect(mockJwtService.sign).toHaveBeenCalledWith(
-        { sub: 'user-id', email: 'test@x.com', role: 'USER' },
+        expect.objectContaining({ sub: 'user-id', email: 'test@x.com', role: 'MEMBER', jti: expect.any(String) }),
         expect.any(Object),
       );
+      // bcrypt truncates at 72 bytes, so the JWT must be digested to a fixed 64-hex
+      // string before hashing — otherwise every refresh token for a user collides.
+      expect(bcryptMock.hash).toHaveBeenCalledWith(refreshTokenDigest('mock.jwt.token'), 10);
+      expect(refreshTokenDigest('mock.jwt.token')).toMatch(/^[0-9a-f]{64}$/);
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-id' },
+        data: { refreshToken: '$2b$12$hashedpassword' },
+      });
+    });
+  });
+
+  describe('refreshTokens — rotation', () => {
+    const header = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+    // Two refresh JWTs for the same user: identical for far more than 72 bytes,
+    // differing only in the jti near the end (exactly the real-world shape).
+    const payloadA = Buffer.from('{"sub":"11111111-2222-3333-4444-555555555555","email":"test@example.com","role":"MEMBER","jti":"aaaaaaaa"}').toString('base64url');
+    const payloadB = Buffer.from('{"sub":"11111111-2222-3333-4444-555555555555","email":"test@example.com","role":"MEMBER","jti":"bbbbbbbb"}').toString('base64url');
+    const tokenA = `${header}.${payloadA}.sigA`;
+    const tokenB = `${header}.${payloadB}.sigB`;
+
+    it('digests differ even though the tokens share a >72-byte prefix', () => {
+      expect(tokenA.slice(0, 72)).toBe(tokenB.slice(0, 72));
+      expect(refreshTokenDigest(tokenA)).not.toBe(refreshTokenDigest(tokenB));
+    });
+
+    it('compares the digest of the presented token, not the raw token', async () => {
+      (mockJwtService as any).verify = jest.fn().mockReturnValue({ sub: mockUser.id });
+      mockPrismaService.user.findUnique.mockResolvedValue({ ...mockUser, refreshToken: 'stored-hash' });
+      mockPrismaService.user.update.mockResolvedValue(mockUser);
+      bcryptMock.compare.mockResolvedValue(true);
+
+      await service.refreshTokens(tokenA);
+
+      expect(bcryptMock.compare).toHaveBeenCalledWith(refreshTokenDigest(tokenA), 'stored-hash');
+    });
+
+    it('rejects a token whose digest does not match the stored hash (reuse after rotation)', async () => {
+      (mockJwtService as any).verify = jest.fn().mockReturnValue({ sub: mockUser.id });
+      mockPrismaService.user.findUnique.mockResolvedValue({ ...mockUser, refreshToken: 'stored-hash' });
+      bcryptMock.compare.mockResolvedValue(false);
+
+      await expect(service.refreshTokens(tokenA)).rejects.toThrow(UnauthorizedException);
+      expect(mockPrismaService.user.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the user has no stored refresh token (logged out)', async () => {
+      (mockJwtService as any).verify = jest.fn().mockReturnValue({ sub: mockUser.id });
+      mockPrismaService.user.findUnique.mockResolvedValue({ ...mockUser, refreshToken: null });
+      await expect(service.refreshTokens(tokenA)).rejects.toThrow(UnauthorizedException);
+      expect(bcryptMock.compare).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unverifiable JWT', async () => {
+      (mockJwtService as any).verify = jest.fn(() => { throw new Error('bad'); });
+      await expect(service.refreshTokens('garbage')).rejects.toThrow(UnauthorizedException);
     });
   });
 });

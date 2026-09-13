@@ -1,22 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../../../src/email/email.service';
-import * as nodemailer from 'nodemailer';
 
-jest.mock('nodemailer');
+/**
+ * EmailService talks to the Resend HTTP API via global fetch (no nodemailer).
+ * Every test inspects the JSON body that would have been POSTed.
+ */
 
-const mockTransporter = {
-  sendMail: jest.fn().mockResolvedValue({ messageId: 'mock-message-id' }),
-  verify: jest.fn().mockResolvedValue(true),
-};
+const fetchMock = jest.fn();
+(global as any).fetch = fetchMock;
 
-(nodemailer.createTransport as jest.Mock).mockReturnValue(mockTransporter);
+const okResponse = () => ({ ok: true, status: 200, json: async () => ({ id: 'email_123' }), text: async () => '' });
+const sentBody = (call = 0) => JSON.parse(fetchMock.mock.calls[call][1].body);
 
 const mockConfigService = {
   get: jest.fn((key: string, fallback?: any) => {
     const config: Record<string, any> = {
-      SMTP_USER: 'rivainvitation@gmail.com',
-      SMTP_PASS: 'kjfshqiddkhtjgqe',
+      RESEND_API_KEY: 're_test_key',
+      EMAIL_FROM_ADDRESS: 'noreply@activeboost.test',
       FRONTEND_URL: 'http://localhost:3000',
     };
     return config[key] ?? fallback;
@@ -28,153 +29,127 @@ describe('EmailService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        EmailService,
-        { provide: ConfigService, useValue: mockConfigService },
-      ],
+      providers: [EmailService, { provide: ConfigService, useValue: mockConfigService }],
     }).compile();
-
-    service = module.get<EmailService>(EmailService);
-    jest.clearAllMocks();
-    mockTransporter.sendMail.mockResolvedValue({ messageId: 'msg-id' });
+    service = module.get(EmailService);
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(okResponse());
   });
-
-  // ─── sendMail ───────────────────────────────────────────────────────────────
 
   describe('sendMail', () => {
-    it('should send email and return true on success', async () => {
-      const result = await service.sendMail({
-        to: 'user@example.com',
-        subject: 'Test',
-        html: '<p>Hello</p>',
-      });
+    it('POSTs to Resend with the bearer key and returns true', async () => {
+      const result = await service.sendMail({ to: 'user@example.com', subject: 'Test', html: '<p>Hello</p>' });
 
       expect(result).toBe(true);
-      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          from: expect.stringContaining('rivainvitation@gmail.com'),
-          to: 'user@example.com',
-          subject: 'Test',
-        }),
-      );
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe('https://api.resend.com/emails');
+      expect(init.method).toBe('POST');
+      expect(init.headers.Authorization).toBe('Bearer re_test_key');
+      expect(sentBody()).toEqual({ from: 'ActiveBoost <noreply@activeboost.test>', to: 'user@example.com', subject: 'Test', html: '<p>Hello</p>' });
     });
 
-    it('should return false on SMTP failure', async () => {
-      mockTransporter.sendMail.mockRejectedValue(new Error('SMTP error'));
+    it('returns false (does not throw) on a non-2xx response', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 422, text: async () => 'bad', json: async () => ({}) });
+      await expect(service.sendMail({ to: 'u@x.com', subject: 's', html: 'h' })).resolves.toBe(false);
+    });
 
-      const result = await service.sendMail({
-        to: 'user@example.com',
-        subject: 'Test',
-        html: '<p>Hello</p>',
-      });
-
-      expect(result).toBe(false);
+    it('returns false on a network failure', async () => {
+      fetchMock.mockRejectedValue(new Error('ECONNRESET'));
+      await expect(service.sendMail({ to: 'u@x.com', subject: 's', html: 'h' })).resolves.toBe(false);
     });
   });
-
-  // ─── sendOtpEmail ────────────────────────────────────────────────────────────
 
   describe('sendOtpEmail', () => {
-    it('should send OTP email with correct subject and content', async () => {
-      const result = await service.sendOtpEmail(
-        'user@example.com', '847291', 'EMAIL_VERIFICATION', 'John',
-      );
-
+    it('puts the code in subject and body, with expiry and security notice', async () => {
+      const result = await service.sendOtpEmail('user@example.com', '847291', 'EMAIL_VERIFICATION', 'John');
       expect(result).toBe(true);
-      const callArgs = mockTransporter.sendMail.mock.calls[0][0];
-      expect(callArgs.subject).toContain('847291');
-      expect(callArgs.html).toContain('847291');
-      expect(callArgs.html).toContain('John');
-      expect(callArgs.html).toContain('10 minutes');
+      const body = sentBody();
+      expect(body.subject).toContain('847291');
+      expect(body.subject).toContain('Verify Your Email');
+      expect(body.html).toContain('847291');
+      expect(body.html).toContain('John');
+      expect(body.html).toContain('10 minutes');
+      expect(body.html).toContain('Security Notice');
+      expect(body.html).toContain('Never share');
     });
 
-    it('should include security notice in OTP email', async () => {
-      await service.sendOtpEmail('u@x.com', '000000', 'PASSWORD_RESET', 'User');
-      const html = mockTransporter.sendMail.mock.calls[0][0].html;
-      expect(html).toContain('Security Notice');
-      expect(html).toContain('Never share');
-    });
-
-    it('should handle different OTP purposes', async () => {
-      const purposes = ['EMAIL_VERIFICATION', 'LOGIN_2FA', 'PASSWORD_RESET'];
-      for (const purpose of purposes) {
-        jest.clearAllMocks();
-        mockTransporter.sendMail.mockResolvedValue({ messageId: 'x' });
-        await service.sendOtpEmail('u@x.com', '123456', purpose, 'User');
-        expect(mockTransporter.sendMail).toHaveBeenCalledTimes(1);
-      }
+    it.each([
+      ['EMAIL_VERIFICATION', 'Verify Your Email'],
+      ['LOGIN_2FA', 'Login Verification'],
+      ['PASSWORD_RESET', 'Reset Your Password'],
+      ['SOMETHING_ELSE', 'OTP Verification'],
+    ])('labels purpose %s as "%s"', async (purpose, label) => {
+      await service.sendOtpEmail('u@x.com', '123456', purpose, 'User');
+      expect(sentBody().subject).toContain(label);
     });
   });
-
-  // ─── sendWelcomeEmail ────────────────────────────────────────────────────────
 
   describe('sendWelcomeEmail', () => {
-    it('should send welcome email with role-specific content for USER', async () => {
-      await service.sendWelcomeEmail('user@example.com', 'John', 'USER');
-      const html = mockTransporter.sendMail.mock.calls[0][0].html;
-      expect(html).toContain('John');
-      expect(html).toContain('QR check-in');
-    });
-
-    it('should send welcome email with admin content for ADMIN', async () => {
-      await service.sendWelcomeEmail('admin@example.com', 'Admin', 'ADMIN');
-      const html = mockTransporter.sendMail.mock.calls[0][0].html;
-      expect(html).toContain('members');
+    it('greets the member by name and mentions QR check-in', async () => {
+      await service.sendWelcomeEmail('user@example.com', 'John', 'MEMBER');
+      const body = sentBody();
+      expect(body.subject).toBe('Welcome to ActiveBoost, John!');
+      expect(body.html).toContain('John');
+      expect(body.html).toContain('QR check-in');
     });
   });
-
-  // ─── sendMembershipRenewalReminder ───────────────────────────────────────────
 
   describe('sendMembershipRenewalReminder', () => {
-    it('should include days remaining in email', async () => {
+    it('includes plan type and days remaining in the subject', async () => {
       await service.sendMembershipRenewalReminder('u@x.com', 'John', 5, 'MONTHLY');
-      const callArgs = mockTransporter.sendMail.mock.calls[0][0];
-      expect(callArgs.subject).toContain('5 days');
-      expect(callArgs.html).toContain('5');
+      const body = sentBody();
+      expect(body.subject).toContain('MONTHLY');
+      expect(body.subject).toContain('5 days');
+      expect(body.html).toContain('days remaining');
     });
 
-    it('should use urgent prefix for 2 days or less', async () => {
+    it('escalates the heading to urgent at ≤2 days', async () => {
       await service.sendMembershipRenewalReminder('u@x.com', 'John', 1, 'MONTHLY');
-      const subject = mockTransporter.sendMail.mock.calls[0][0].subject;
-      expect(subject).toContain('1 days');
+      expect(sentBody().html).toContain('Urgent');
     });
   });
-
-  // ─── sendPaymentConfirmation ──────────────────────────────────────────────────
 
   describe('sendPaymentConfirmation', () => {
-    it('should include formatted amount and invoice number', async () => {
+    it('includes invoice number and PAID status', async () => {
       await service.sendPaymentConfirmation('u@x.com', 'John', 2999, 'INV-001');
-      const html = mockTransporter.sendMail.mock.calls[0][0].html;
-      expect(html).toContain('INV-001');
-      expect(html).toContain('PAID');
+      const body = sentBody();
+      expect(body.subject).toContain('INV-001');
+      expect(body.html).toContain('INV-001');
+      expect(body.html).toContain('PAID');
     });
   });
 
-  // ─── sendPasswordChangedAlert ─────────────────────────────────────────────────
+  describe('sendAccountCreatedEmail', () => {
+    it('shows the role label, temporary password and member code', async () => {
+      await service.sendAccountCreatedEmail('u@x.com', 'Sam', 'TRAINER', 'Temp@123', 'FH-0042');
+      const body = sentBody();
+      expect(body.subject).toContain('Trainer');
+      expect(body.html).toContain('Temp@123');
+      expect(body.html).toContain('FH-0042');
+      expect(body.html).toContain('http://localhost:3000/login');
+    });
+  });
 
   describe('sendPasswordChangedAlert', () => {
-    it('should send password changed alert email', async () => {
+    it('sends the alert', async () => {
       await service.sendPasswordChangedAlert('u@x.com', 'John');
-      const callArgs = mockTransporter.sendMail.mock.calls[0][0];
-      expect(callArgs.subject).toContain('password');
-      expect(callArgs.html).toContain('Wasn\'t you');
+      const body = sentBody();
+      expect(body.to).toBe('u@x.com');
+      expect(body.subject.toLowerCase()).toContain('password');
     });
   });
 
-  // ─── verifyConnection ────────────────────────────────────────────────────────
-
   describe('verifyConnection', () => {
-    it('should return true when SMTP is reachable', async () => {
-      mockTransporter.verify.mockResolvedValue(true);
-      const result = await service.verifyConnection();
-      expect(result).toBe(true);
+    it('is true when an API key is configured (no network probe)', async () => {
+      await expect(service.verifyConnection()).resolves.toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('should return false when SMTP fails', async () => {
-      mockTransporter.verify.mockRejectedValue(new Error('SMTP unreachable'));
-      const result = await service.verifyConnection();
-      expect(result).toBe(false);
+    it('is false when no API key is configured', async () => {
+      const module = await Test.createTestingModule({
+        providers: [EmailService, { provide: ConfigService, useValue: { get: (_k: string, d?: any) => d } }],
+      }).compile();
+      await expect(module.get(EmailService).verifyConnection()).resolves.toBe(false);
     });
   });
 });

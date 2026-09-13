@@ -13,7 +13,8 @@ const mockUserSnapshot = {
 };
 
 const mockPrisma = {
-  user: { findUnique: jest.fn(), delete: jest.fn() },
+  // remove() snapshots via the tenant-scoped findFirst; exportOwnData() uses findUnique.
+  user: { findFirst: jest.fn(), findUnique: jest.fn(), delete: jest.fn() },
   $transaction: jest.fn(),
 };
 
@@ -39,7 +40,7 @@ describe('UsersService — data rights (erasure + export)', () => {
 
   describe('remove (right to erasure)', () => {
     it('logs a USER_ERASED audit entry after the transaction commits', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(mockUserSnapshot);
+      mockPrisma.user.findFirst.mockResolvedValue(mockUserSnapshot);
       mockPrisma.$transaction.mockImplementation(async (fn: any) => fn({
         trainer: { findUnique: jest.fn().mockResolvedValue(null) },
         staff: { findUnique: jest.fn().mockResolvedValue(null) },
@@ -64,7 +65,7 @@ describe('UsersService — data rights (erasure + export)', () => {
     });
 
     it('writes the audit entry even though the transaction deletes the user’s own audit rows', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(mockUserSnapshot);
+      mockPrisma.user.findFirst.mockResolvedValue(mockUserSnapshot);
       const auditLogDeleteMany = jest.fn();
       mockPrisma.$transaction.mockImplementation(async (fn: any) => fn({
         trainer: { findUnique: jest.fn().mockResolvedValue(null) },

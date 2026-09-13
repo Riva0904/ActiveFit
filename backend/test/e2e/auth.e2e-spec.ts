@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
+import { OtpService } from '../../src/otp/otp.service';
 
 /**
  * E2E tests for complete Auth flows.
@@ -33,6 +34,11 @@ describe('Auth E2E — Full Flow', () => {
   let authToken: string;
 
   beforeAll(async () => {
+    // Rate limiting is exercised by its own unit tests; here the suite fires several
+    // login/forgot-password calls per second and would otherwise trip the 429s.
+    // ThrottlerGuard is an APP_GUARD (not @UseGuards), so overrideGuard() cannot reach
+    // it — AppModule's ThrottlerModule honours this env flag instead.
+    process.env.DISABLE_THROTTLE = 'true';
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -45,7 +51,7 @@ describe('Auth E2E — Full Flow', () => {
     prisma = moduleFixture.get<PrismaService>(PrismaService);
 
     // Spy on OTP service to capture the generated code
-    const otpService = moduleFixture.get<any>('OtpService');
+    const otpService = moduleFixture.get(OtpService, { strict: false }) as any;
     if (otpService) {
       const original = otpService.sendOtp.bind(otpService);
       jest.spyOn(otpService, 'sendOtp').mockImplementation(async (...args) => {
@@ -95,6 +101,23 @@ describe('Auth E2E — Full Flow', () => {
 
       expect(res.status).toBe(400);
     });
+
+    it('never escalates — a smuggled role/gymId is rejected (or stripped) and the row stays MEMBER', async () => {
+      const email = `e2e_privesc_${Date.now()}@example.com`;
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/auth/register')
+        .send({ firstName: 'Eve', lastName: 'M', email, password: testPassword, role: 'SUPER_ADMIN', gymId: 'gym-victim' });
+
+      // Production pipe (forbidNonWhitelisted) → 400; this fixture's pipe only whitelists → 201.
+      expect([400, 201]).toContain(res.status);
+      const row = await prisma.user.findUnique({ where: { email } });
+      if (row) {
+        expect(row.role).toBe('MEMBER');
+        expect(row.gymId).toBeNull();
+        await prisma.otpCode.deleteMany({ where: { email } }).catch(() => {});
+        await prisma.user.delete({ where: { id: row.id } }).catch(() => {});
+      }
+    }, 20000); // bcrypt(12) + OTP dispatch can exceed jest's 5s default
   });
 
   // ─── Email Verification ──────────────────────────────────────────────────────
@@ -125,8 +148,12 @@ describe('Auth E2E — Full Flow', () => {
         .send({ email: testEmail, otp: otp.code });
 
       expect(res.status).toBe(200);
-      expect(res.body.accessToken).toBeDefined();
-      authToken = res.body.accessToken;
+      // Tokens travel as httpOnly cookies, never in the body
+      expect(res.body.accessToken).toBeUndefined();
+      const cookies = res.headers['set-cookie'] as unknown as string[];
+      expect(cookies.some((c) => c.startsWith('ab_token=') && /HttpOnly/i.test(c))).toBe(true);
+      expect(cookies.some((c) => c.startsWith('ab_refresh=') && c.includes('Path=/api/v1/auth/refresh'))).toBe(true);
+      expect(res.body.user.isEmailVerified).toBe(true);
     });
   });
 
@@ -138,14 +165,62 @@ describe('Auth E2E — Full Flow', () => {
         .post('/api/v1/auth/login')
         .send({ email: testEmail, password: testPassword });
 
-      if (res.status === 200) {
-        expect(res.body.accessToken).toBeDefined();
-        expect(res.body.user.email).toBe(testEmail);
-        authToken = res.body.accessToken;
-      } else {
-        // May still be unverified in test env — acceptable
-        expect([200, 401]).toContain(res.status);
-      }
+      expect(res.status).toBe(200);
+      expect(res.body.user.email).toBe(testEmail);
+      expect(res.body.user.password).toBeUndefined();
+      expect(res.body.accessToken).toBeUndefined();
+      const cookies = res.headers['set-cookie'] as unknown as string[];
+      authToken = cookies.find((c) => c.startsWith('ab_token='))!.split(';')[0];
+      expect(authToken).toBeDefined();
+    });
+
+    it('200 — the auth cookie grants access to a protected route', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/auth/profile')
+        .set('Cookie', authToken);
+      expect(res.status).toBe(200);
+      expect(res.body.email).toBe(testEmail);
+      expect(res.body.role).toBe('MEMBER');
+    });
+  });
+
+  // ─── Refresh rotation (mobile flow: tokens in body) ──────────────────────────
+
+  describe('POST /api/v1/auth/mobile-refresh', () => {
+    it('rotates the refresh token and rejects reuse of the previous one', async () => {
+      const login = await request(app.getHttpServer())
+        .post('/api/v1/auth/mobile-login')
+        .send({ email: testEmail, password: testPassword });
+      expect(login.status).toBe(200);
+      const first = login.body.refreshToken;
+      expect(first).toBeDefined();
+
+      const rotated = await request(app.getHttpServer())
+        .post('/api/v1/auth/mobile-refresh')
+        .send({ refreshToken: first });
+      expect(rotated.status).toBe(200);
+      expect(rotated.body.accessToken).toBeDefined();
+      expect(rotated.body.refreshToken).not.toBe(first);
+
+      // The superseded token must be dead — this is what bcrypt's 72-byte
+      // truncation silently broke before tokens were digested first.
+      const reuse = await request(app.getHttpServer())
+        .post('/api/v1/auth/mobile-refresh')
+        .send({ refreshToken: first });
+      expect(reuse.status).toBe(401);
+
+      // ...while the current one still works.
+      const current = await request(app.getHttpServer())
+        .post('/api/v1/auth/mobile-refresh')
+        .send({ refreshToken: rotated.body.refreshToken });
+      expect(current.status).toBe(200);
+    });
+
+    it('401 — garbage refresh token', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/auth/mobile-refresh')
+        .send({ refreshToken: 'not.a.jwt' });
+      expect(res.status).toBe(401);
     });
 
     it('401 — should reject wrong password', async () => {

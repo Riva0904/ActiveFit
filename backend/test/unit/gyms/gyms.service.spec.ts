@@ -13,30 +13,24 @@ const mockGym = {
   state: 'Karnataka',
   pincode: '560001',
   status: 'ACTIVE',
-  subscriptionPlan: 'PROFESSIONAL',
-  subscriptionStatus: 'ACTIVE',
-  adminId: 'admin-001',
+  saasPlan: 'PROFESSIONAL',
+  deletedAt: null,
   createdAt: new Date(),
 };
 
 const mockPrisma = {
   gym: {
     findMany: jest.fn(),
+    findFirst: jest.fn(),
     findUnique: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
-    delete: jest.fn(),
     count: jest.fn(),
   },
-  user: { count: jest.fn() },
   member: { count: jest.fn() },
-  membership: { count: jest.fn() },
   memberSubscription: { count: jest.fn() },
   attendance: { count: jest.fn() },
-  payment: {
-    aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 50000 } }),
-    count: jest.fn(),
-  },
+  payment: { aggregate: jest.fn(), count: jest.fn() },
 };
 
 describe('GymsService', () => {
@@ -44,20 +38,14 @@ describe('GymsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        GymsService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [GymsService, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
-
-    service = module.get<GymsService>(GymsService);
+    service = module.get(GymsService);
     jest.clearAllMocks();
   });
 
-  // ─── findAll ────────────────────────────────────────────────────────────────
-
   describe('findAll', () => {
-    it('should return paginated gyms', async () => {
+    it('returns paginated gyms, excluding soft-deleted', async () => {
       mockPrisma.gym.findMany.mockResolvedValue([mockGym]);
       mockPrisma.gym.count.mockResolvedValue(1);
 
@@ -65,128 +53,109 @@ describe('GymsService', () => {
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
+      expect(mockPrisma.gym.findMany.mock.calls[0][0].where.deletedAt).toBeNull();
     });
 
-    it('should filter by status', async () => {
+    it('filters by status', async () => {
       mockPrisma.gym.findMany.mockResolvedValue([]);
       mockPrisma.gym.count.mockResolvedValue(0);
-
       await service.findAll({ status: 'PENDING' });
-
-      const where = mockPrisma.gym.findMany.mock.calls[0][0].where;
-      expect(where.status).toBe('PENDING');
+      expect(mockPrisma.gym.findMany.mock.calls[0][0].where.status).toBe('PENDING');
     });
 
-    it('should search by name and city', async () => {
+    it('searches by name and city', async () => {
       mockPrisma.gym.findMany.mockResolvedValue([]);
       mockPrisma.gym.count.mockResolvedValue(0);
-
       await service.findAll({ search: 'fitness' });
-
       const where = mockPrisma.gym.findMany.mock.calls[0][0].where;
-      expect(where.OR).toBeDefined();
+      expect(where.OR).toHaveLength(2);
     });
   });
 
-  // ─── findOne ────────────────────────────────────────────────────────────────
-
   describe('findOne', () => {
-    it('should return gym with admin and counts', async () => {
-      mockPrisma.gym.findUnique.mockResolvedValue(mockGym);
+    it('returns the gym with member/trainer counts', async () => {
+      mockPrisma.gym.findFirst.mockResolvedValue(mockGym);
       const result = await service.findOne('gym-001');
       expect(result).toEqual(mockGym);
+      expect(mockPrisma.gym.findFirst.mock.calls[0][0].where).toEqual({ id: 'gym-001', deletedAt: null });
     });
 
-    it('should throw NotFoundException if not found', async () => {
-      mockPrisma.gym.findUnique.mockResolvedValue(null);
+    it('throws NotFoundException when missing or soft-deleted', async () => {
+      mockPrisma.gym.findFirst.mockResolvedValue(null);
       await expect(service.findOne('bad-id')).rejects.toThrow(NotFoundException);
     });
   });
 
-  // ─── create ─────────────────────────────────────────────────────────────────
-
   describe('create', () => {
-    it('should create and return gym', async () => {
+    it('creates and returns the gym', async () => {
       mockPrisma.gym.create.mockResolvedValue(mockGym);
-      const result = await service.create({ name: 'FitnessHub', email: 'x@x.com' });
-      expect(result).toEqual(mockGym);
+      await expect(service.create({ name: 'FitnessHub', email: 'x@x.com' })).resolves.toEqual(mockGym);
     });
   });
 
-  // ─── update ─────────────────────────────────────────────────────────────────
-
   describe('update', () => {
-    it('should update gym when called by Super Admin', async () => {
+    it('lets SUPER_ADMIN update any gym', async () => {
       mockPrisma.gym.findUnique.mockResolvedValue(mockGym);
       mockPrisma.gym.update.mockResolvedValue({ ...mockGym, name: 'Updated' });
 
-      await service.update('gym-001', { name: 'Updated' }, { role: 'SUPER_ADMIN', id: 'sa-001' });
+      await service.update('gym-001', { name: 'Updated' }, { role: 'SUPER_ADMIN', id: 'sa-001', gymId: null });
 
-      expect(mockPrisma.gym.update).toHaveBeenCalledWith({
-        where: { id: 'gym-001' },
-        data: { name: 'Updated' },
-      });
+      expect(mockPrisma.gym.update).toHaveBeenCalledWith({ where: { id: 'gym-001' }, data: { name: 'Updated' } });
     });
 
-    it('should allow Admin to update own gym', async () => {
-      mockPrisma.gym.findUnique.mockResolvedValue({ ...mockGym, adminId: 'admin-001' });
+    it('lets a GYM_ADMIN update their own gym', async () => {
+      mockPrisma.gym.findUnique.mockResolvedValue(mockGym);
       mockPrisma.gym.update.mockResolvedValue(mockGym);
-
-      await service.update('gym-001', {}, { role: 'ADMIN', id: 'admin-001' });
+      await service.update('gym-001', {}, { role: 'GYM_ADMIN', id: 'admin-001', gymId: 'gym-001' });
       expect(mockPrisma.gym.update).toHaveBeenCalled();
     });
 
-    it('should throw ForbiddenException if Admin tries to update another gym', async () => {
-      mockPrisma.gym.findUnique.mockResolvedValue({ ...mockGym, adminId: 'other-admin' });
-
+    it('throws ForbiddenException when a GYM_ADMIN targets another gym', async () => {
+      mockPrisma.gym.findUnique.mockResolvedValue(mockGym);
       await expect(
-        service.update('gym-001', {}, { role: 'ADMIN', id: 'admin-001' }),
+        service.update('gym-001', {}, { role: 'GYM_ADMIN', id: 'admin-001', gymId: 'gym-OTHER' }),
       ).rejects.toThrow(ForbiddenException);
+      expect(mockPrisma.gym.update).not.toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException for non-existent gym', async () => {
+    it('throws NotFoundException for a non-existent gym', async () => {
       mockPrisma.gym.findUnique.mockResolvedValue(null);
       await expect(service.update('bad', {}, { role: 'SUPER_ADMIN', id: 'x' })).rejects.toThrow(NotFoundException);
     });
   });
 
-  // ─── updateStatus ────────────────────────────────────────────────────────────
-
   describe('updateStatus', () => {
-    it('should update gym status', async () => {
-      mockPrisma.gym.findUnique.mockResolvedValue(mockGym);
+    it('updates the status', async () => {
+      mockPrisma.gym.findFirst.mockResolvedValue(mockGym);
       mockPrisma.gym.update.mockResolvedValue({ ...mockGym, status: 'SUSPENDED' });
-
       await service.updateStatus('gym-001', 'SUSPENDED' as any);
+      expect(mockPrisma.gym.update).toHaveBeenCalledWith({ where: { id: 'gym-001' }, data: { status: 'SUSPENDED' } });
+    });
+  });
+
+  describe('remove', () => {
+    it('soft-deletes (deletedAt + INACTIVE) instead of hard-deleting', async () => {
+      mockPrisma.gym.findFirst.mockResolvedValue(mockGym);
+      mockPrisma.gym.update.mockResolvedValue(mockGym);
+
+      const res = await service.remove('gym-001');
 
       expect(mockPrisma.gym.update).toHaveBeenCalledWith({
         where: { id: 'gym-001' },
-        data: { status: 'SUSPENDED' },
+        data: { deletedAt: expect.any(Date), status: 'INACTIVE' },
       });
-    });
-  });
-
-  // ─── remove ─────────────────────────────────────────────────────────────────
-
-  describe('remove', () => {
-    it('should delete gym if it exists', async () => {
-      mockPrisma.gym.findUnique.mockResolvedValue(mockGym);
-      mockPrisma.gym.delete.mockResolvedValue(mockGym);
-
-      await service.remove('gym-001');
-      expect(mockPrisma.gym.delete).toHaveBeenCalledWith({ where: { id: 'gym-001' } });
+      expect(res.message).toContain('deleted');
     });
 
-    it('should throw NotFoundException for non-existent gym', async () => {
-      mockPrisma.gym.findUnique.mockResolvedValue(null);
+    it('throws NotFoundException for a non-existent gym', async () => {
+      mockPrisma.gym.findFirst.mockResolvedValue(null);
       await expect(service.remove('bad')).rejects.toThrow(NotFoundException);
+      expect(mockPrisma.gym.update).not.toHaveBeenCalled();
     });
   });
-
-  // ─── getStats ────────────────────────────────────────────────────────────────
 
   describe('getStats', () => {
-    it('should return gym statistics', async () => {
+    it('returns gym statistics', async () => {
       mockPrisma.member.count.mockResolvedValue(150);
       mockPrisma.memberSubscription.count.mockResolvedValue(120);
       mockPrisma.attendance.count.mockResolvedValue(45);
@@ -195,17 +164,12 @@ describe('GymsService', () => {
 
       const result: any = await service.getStats('gym-001');
 
-      expect(result.totalMembers).toBe(150);
-      expect(result.activeMembers).toBe(120);
-      expect(result.todayAttendance).toBe(45);
-      expect(result.monthlyRevenue).toBe(75000);
-      expect(result.pendingPayments).toBe(3);
-      // totalMembers must come from Member (deletedAt: null), not raw User count —
-      // regression guard for the earlier fix that made these consistent.
+      expect(result).toEqual({ totalMembers: 150, activeMembers: 120, todayAttendance: 45, monthlyRevenue: 75000, pendingPayments: 3 });
+      // totalMembers comes from Member (deletedAt: null), not a raw User count
       expect(mockPrisma.member.count).toHaveBeenCalledWith({ where: { gymId: 'gym-001', deletedAt: null } });
     });
 
-    it('should return 0 for missing revenue data', async () => {
+    it('returns 0 revenue when there are no payments', async () => {
       mockPrisma.member.count.mockResolvedValue(0);
       mockPrisma.memberSubscription.count.mockResolvedValue(0);
       mockPrisma.attendance.count.mockResolvedValue(0);

@@ -1,37 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { MembershipsService } from '../../../src/memberships/memberships.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 
 const now = new Date();
 const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-const mockMembership = {
-  id: 'mem-001',
-  type: 'MONTHLY',
+const mockPlan = { id: 'plan-001', gymId: 'gym-001', name: 'Monthly Basic', type: 'MONTHLY', durationMonths: 1, price: 2000 };
+const mockMember = { id: 'member-001', userId: 'user-001', gymId: 'gym-001' };
+const mockSub = {
+  id: 'sub-001',
+  memberId: 'member-001',
+  gymId: 'gym-001',
+  planId: 'plan-001',
   status: 'ACTIVE',
-  price: 2000,
   startDate: now,
   endDate: monthFromNow,
+  amount: 2000,
   autoRenew: false,
-  userId: 'user-001',
-  gymId: 'gym-001',
   createdAt: now,
-  user: { id: 'user-001', firstName: 'John', lastName: 'Doe', email: 'j@x.com', phone: '+91 9876543210' },
+  updatedAt: now,
+  plan: mockPlan,
+  member: { ...mockMember, user: { id: 'user-001', firstName: 'John', lastName: 'Doe', email: 'j@x.com', phone: null, avatar: null } },
 };
 
 const mockPrisma = {
-  membership: {
-    findMany: jest.fn(),
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    updateMany: jest.fn(),
-    count: jest.fn(),
+  memberSubscription: {
+    findMany: jest.fn(), findFirst: jest.fn(), create: jest.fn(),
+    update: jest.fn(), updateMany: jest.fn(), count: jest.fn(),
   },
-  invoice: {
-    create: jest.fn().mockResolvedValue({ id: 'inv-001' }),
-  },
+  member: { findFirst: jest.fn() },
+  membershipPlan: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn(), update: jest.fn() },
 };
 
 describe('MembershipsService', () => {
@@ -39,157 +38,211 @@ describe('MembershipsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        MembershipsService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [MembershipsService, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
-
-    service = module.get<MembershipsService>(MembershipsService);
+    service = module.get(MembershipsService);
     jest.clearAllMocks();
   });
 
-  // ─── findAll ────────────────────────────────────────────────────────────────
-
   describe('findAll', () => {
-    it('should return paginated memberships', async () => {
-      mockPrisma.membership.findMany.mockResolvedValue([mockMembership]);
-      mockPrisma.membership.count.mockResolvedValue(1);
+    it('returns paginated, flattened subscriptions for a gym', async () => {
+      mockPrisma.memberSubscription.findMany.mockResolvedValue([mockSub]);
+      mockPrisma.memberSubscription.count.mockResolvedValue(1);
 
       const result: any = await service.findAll({ page: 1, limit: 10 }, 'gym-001');
 
-      expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
+      expect(result.data[0]).toMatchObject({ id: 'sub-001', type: 'MONTHLY', user: { firstName: 'John' } });
+      expect(mockPrisma.memberSubscription.findMany.mock.calls[0][0].where.gymId).toBe('gym-001');
     });
 
-    it('should filter by status', async () => {
-      mockPrisma.membership.findMany.mockResolvedValue([]);
-      mockPrisma.membership.count.mockResolvedValue(0);
-
+    it('filters by status', async () => {
+      mockPrisma.memberSubscription.findMany.mockResolvedValue([]);
+      mockPrisma.memberSubscription.count.mockResolvedValue(0);
       await service.findAll({ status: 'EXPIRED' }, 'gym-001');
+      expect(mockPrisma.memberSubscription.findMany.mock.calls[0][0].where.status).toBe('EXPIRED');
+    });
 
-      const where = mockPrisma.membership.findMany.mock.calls[0][0].where;
-      expect(where.status).toBe('EXPIRED');
+    it('resolves userId → memberId and returns empty when the user has no member profile', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null);
+      const result: any = await service.findAll({ userId: 'user-x' }, 'gym-001');
+      expect(result).toEqual({ data: [], total: 0, page: 1, limit: 10, totalPages: 0 });
+      expect(mockPrisma.memberSubscription.findMany).not.toHaveBeenCalled();
+    });
+
+    it('scopes to the member when userId resolves', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.memberSubscription.findMany.mockResolvedValue([]);
+      mockPrisma.memberSubscription.count.mockResolvedValue(0);
+      await service.findAll({ userId: 'user-001' }, 'gym-001');
+      expect(mockPrisma.memberSubscription.findMany.mock.calls[0][0].where.memberId).toBe('member-001');
     });
   });
-
-  // ─── findOne ────────────────────────────────────────────────────────────────
 
   describe('findOne', () => {
-    it('should return membership with user details', async () => {
-      mockPrisma.membership.findUnique.mockResolvedValue(mockMembership);
-      const result = await service.findOne('mem-001');
-      expect(result).toEqual(mockMembership);
+    it('returns the subscription with plan and member.user', async () => {
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockSub);
+      const result: any = await service.findOne('sub-001', 'sa', 'SUPER_ADMIN');
+      expect(result.id).toBe('sub-001');
     });
 
-    it('should throw NotFoundException for unknown id', async () => {
-      mockPrisma.membership.findUnique.mockResolvedValue(null);
-      await expect(service.findOne('bad')).rejects.toThrow(NotFoundException);
+    it('adds the gym filter for non-super-admin callers', async () => {
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockSub);
+      await service.findOne('sub-001', 'admin', 'GYM_ADMIN', 'gym-001');
+      expect(mockPrisma.memberSubscription.findFirst.mock.calls[0][0].where).toMatchObject({ id: 'sub-001', gymId: 'gym-001' });
+    });
+
+    it('throws NotFoundException for an unknown id', async () => {
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(null);
+      await expect(service.findOne('bad', 'sa', 'SUPER_ADMIN')).rejects.toThrow(NotFoundException);
     });
   });
-
-  // ─── create ─────────────────────────────────────────────────────────────────
 
   describe('create', () => {
-    it('should create membership and generate invoice', async () => {
-      mockPrisma.membership.create.mockResolvedValue(mockMembership);
+    const base = { userId: 'user-001', gymId: 'gym-001', amount: 2000 };
 
-      const result = await service.create({
-        type: 'MONTHLY', price: 2000, startDate: now, endDate: monthFromNow,
-        userId: 'user-001', gymId: 'gym-001',
-      });
-
-      expect(mockPrisma.membership.create).toHaveBeenCalled();
-      expect(mockPrisma.invoice.create).toHaveBeenCalled();
-      expect(result).toEqual(mockMembership);
+    beforeEach(() => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(null); // no active sub yet
+      mockPrisma.memberSubscription.create.mockResolvedValue(mockSub);
     });
 
-    it('should calculate 18% tax in invoice', async () => {
-      mockPrisma.membership.create.mockResolvedValue(mockMembership);
+    it('throws NotFoundException when the user is not a member of the gym', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null);
+      await expect(service.create({ ...base, planId: 'plan-001' })).rejects.toThrow(NotFoundException);
+    });
 
-      await service.create({
-        type: 'MONTHLY', price: 2000, startDate: now, endDate: monthFromNow,
-        userId: 'user-001', gymId: 'gym-001',
-      });
+    it('throws ConflictException when an ACTIVE subscription already exists', async () => {
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockSub);
+      await expect(service.create({ ...base, planId: 'plan-001' })).rejects.toThrow(ConflictException);
+      expect(mockPrisma.memberSubscription.create).not.toHaveBeenCalled();
+    });
 
-      const invoiceData = mockPrisma.invoice.create.mock.calls[0][0].data;
-      expect(invoiceData.tax).toBe(2000 * 0.18);
-      expect(invoiceData.totalAmount).toBe(2000 * 1.18);
+    it('creates from an explicit planId and computes endDate from the plan type', async () => {
+      mockPrisma.membershipPlan.findFirst.mockResolvedValue(mockPlan);
+      const startDate = new Date('2026-01-15T00:00:00.000Z');
+
+      await service.create({ ...base, planId: 'plan-001', startDate });
+
+      const { data } = mockPrisma.memberSubscription.create.mock.calls[0][0];
+      expect(data).toMatchObject({ memberId: 'member-001', gymId: 'gym-001', planId: 'plan-001', status: 'ACTIVE', amount: 2000 });
+      expect(data.endDate.getMonth()).toBe((startDate.getMonth() + 1) % 12);
+    });
+
+    it('throws NotFoundException when the planId is not in this gym', async () => {
+      mockPrisma.membershipPlan.findFirst.mockResolvedValue(null);
+      await expect(service.create({ ...base, planId: 'plan-other' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('auto-creates a plan for the gym when only `type` is given and none exists', async () => {
+      mockPrisma.membershipPlan.findFirst.mockResolvedValue(null);
+      mockPrisma.membershipPlan.create.mockResolvedValue({ ...mockPlan, id: 'plan-auto', type: 'QUARTERLY' });
+
+      await service.create({ ...base, type: 'QUARTERLY' });
+
+      expect(mockPrisma.membershipPlan.create.mock.calls[0][0].data).toMatchObject({ gymId: 'gym-001', type: 'QUARTERLY', durationMonths: 3, price: 2000 });
+      expect(mockPrisma.memberSubscription.create.mock.calls[0][0].data.planId).toBe('plan-auto');
+    });
+
+    it('falls back to plan price when no amount is given', async () => {
+      mockPrisma.membershipPlan.findFirst.mockResolvedValue({ ...mockPlan, price: 1234 });
+      await service.create({ userId: 'user-001', gymId: 'gym-001', planId: 'plan-001' });
+      expect(mockPrisma.memberSubscription.create.mock.calls[0][0].data.amount).toBe(1234);
+    });
+
+    it('throws NotFoundException when neither planId nor type is given', async () => {
+      await expect(service.create(base)).rejects.toThrow(NotFoundException);
     });
   });
-
-  // ─── renew ──────────────────────────────────────────────────────────────────
 
   describe('renew', () => {
-    it('should extend MONTHLY membership by 1 month', async () => {
-      mockPrisma.membership.findUnique.mockResolvedValue(mockMembership);
-      mockPrisma.membership.update.mockResolvedValue({
-        ...mockMembership,
-        endDate: new Date(monthFromNow.getTime() + 30 * 24 * 60 * 60 * 1000),
-      });
+    it('extends a still-active MONTHLY subscription from its current endDate', async () => {
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockSub);
+      mockPrisma.memberSubscription.update.mockResolvedValue(mockSub);
 
-      await service.renew('mem-001');
+      await service.renew('sub-001', 'gym-001');
 
-      const updateData = mockPrisma.membership.update.mock.calls[0][0].data;
-      expect(updateData.status).toBe('ACTIVE');
-      expect(updateData.endDate).toBeInstanceOf(Date);
+      const { data } = mockPrisma.memberSubscription.update.mock.calls[0][0];
+      expect(data.status).toBe('ACTIVE');
+      expect(data.startDate).toEqual(monthFromNow);
+      const expected = new Date(monthFromNow); expected.setMonth(expected.getMonth() + 1);
+      expect(data.endDate).toEqual(expected);
     });
 
-    it('should renew YEARLY by 1 year', async () => {
-      const yearlyEnd = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
-      mockPrisma.membership.findUnique.mockResolvedValue({
-        ...mockMembership, type: 'YEARLY', endDate: yearlyEnd,
-      });
-      mockPrisma.membership.update.mockResolvedValue(mockMembership);
-
-      await service.renew('mem-001');
-
-      const updateData = mockPrisma.membership.update.mock.calls[0][0].data;
-      const expectedEnd = new Date(yearlyEnd);
-      expectedEnd.setFullYear(expectedEnd.getFullYear() + 1);
-      expect(updateData.endDate.getFullYear()).toBe(expectedEnd.getFullYear());
+    it('renews YEARLY by one year', async () => {
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue({ ...mockSub, plan: { ...mockPlan, type: 'YEARLY' } });
+      mockPrisma.memberSubscription.update.mockResolvedValue(mockSub);
+      await service.renew('sub-001', 'gym-001');
+      const { data } = mockPrisma.memberSubscription.update.mock.calls[0][0];
+      expect(data.endDate.getFullYear()).toBe(monthFromNow.getFullYear() + 1);
     });
 
-    it('should start renewal from today if membership already expired', async () => {
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      mockPrisma.membership.findUnique.mockResolvedValue({
-        ...mockMembership, endDate: yesterday,
-      });
-      mockPrisma.membership.update.mockResolvedValue(mockMembership);
+    it('starts from today when the subscription already expired', async () => {
+      const yesterday = new Date(Date.now() - 86400000);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue({ ...mockSub, endDate: yesterday });
+      mockPrisma.memberSubscription.update.mockResolvedValue(mockSub);
+      await service.renew('sub-001', 'gym-001');
+      const { data } = mockPrisma.memberSubscription.update.mock.calls[0][0];
+      expect(data.startDate.getTime()).toBeGreaterThan(yesterday.getTime());
+      expect(data.startDate.toDateString()).toBe(new Date().toDateString());
+    });
 
-      await service.renew('mem-001');
-
-      const updateData = mockPrisma.membership.update.mock.calls[0][0].data;
-      const startDate: Date = updateData.startDate;
-      const today = new Date();
-      expect(startDate.getDate()).toBe(today.getDate());
+    it('throws NotFoundException when the id is unknown / outside the caller gym', async () => {
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(null);
+      await expect(service.renew('sub-001', 'gym-A')).rejects.toThrow(NotFoundException);
     });
   });
 
-  // ─── getExpiringMembers ──────────────────────────────────────────────────────
+  describe('activateFromPayment', () => {
+    it('does nothing when the payer has no member profile', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(null);
+      await service.activateFromPayment('user-001', 'gym-001', 'plan-001', 2000);
+      expect(mockPrisma.memberSubscription.update).not.toHaveBeenCalled();
+      expect(mockPrisma.memberSubscription.create).not.toHaveBeenCalled();
+    });
+
+    it('extends the latest subscription when one exists (renew / switch plan)', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.membershipPlan.findUnique.mockResolvedValue(mockPlan);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(mockSub);
+      mockPrisma.memberSubscription.update.mockResolvedValue(mockSub);
+
+      await service.activateFromPayment('user-001', 'gym-001', 'plan-001', 2000);
+
+      const call = mockPrisma.memberSubscription.update.mock.calls[0][0];
+      expect(call.where).toEqual({ id: 'sub-001' });
+      expect(call.data).toMatchObject({ planId: 'plan-001', status: 'ACTIVE', amount: 2000, startDate: monthFromNow });
+    });
+
+    it('creates the first subscription when none exists', async () => {
+      mockPrisma.member.findFirst.mockResolvedValue(mockMember);
+      mockPrisma.membershipPlan.findUnique.mockResolvedValue(mockPlan);
+      mockPrisma.memberSubscription.findFirst.mockResolvedValue(null);
+      mockPrisma.memberSubscription.create.mockResolvedValue(mockSub);
+
+      await service.activateFromPayment('user-001', 'gym-001', 'plan-001', 2000);
+
+      expect(mockPrisma.memberSubscription.create.mock.calls[0][0].data).toMatchObject({ memberId: 'member-001', gymId: 'gym-001', planId: 'plan-001', status: 'ACTIVE' });
+    });
+  });
 
   describe('getExpiringMembers', () => {
-    it('should return members expiring within specified days', async () => {
-      mockPrisma.membership.findMany.mockResolvedValue([mockMembership]);
-
-      const result = await service.getExpiringMembers('gym-001', 7);
-
+    it('returns ACTIVE subscriptions ending within N days', async () => {
+      mockPrisma.memberSubscription.findMany.mockResolvedValue([mockSub]);
+      const result: any = await service.getExpiringMembers('gym-001', 7);
       expect(result).toHaveLength(1);
-      const where = mockPrisma.membership.findMany.mock.calls[0][0].where;
-      expect(where.status).toBe('ACTIVE');
-      expect(where.endDate).toBeDefined();
+      expect(result[0]).toMatchObject({ id: 'sub-001', type: 'MONTHLY', user: { firstName: 'John' } });
+      const where = mockPrisma.memberSubscription.findMany.mock.calls[0][0].where;
+      expect(where).toMatchObject({ gymId: 'gym-001', status: 'ACTIVE' });
+      expect(where.endDate.lte).toBeInstanceOf(Date);
     });
   });
 
-  // ─── checkExpiredMemberships (cron) ──────────────────────────────────────────
-
-  describe('checkExpiredMemberships', () => {
-    it('should expire all past-due memberships', async () => {
-      mockPrisma.membership.updateMany.mockResolvedValue({ count: 5 });
-
+  describe('checkExpiredMemberships (cron)', () => {
+    it('flips every past-due ACTIVE subscription to EXPIRED', async () => {
+      mockPrisma.memberSubscription.updateMany.mockResolvedValue({ count: 5 });
       await service.checkExpiredMemberships();
-
-      expect(mockPrisma.membership.updateMany).toHaveBeenCalledWith({
+      expect(mockPrisma.memberSubscription.updateMany).toHaveBeenCalledWith({
         where: { status: 'ACTIVE', endDate: { lt: expect.any(Date) } },
         data: { status: 'EXPIRED' },
       });
