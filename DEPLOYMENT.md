@@ -73,16 +73,7 @@ npm run build && npm start  # Production
 
 ```bash
 cd backend
-npm run test           # Run all unit tests
-npm run test:cov       # With coverage report
-npm run test:watch     # Watch mode
-```
-
-Expected output:
-```
-Test Suites: 7 passed, 7 total
-Tests:       65+ passed
-Coverage:    75%+ (lines)
+npm run test           # Run all unit tests (21 suites, 360+ tests, no DB needed)
 ```
 
 ### E2E Tests
@@ -90,21 +81,25 @@ Coverage:    75%+ (lines)
 ```bash
 cd backend
 
-# Requires running PostgreSQL
-DATABASE_URL="postgresql://..." npm run test:e2e
+# Requires a running PostgreSQL with the seed applied (npm run prisma:seed).
+# NODE_ENV must be a value the config schema accepts (jest defaults it to "test").
+NODE_ENV=development DATABASE_URL="postgresql://..." npm run test:e2e
+```
+
+### Mobile
+
+```bash
+cd mobile
+npm run typecheck      # tsc --noEmit
+npm test               # node --test on the pure helpers (src/**/*.test.mjs)
 ```
 
 ---
 
-## Email Configuration (Riva Gmail)
+## Email Configuration (Resend)
 
-The platform is configured to use **rivainvitation@gmail.com** with app password `kjfshqiddkhtjgqe`.
-
-In `.env`:
-```
-SMTP_USER=rivainvitation@gmail.com
-SMTP_PASS=kjfshqiddkhtjgqe
-```
+Transactional email goes through the Resend HTTP API — set `RESEND_API_KEY` and
+`EMAIL_FROM_ADDRESS` in `.env`. Never commit real keys to docs or source.
 
 OTP emails sent for:
 - **Email Verification** — on registration
