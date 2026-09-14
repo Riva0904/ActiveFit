@@ -92,7 +92,32 @@ NODE_ENV=development DATABASE_URL="postgresql://..." npm run test:e2e
 cd mobile
 npm run typecheck      # tsc --noEmit
 npm test               # node --test on the pure helpers (src/**/*.test.mjs)
+npx expo-doctor        # after any dependency change
 ```
+
+Native modules (`react-native-maps`, `expo-location`, `expo-dev-client`) mean **a new EAS build is
+required** after pulling — JS-only updates cannot ship them.
+
+```bash
+eas build -p android --profile development   # dev client → npx expo start --dev-client
+eas build -p android --profile preview       # installable APK
+eas build -p android --profile production    # Play Store app-bundle
+```
+
+**Google Maps (Android only; iOS uses Apple Maps).** The run tracker's map needs a Maps SDK
+for Android key, read from `GOOGLE_MAPS_ANDROID_API_KEY` in `app.config.ts`:
+
+```bash
+# locally
+echo "GOOGLE_MAPS_ANDROID_API_KEY=AIza..." >> mobile/.env
+# EAS builds (preview + production)
+eas env:create --scope project --name GOOGLE_MAPS_ANDROID_API_KEY --value AIza... --visibility secret --environment preview
+eas env:create --scope project --name GOOGLE_MAPS_ANDROID_API_KEY --value AIza... --visibility secret --environment production
+```
+
+Restrict the key in Google Cloud to package `com.activeboost.mobile` + the SHA-1 from
+`eas credentials -p android`. Without the key the app runs but map tiles render blank.
+Location tracking is foreground-only (no background location permission).
 
 ---
 
