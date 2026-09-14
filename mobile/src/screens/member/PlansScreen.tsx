@@ -1,10 +1,10 @@
 import React from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { Card, Header, Icon, ListRow, Loading, Screen, SectionTitle, type IconName } from '../../components';
+import { colors, spacing, tint, typography } from '../../theme';
 
 export default function PlansScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
@@ -25,92 +25,85 @@ export default function PlansScreen({ navigation }: any) {
   const dietList: any[] = Array.isArray(diets) ? diets : (diets as any)?.data ?? [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-      <Text style={styles.header}>My Plans</Text>
+    <Screen scroll>
+      <Header title="My Plans" subtitle="Workouts and nutrition assigned to you" />
 
       <View style={styles.aiRow}>
-        <TouchableOpacity style={styles.aiBtn} onPress={() => navigation.navigate('AIWorkout')}>
-          <Text style={styles.aiBtnText}>✨ AI Workout</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.aiBtn} onPress={() => navigation.navigate('AIDiet')}>
-          <Text style={styles.aiBtnText}>✨ AI Diet</Text>
-        </TouchableOpacity>
+        <AiCard icon="dumbbell" label="AI Workout" onPress={() => navigation.navigate('AIWorkout')} />
+        <AiCard icon="food-apple-outline" label="AI Diet" onPress={() => navigation.navigate('AIDiet')} />
       </View>
 
-      <Text style={styles.section}>💪 Workout Plans</Text>
+      <SectionTitle title="Workout plans" />
       {wLoading ? (
-        <ActivityIndicator color="#FF4D00" style={{ marginVertical: 16 }} />
+        <Loading />
       ) : workoutList.length > 0 ? (
-        workoutList.map((w: any) => {
-          const plan = w.workoutPlan ?? w;
-          return (
-            <TouchableOpacity
-              key={w.id}
-              style={styles.card}
-              onPress={() => navigation.navigate('WorkoutDetail', { planId: plan.id, planName: plan.name })}
-              activeOpacity={0.7}
-            >
-              <View style={styles.cardInner}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{plan.name ?? 'Workout Plan'}</Text>
-                  <Text style={styles.cardSub}>{plan.goal} · {plan.difficulty}</Text>
-                </View>
-                <Text style={styles.chevron}>›</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })
+        <Card padding="none">
+          {workoutList.map((w: any, i: number) => {
+            const plan = w.workoutPlan ?? w;
+            return (
+              <ListRow
+                key={w.id}
+                icon="dumbbell"
+                iconColor={colors.purple}
+                label={plan.name ?? 'Workout Plan'}
+                subtitle={[plan.goal, plan.difficulty].filter(Boolean).join(' · ')}
+                chevron
+                last={i === workoutList.length - 1}
+                onPress={() => navigation.navigate('WorkoutDetail', { planId: plan.id, planName: plan.name })}
+              />
+            );
+          })}
+        </Card>
       ) : (
         <Text style={styles.empty}>No workout plans assigned yet</Text>
       )}
 
-      <Text style={styles.section}>🥗 Diet Plans</Text>
+      <SectionTitle title="Diet plans" />
       {dLoading ? (
-        <ActivityIndicator color="#FF4D00" style={{ marginVertical: 16 }} />
+        <Loading />
       ) : dietList.length > 0 ? (
-        dietList.map((d: any) => {
-          const plan = d.dietPlan ?? d;
-          return (
-            <TouchableOpacity
-              key={d.id}
-              style={styles.card}
-              onPress={() => navigation.navigate('DietDetail', { planId: plan.id, planName: plan.name })}
-              activeOpacity={0.7}
-            >
-              <View style={styles.cardInner}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{plan.name ?? 'Diet Plan'}</Text>
-                  <Text style={styles.cardSub}>{plan.totalCalories ? `${plan.totalCalories} kcal/day` : 'Balanced nutrition'}</Text>
-                </View>
-                <Text style={styles.chevron}>›</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })
+        <Card padding="none">
+          {dietList.map((d: any, i: number) => {
+            const plan = d.dietPlan ?? d;
+            return (
+              <ListRow
+                key={d.id}
+                icon="food-apple-outline"
+                iconColor={colors.success}
+                label={plan.name ?? 'Diet Plan'}
+                subtitle={plan.totalCalories ? `${plan.totalCalories} kcal/day` : 'Balanced nutrition'}
+                chevron
+                last={i === dietList.length - 1}
+                onPress={() => navigation.navigate('DietDetail', { planId: plan.id, planName: plan.name })}
+              />
+            );
+          })}
+        </Card>
       ) : (
         <Text style={styles.empty}>No diet plans assigned yet</Text>
       )}
-    </ScrollView>
+    </Screen>
+  );
+}
+
+function AiCard({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  return (
+    <Card style={styles.aiCard} accent="primary" onPress={onPress}>
+      <View style={styles.aiIcon}><Icon name={icon} size={20} color={colors.primary} /></View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.aiLabel}>{label}</Text>
+        <Text style={styles.aiSub}>Generate</Text>
+      </View>
+      <Icon name="zap" size={16} color={colors.primary} />
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { color: '#F9FAFB', fontSize: 22, fontWeight: '700', paddingHorizontal: 20, paddingTop: 56, marginBottom: 16 },
-  aiRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 8 },
-  aiBtn: {
-    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 12, paddingVertical: 12,
-    alignItems: 'center', borderWidth: 1, borderColor: '#FF4D0050',
-  },
-  aiBtnText: { color: '#FF4D00', fontWeight: '700', fontSize: 14 },
-  section: { color: '#E5E7EB', fontSize: 16, fontWeight: '700', paddingHorizontal: 20, marginTop: 20, marginBottom: 12 },
-  card: {
-    marginHorizontal: 20, marginBottom: 10, backgroundColor: '#1A1A1A',
-    borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#2A2A2A',
-  },
-  cardInner: { flexDirection: 'row', alignItems: 'center' },
-  cardTitle: { color: '#F9FAFB', fontSize: 15, fontWeight: '600', marginBottom: 4 },
-  cardSub: { color: '#9CA3AF', fontSize: 13 },
-  chevron: { color: '#FF4D00', fontSize: 22, fontWeight: '700' },
-  empty: { color: '#4B5563', fontSize: 13, paddingHorizontal: 20, marginBottom: 8 },
+  aiRow: { flexDirection: 'row', gap: spacing.md },
+  aiCard: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  aiIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: tint(colors.primary), alignItems: 'center', justifyContent: 'center' },
+  aiLabel: { color: colors.text, ...typography.label, fontWeight: '700' },
+  aiSub: { color: colors.textMuted, ...typography.micro },
+  empty: { color: colors.textFaint, ...typography.label, marginBottom: spacing.sm },
 });

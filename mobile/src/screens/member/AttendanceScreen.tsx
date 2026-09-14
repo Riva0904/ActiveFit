@@ -1,14 +1,21 @@
 import React from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import QRCode from 'react-native-qrcode-svg';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { Card, Header, HeroStat, Icon, Loading, Screen, type IconName } from '../../components';
+import { colors, spacing, tint, typography } from '../../theme';
+
+const ACTIONS: { label: string; icon: IconName; screen: string }[] = [
+  { label: 'History & Calendar', icon: 'calendar', screen: 'AttendanceHistory' },
+  { label: 'My Insights', icon: 'bar-chart-2', screen: 'Insights' },
+  { label: 'Leaderboard', icon: 'award', screen: 'Leaderboard' },
+];
 
 export default function AttendanceScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
+  const isMember = user?.role === 'MEMBER';
 
   const { data: homeData, isLoading } = useQuery({
     queryKey: ['mobile-home'],
@@ -19,84 +26,71 @@ export default function AttendanceScreen({ navigation }: any) {
   const { data: streak } = useQuery({
     queryKey: ['attendance-streak'],
     queryFn: () => api.get('/attendance/streak') as any,
-    enabled: !!user,
+    enabled: isMember,
   });
 
-  if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator color="#FF4D00" size="large" /></View>;
-  }
+  if (isLoading) return <Loading fullScreen />;
 
   const qrToken: string = homeData?.qrToken ?? '';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-      <Text style={styles.header}>My QR Code</Text>
-      <Text style={styles.sub}>Show this to the gym scanner or staff</Text>
+    <Screen scroll>
+      <Header title="My QR Code" subtitle="Show this to the gym scanner or staff" />
 
-      <View style={styles.qrCard}>
+      <Card style={styles.qrCard}>
         {qrToken ? (
-          <QRCode value={qrToken} size={200} backgroundColor="#1A1A1A" color="#F9FAFB" />
+          <View style={styles.qrWrap}>
+            <QRCode value={qrToken} size={200} backgroundColor={colors.surface} color={colors.text} />
+          </View>
         ) : (
-          <Text style={styles.noQr}>No QR token available</Text>
+          <View style={styles.noQr}>
+            <Icon name="qrcode" size={32} color={colors.textFaint} />
+            <Text style={styles.noQrText}>{isMember ? 'No QR token available' : 'Check in from the Home tab'}</Text>
+          </View>
         )}
-        {homeData?.memberCode && (
-          <Text style={styles.memberCode}>{homeData.memberCode}</Text>
-        )}
-      </View>
+        {homeData?.memberCode ? <Text style={styles.memberCode}>{homeData.memberCode}</Text> : null}
+      </Card>
 
-      <View style={styles.streakRow}>
-        <View style={styles.streakCard}>
-          <Text style={styles.streakNum}>{(streak as any)?.currentStreak ?? 0}</Text>
-          <Text style={styles.streakLabel}>Current Streak 🔥</Text>
+      {isMember && (
+        <View style={styles.streakRow}>
+          <Card style={styles.streakCard}>
+            <HeroStat value={(streak as any)?.currentStreak ?? 0} label="Current streak" />
+            <Icon name="fire" size={18} color={colors.primary} style={styles.streakIcon} />
+          </Card>
+          <Card style={styles.streakCard}>
+            <HeroStat value={(streak as any)?.bestStreak ?? 0} label="Best streak" color={colors.text} />
+            <Icon name="trophy-outline" size={18} color={colors.warning} style={styles.streakIcon} />
+          </Card>
         </View>
-        <View style={styles.streakCard}>
-          <Text style={styles.streakNum}>{(streak as any)?.bestStreak ?? 0}</Text>
-          <Text style={styles.streakLabel}>Best Streak 🏆</Text>
-        </View>
-      </View>
+      )}
 
-      <View style={styles.actionsGrid}>
-        <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('AttendanceHistory')}>
-          <Text style={styles.actionIcon}>📅</Text>
-          <Text style={styles.actionLabel}>History & Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Insights')}>
-          <Text style={styles.actionIcon}>📊</Text>
-          <Text style={styles.actionLabel}>My Insights</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Leaderboard')}>
-          <Text style={styles.actionIcon}>🏆</Text>
-          <Text style={styles.actionLabel}>Leaderboard</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      {isMember && (
+        <View style={styles.actionsGrid}>
+          {ACTIONS.map((a) => (
+            <Card key={a.screen} style={styles.actionCard} onPress={() => navigation.navigate(a.screen)}>
+              <View style={styles.actionIcon}><Icon name={a.icon} size={22} color={colors.primary} /></View>
+              <Text style={styles.actionLabel}>{a.label}</Text>
+            </Card>
+          ))}
+        </View>
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0F0F' },
-  header: { color: '#F9FAFB', fontSize: 22, fontWeight: '700', paddingHorizontal: 20, paddingTop: 56, marginBottom: 4 },
-  sub: { color: '#9CA3AF', fontSize: 13, paddingHorizontal: 20, marginBottom: 24 },
-  qrCard: {
-    marginHorizontal: 20, backgroundColor: '#1A1A1A', borderRadius: 20,
-    padding: 32, alignItems: 'center', borderWidth: 1, borderColor: '#2A2A2A',
-    marginBottom: 24,
-  },
-  noQr: { color: '#6B7280', fontSize: 14 },
-  memberCode: { color: '#FF4D00', fontWeight: '700', fontSize: 18, marginTop: 16, letterSpacing: 4 },
-  streakRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 24 },
-  streakCard: {
-    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 14, padding: 20, alignItems: 'center',
-    borderWidth: 1, borderColor: '#2A2A2A',
-  },
-  streakNum: { color: '#FF4D00', fontSize: 36, fontWeight: '800', marginBottom: 4 },
-  streakLabel: { color: '#9CA3AF', fontSize: 13, textAlign: 'center' },
-  actionsGrid: { flexDirection: 'row', paddingHorizontal: 20, gap: 12 },
-  actionCard: {
-    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16,
-    alignItems: 'center', borderWidth: 1, borderColor: '#2A2A2A', gap: 8,
-  },
-  actionIcon: { fontSize: 28 },
-  actionLabel: { color: '#9CA3AF', fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  qrCard: { alignItems: 'center', paddingVertical: spacing.xxl + spacing.sm, marginBottom: spacing.xxl },
+  qrWrap: { padding: spacing.md, backgroundColor: colors.surface, borderRadius: 12 },
+  noQr: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
+  noQrText: { color: colors.textMuted, ...typography.label },
+  memberCode: { color: colors.primary, fontWeight: '700', fontSize: 18, marginTop: spacing.lg, letterSpacing: 4, ...typography.number },
+
+  streakRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
+  streakCard: { flex: 1, alignItems: 'center', paddingVertical: spacing.xl },
+  streakIcon: { position: 'absolute', top: 12, right: 12 },
+
+  actionsGrid: { flexDirection: 'row', gap: spacing.md },
+  actionCard: { flex: 1, alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.lg },
+  actionIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: tint(colors.primary), alignItems: 'center', justifyContent: 'center' },
+  actionLabel: { color: colors.textSecondary, ...typography.micro, fontWeight: '600', textAlign: 'center' },
 });

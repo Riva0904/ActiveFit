@@ -1,27 +1,12 @@
 import React from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, RefreshControl, Image,
-} from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { MobileHomeData } from '../../types';
 import { usePushToken } from '../../hooks/usePushToken';
-
-const ORANGE = '#FF4D00';
-
-function StatPill({ label, value, color = ORANGE }: { label: string; value: string; color?: string }) {
-  return (
-    <View style={[styles.statPill, { borderColor: color + '40' }]}>
-      <View style={[styles.statDot, { backgroundColor: color }]} />
-      <View>
-        <Text style={[styles.statVal, { color }]}>{value}</Text>
-        <Text style={styles.statLbl}>{label}</Text>
-      </View>
-    </View>
-  );
-}
+import { Avatar, Card, Icon, Loading, Screen, SectionTitle, StatPill, type IconName } from '../../components';
+import { colors, radius, shadow, spacing, tint, typography } from '../../theme';
 
 export default function HomeScreen({ navigation }: any) {
   const queryClient = useQueryClient();
@@ -46,19 +31,12 @@ export default function HomeScreen({ navigation }: any) {
     onError: (err: any) => Alert.alert('Check-out failed', err?.message ?? 'Try again'),
   });
 
-  if (isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={ORANGE} size="large" />
-        <Text style={styles.loadingText}>Connecting…{'\n'}First load may take 60s</Text>
-      </View>
-    );
-  }
+  if (isLoading) return <Loading fullScreen text={'Connecting…\nFirst load may take 60s'} />;
 
   const isCheckedIn = data?.isCheckedInToday ?? false;
   const end = data?.membership ? new Date(data.membership.endDate) : null;
   const daysLeft = end ? Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000)) : null;
-  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
+  const busy = checkInMutation.isPending || checkOutMutation.isPending;
 
   // This screen also serves STAFF / GYM_ADMIN / SUPER_ADMIN (they use the app for
   // chat + notifications). Membership, plans and the store need a Member row, and
@@ -67,131 +45,118 @@ export default function HomeScreen({ navigation }: any) {
   const isMember = role === 'MEMBER';
   const canCheckIn = isMember || role === 'STAFF';
 
-  const quickActions = isMember
+  const quickActions: { label: string; icon: IconName; tab: string }[] = isMember
     ? [
-        { label: 'QR Code', icon: '📱', tab: 'Attendance' },
-        { label: 'Workout', icon: '🏋️', tab: 'Plans' },
-        { label: 'Diet', icon: '🥗', tab: 'Plans' },
-        { label: 'Progress', icon: '📊', tab: 'Plans' },
-        { label: 'Store', icon: '🛒', tab: 'Store' },
-        { label: 'Profile', icon: '👤', tab: 'Profile' },
+        { label: 'QR Code', icon: 'qrcode', tab: 'Attendance' },
+        { label: 'Workout', icon: 'dumbbell', tab: 'Plans' },
+        { label: 'Diet', icon: 'food-apple-outline', tab: 'Plans' },
+        { label: 'Progress', icon: 'trending-up', tab: 'Plans' },
+        { label: 'Store', icon: 'shopping-cart', tab: 'Store' },
+        { label: 'Profile', icon: 'user', tab: 'Profile' },
       ]
     : [
-        ...(canCheckIn ? [{ label: 'Attendance', icon: '📅', tab: 'Attendance' }] : []),
-        { label: 'Profile', icon: '👤', tab: 'Profile' },
+        ...(canCheckIn ? [{ label: 'Attendance', icon: 'calendar' as IconName, tab: 'Attendance' }] : []),
+        { label: 'Profile', icon: 'user', tab: 'Profile' },
       ];
 
+  const expiring = daysLeft !== null && daysLeft < 7;
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ paddingBottom: 32 }}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={ORANGE} />}
-    >
+    <Screen scroll refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View style={styles.headerGlow} />
+        <View style={styles.headerGlow} pointerEvents="none" />
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>Good {getGreeting()} 👋</Text>
             <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.avatarBtn}
-            onPress={() => navigation.navigate('Profile')}
-            activeOpacity={0.8}
-          >
-            {user?.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.avatarImg} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </View>
-            )}
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
+            <Avatar uri={user?.avatar} firstName={user?.firstName} lastName={user?.lastName} ring />
           </TouchableOpacity>
         </View>
-
-        {/* Stats row */}
         <View style={styles.statsRow}>
-          <StatPill label="Status" value={isCheckedIn ? 'Active' : 'Not In'} color={isCheckedIn ? '#22C55E' : '#6B7280'} />
-          {data?.activeWorkout && <StatPill label="Workout" value={data.activeWorkout.name} color="#7C3AED" />}
-          {data?.activeDiet && <StatPill label="Diet" value={data.activeDiet.name} color="#059669" />}
+          <StatPill label="Status" value={isCheckedIn ? 'Active' : 'Not In'} color={isCheckedIn ? colors.success : colors.textMuted} />
+          {data?.activeWorkout && <StatPill label="Workout" value={data.activeWorkout.name} color={colors.purple} />}
+          {data?.activeDiet && <StatPill label="Diet" value={data.activeDiet.name} color={colors.success} />}
         </View>
       </View>
 
-      {/* ── Check-in button ── */}
-      {canCheckIn && <TouchableOpacity
-        style={[styles.checkBtn, isCheckedIn && styles.checkBtnOut]}
-        onPress={() => isCheckedIn ? checkOutMutation.mutate() : checkInMutation.mutate()}
-        disabled={checkInMutation.isPending || checkOutMutation.isPending}
-        activeOpacity={0.9}
-      >
-        {(checkInMutation.isPending || checkOutMutation.isPending) ? (
-          <ActivityIndicator color="#fff" size="large" />
-        ) : (
-          <View style={styles.checkBtnInner}>
-            <Text style={styles.checkBtnIcon}>{isCheckedIn ? '🚪' : '✅'}</Text>
-            <View>
-              <Text style={styles.checkBtnLabel}>{isCheckedIn ? 'Check Out' : 'Check In'}</Text>
-              {data?.checkedInAt && isCheckedIn && (
-                <Text style={styles.checkBtnSub}>
-                  Since {new Date(data.checkedInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              )}
+      {/* ── Check-in ── */}
+      {canCheckIn && (
+        <TouchableOpacity
+          style={[styles.checkBtn, isCheckedIn ? styles.checkBtnOut : shadow.glow]}
+          onPress={() => (isCheckedIn ? checkOutMutation.mutate() : checkInMutation.mutate())}
+          disabled={busy}
+          activeOpacity={0.9}
+        >
+          {busy ? (
+            <Loading />
+          ) : (
+            <View style={styles.checkBtnInner}>
+              <View style={[styles.checkIcon, isCheckedIn && { backgroundColor: tint(colors.white, '18') }]}>
+                <Icon name={isCheckedIn ? 'log-out' : 'check'} size={26} color={colors.white} />
+              </View>
+              <View>
+                <Text style={styles.checkBtnLabel}>{isCheckedIn ? 'Check Out' : 'Check In'}</Text>
+                {data?.checkedInAt && isCheckedIn ? (
+                  <Text style={styles.checkBtnSub}>
+                    Since {new Date(data.checkedInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                ) : (
+                  <Text style={styles.checkBtnSub}>{isCheckedIn ? '' : 'Tap when you arrive'}</Text>
+                )}
+              </View>
             </View>
-          </View>
-        )}
-      </TouchableOpacity>}
+          )}
+        </TouchableOpacity>
+      )}
 
-      {/* ── Membership card (members only) ── */}
+      {/* ── Membership ── */}
       {!isMember ? (
-        <View style={[styles.memberCard, { borderColor: '#374151' }]}>
+        <Card accent="muted">
           <Text style={styles.planName}>{role.replace(/_/g, ' ')} account</Text>
-          <Text style={[styles.expiry, { marginTop: 4 }]}>Chat and notifications are under Profile</Text>
-        </View>
+          <Text style={styles.expiry}>Chat and notifications are under Profile</Text>
+        </Card>
       ) : data?.membership ? (
-        <View style={[styles.memberCard, daysLeft !== null && daysLeft < 7 && styles.memberCardWarn]}>
+        <Card accent={expiring ? 'danger' : 'primary'}>
           <View style={styles.memberCardTop}>
             <View>
               <Text style={styles.planName}>{data.membership.plan.name}</Text>
               <Text style={styles.planType}>{data.membership.plan.type}</Text>
             </View>
-            <View style={[styles.daysBadge, { backgroundColor: (daysLeft ?? 99) < 7 ? '#EF4444' : '#22C55E' }]}>
+            <View style={[styles.daysBadge, { backgroundColor: expiring ? colors.danger : colors.success }]}>
               <Text style={styles.daysBadgeText}>{daysLeft}d</Text>
             </View>
           </View>
-          <View style={styles.memberCardBar}>
+          <View style={styles.bar}>
             <View style={[styles.barFill, {
               width: `${Math.min(100, Math.max(0, ((daysLeft ?? 0) / (data.membership.plan.durationMonths * 30)) * 100))}%`,
-              backgroundColor: (daysLeft ?? 99) < 7 ? '#EF4444' : ORANGE,
+              backgroundColor: expiring ? colors.danger : colors.primary,
             }]} />
           </View>
           <Text style={styles.expiry}>
             Expires {end?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </Text>
-        </View>
+        </Card>
       ) : (
-        <View style={[styles.memberCard, { borderColor: '#374151' }]}>
+        <Card accent="muted" onPress={() => navigation.navigate('Profile', { screen: 'MembershipRenewal' })}>
           <Text style={styles.planName}>No Active Membership</Text>
-          <Text style={[styles.expiry, { marginTop: 4 }]}>Tap Profile → Renew Membership</Text>
-        </View>
+          <Text style={styles.expiry}>Tap to choose a plan</Text>
+        </Card>
       )}
 
       {/* ── Quick Actions ── */}
-      <Text style={styles.sectionHeading}>Quick Actions</Text>
+      <SectionTitle title="Quick Actions" />
       <View style={styles.quickGrid}>
         {quickActions.map((a) => (
-          <TouchableOpacity
-            key={a.label}
-            style={styles.quickCard}
-            onPress={() => navigation.navigate(a.tab)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.quickIcon}>{a.icon}</Text>
+          <TouchableOpacity key={a.label} style={styles.quickCard} onPress={() => navigation.navigate(a.tab)} activeOpacity={0.7}>
+            <View style={styles.quickIcon}><Icon name={a.icon} size={22} color={colors.primary} /></View>
             <Text style={styles.quickLabel}>{a.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -203,71 +168,41 @@ function getGreeting() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0F0F', gap: 16 },
-  loadingText: { color: '#4B5563', fontSize: 13, textAlign: 'center', lineHeight: 20 },
-
-  header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 20, overflow: 'hidden' },
+  header: { paddingBottom: spacing.xl, marginHorizontal: -spacing.screen, paddingHorizontal: spacing.screen, overflow: 'hidden' },
   headerGlow: {
-    position: 'absolute', top: -60, right: -40, width: 200, height: 200,
-    borderRadius: 100, backgroundColor: ORANGE, opacity: 0.06,
+    position: 'absolute', top: -80, right: -40, width: 220, height: 220,
+    borderRadius: 110, backgroundColor: colors.primary, opacity: 0.07,
   },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  greeting: { color: '#6B7280', fontSize: 13 },
-  name: { color: '#F9FAFB', fontSize: 24, fontWeight: '800', marginTop: 2 },
-
-  avatarBtn: { marginLeft: 8 },
-  avatarImg: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: ORANGE },
-  avatarPlaceholder: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { color: '#fff', fontSize: 15, fontWeight: '800' },
-
-  statsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  statPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#1A1A1A', borderRadius: 12, borderWidth: 1,
-    paddingHorizontal: 12, paddingVertical: 8,
-  },
-  statDot: { width: 8, height: 8, borderRadius: 4 },
-  statVal: { fontSize: 13, fontWeight: '700', lineHeight: 16 },
-  statLbl: { color: '#6B7280', fontSize: 10 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  greeting: { color: colors.textMuted, ...typography.label },
+  name: { color: colors.text, fontSize: 24, fontWeight: '800', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
 
   checkBtn: {
-    marginHorizontal: 20, marginBottom: 16, backgroundColor: ORANGE,
-    borderRadius: 20, paddingVertical: 22, paddingHorizontal: 24,
-    shadowColor: ORANGE, shadowOpacity: 0.45, shadowRadius: 16, elevation: 8,
+    marginBottom: spacing.lg, backgroundColor: colors.primary,
+    borderRadius: radius.xl, paddingVertical: spacing.xl, paddingHorizontal: spacing.xxl,
   },
-  checkBtnOut: { backgroundColor: '#1F2937', shadowColor: 'transparent', shadowOpacity: 0 },
-  checkBtnInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14 },
-  checkBtnIcon: { fontSize: 32 },
-  checkBtnLabel: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  checkBtnSub: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
+  checkBtnOut: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  checkBtnInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  checkIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: tint(colors.white, '30'), alignItems: 'center', justifyContent: 'center' },
+  checkBtnLabel: { color: colors.white, fontSize: 20, fontWeight: '800' },
+  checkBtnSub: { color: 'rgba(255,255,255,0.65)', ...typography.caption, marginTop: 2 },
 
-  memberCard: {
-    marginHorizontal: 20, marginBottom: 20, backgroundColor: '#1A1A1A',
-    borderRadius: 18, padding: 18, borderWidth: 1, borderColor: ORANGE + '50',
-  },
-  memberCardWarn: { borderColor: '#EF444480' },
-  memberCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  planName: { color: '#F9FAFB', fontSize: 17, fontWeight: '700' },
-  planType: { color: '#9CA3AF', fontSize: 12, marginTop: 3 },
-  daysBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  daysBadgeText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  memberCardBar: { height: 4, backgroundColor: '#2A2A2A', borderRadius: 2, marginBottom: 10, overflow: 'hidden' },
+  memberCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md },
+  planName: { color: colors.text, ...typography.h2 },
+  planType: { color: colors.textSecondary, ...typography.caption, marginTop: 3 },
+  daysBadge: { borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
+  daysBadgeText: { color: colors.white, ...typography.label, ...typography.number },
+  bar: { height: 4, backgroundColor: colors.border, borderRadius: 2, marginBottom: 10, overflow: 'hidden' },
   barFill: { height: 4, borderRadius: 2 },
-  expiry: { color: '#6B7280', fontSize: 12 },
+  expiry: { color: colors.textMuted, ...typography.caption, marginTop: spacing.xs },
 
-  sectionHeading: {
-    color: '#9CA3AF', fontSize: 13, fontWeight: '700', textTransform: 'uppercase',
-    letterSpacing: 1, paddingHorizontal: 20, marginBottom: 12,
-  },
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 10 },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   quickCard: {
-    width: '30%', backgroundColor: '#1A1A1A', borderRadius: 16,
-    padding: 18, alignItems: 'center', borderWidth: 1, borderColor: '#1F1F1F',
+    width: '31%', backgroundColor: colors.surface, borderRadius: radius.lg,
+    paddingVertical: spacing.lg, alignItems: 'center', gap: spacing.sm,
+    borderWidth: 1, borderColor: colors.surfaceRaised, ...shadow.card,
   },
-  quickIcon: { fontSize: 26, marginBottom: 8 },
-  quickLabel: { color: '#9CA3AF', fontSize: 12, textAlign: 'center', fontWeight: '500' },
+  quickIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: tint(colors.primary), alignItems: 'center', justifyContent: 'center' },
+  quickLabel: { color: colors.textSecondary, ...typography.caption, fontWeight: '600', textAlign: 'center' },
 });

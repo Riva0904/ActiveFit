@@ -1,13 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { Card, EmptyState, Header, Icon, Loading, Screen, type IconName } from '../../components';
+import { colors, radius, spacing, tint, typography } from '../../theme';
 
-const MEAL_ICONS: Record<string, string> = {
-  Breakfast: '🌅',
-  Lunch: '☀️',
-  Snack: '🫐',
-  Dinner: '🌙',
+const MEAL_ICONS: Record<string, IconName> = {
+  Breakfast: 'sun',
+  'Mid-Morning': 'clock',
+  Lunch: 'sun',
+  'Afternoon Snack': 'clock',
+  Snack: 'clock',
+  Dinner: 'moon',
+  Evening: 'moon',
 };
 
 export default function DietDetailScreen({ route, navigation }: any) {
@@ -23,86 +28,71 @@ export default function DietDetailScreen({ route, navigation }: any) {
   const meals: any[] = plan.meals ?? plan.dietMeals ?? [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹ Back</Text></TouchableOpacity>
-        <Text style={styles.title}>{planName ?? plan.name ?? 'Diet Plan'}</Text>
-        {plan.totalCalories && <Text style={styles.sub}>{plan.totalCalories} kcal/day</Text>}
-      </View>
+    <Screen scroll>
+      <Header
+        title={planName ?? plan.name ?? 'Diet Plan'}
+        subtitle={plan.totalCalories ? `${plan.totalCalories} kcal/day` : undefined}
+        onBack={() => navigation.goBack()}
+      />
 
-      {plan.goal && (
+      {plan.goal ? (
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Goal</Text>
-          <Text style={styles.infoValue}>{plan.goal}</Text>
+          <Text style={styles.infoValue}>{String(plan.goal).replace(/_/g, ' ')}</Text>
         </View>
-      )}
+      ) : null}
 
-      {isLoading ? <ActivityIndicator color="#FF4D00" style={{ marginTop: 40 }} /> : (
-        <>
-          {meals.map((meal: any, i: number) => (
-            <View key={i} style={styles.slotSection}>
+      {isLoading ? (
+        <Loading />
+      ) : meals.length === 0 ? (
+        <EmptyState icon="food-apple-outline" title="No meals defined in this plan" />
+      ) : (
+        meals.map((meal: any, i: number) => {
+          const title = meal.meal ?? `Meal ${i + 1}`;
+          const items: string[] | null = Array.isArray(meal.items) ? meal.items : null;
+          return (
+            <Card key={i} padding="md">
               <View style={styles.slotHeader}>
-                <Text style={styles.slotLabel}>{MEAL_ICONS[meal.meal] ?? '🍽️'} {meal.meal ?? `Meal ${i + 1}`}</Text>
-                {meal.calories && <Text style={styles.slotTime}>{meal.calories} kcal</Text>}
+                <View style={styles.slotIcon}><Icon name={MEAL_ICONS[title] ?? 'clock'} size={16} color={colors.primary} /></View>
+                <Text style={styles.slotLabel}>{title}</Text>
+                {meal.calories ? <Text style={styles.slotCal}>{meal.calories} kcal</Text> : null}
               </View>
-              {Array.isArray(meal.items) && meal.items.map((item: string, j: number) => (
-                <View key={j} style={styles.mealCard}>
-                  <Text style={styles.mealName}>{item}</Text>
-                </View>
-              ))}
-              {!Array.isArray(meal.items) && (meal.name ?? meal.foodItem) && (
-                <View style={styles.mealCard}>
-                  <Text style={styles.mealName}>{meal.name ?? meal.foodItem}</Text>
-                  <View style={styles.macroRow}>
-                    {meal.calories && <Text style={[styles.macro, { color: '#FF4D00' }]}>{meal.calories} kcal</Text>}
-                    {meal.protein && <Text style={styles.macro}>P:{meal.protein}g</Text>}
-                    {meal.carbs && <Text style={styles.macro}>C:{meal.carbs}g</Text>}
-                    {meal.fat && <Text style={styles.macro}>F:{meal.fat}g</Text>}
+              {items ? (
+                items.map((item, j) => (
+                  <View key={j} style={styles.itemRow}>
+                    <View style={styles.bullet} />
+                    <Text style={styles.itemText}>{item}</Text>
                   </View>
-                </View>
+                ))
+              ) : (
+                <>
+                  <Text style={styles.itemText}>{meal.name ?? meal.foodItem}</Text>
+                  <View style={styles.macroRow}>
+                    {meal.protein ? <Text style={styles.macro}>P {meal.protein}g</Text> : null}
+                    {meal.carbs ? <Text style={styles.macro}>C {meal.carbs}g</Text> : null}
+                    {meal.fat ? <Text style={styles.macro}>F {meal.fat}g</Text> : null}
+                  </View>
+                </>
               )}
-            </View>
-          ))}
-          {meals.length === 0 && (
-            <Text style={styles.empty}>No meals defined in this plan</Text>
-          )}
-        </>
+            </Card>
+          );
+        })
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 16 },
-  back: { color: '#FF4D00', fontSize: 16, marginBottom: 10 },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
-  sub: { color: '#9CA3AF', fontSize: 13, marginTop: 4 },
-  infoRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
-    marginBottom: 12,
-  },
-  infoLabel: { color: '#9CA3AF', fontSize: 13 },
-  infoValue: { color: '#F9FAFB', fontSize: 13, fontWeight: '600' },
-  slotSection: { marginHorizontal: 20, marginBottom: 20 },
-  slotHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 10,
-  },
-  slotLabel: { color: '#F9FAFB', fontSize: 15, fontWeight: '700' },
-  slotTime: { color: '#FF4D00', fontSize: 12, fontWeight: '600' },
-  mealCard: {
-    backgroundColor: '#1A1A1A', borderRadius: 12, padding: 14,
-    marginBottom: 8, borderWidth: 1, borderColor: '#2A2A2A',
-  },
-  mealName: { color: '#F9FAFB', fontSize: 14, fontWeight: '600', marginBottom: 6 },
-  macroRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  macro: {
-    backgroundColor: '#2A2A2A', borderRadius: 6, paddingHorizontal: 8,
-    paddingVertical: 3, color: '#9CA3AF', fontSize: 12,
-  },
-  mealNotes: { color: '#6B7280', fontSize: 12, marginTop: 6 },
-  empty: { color: '#4B5563', textAlign: 'center', marginTop: 40 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.lg },
+  infoLabel: { color: colors.textSecondary, ...typography.label },
+  infoValue: { color: colors.text, ...typography.label, fontWeight: '600' },
+  slotHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  slotIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: tint(colors.primary), alignItems: 'center', justifyContent: 'center' },
+  slotLabel: { color: colors.text, ...typography.body, fontWeight: '700', flex: 1 },
+  slotCal: { color: colors.primary, ...typography.caption, fontWeight: '600', ...typography.number },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 4 },
+  bullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.textFaint },
+  itemText: { color: colors.textSecondary, ...typography.body, flex: 1 },
+  macroRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.sm },
+  macro: { backgroundColor: colors.border, borderRadius: radius.sm - 2, paddingHorizontal: 8, paddingVertical: 3, color: colors.textSecondary, ...typography.caption },
 });
