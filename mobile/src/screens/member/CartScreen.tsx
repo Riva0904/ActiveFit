@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Alert,
-} from 'react-native';
+import React from 'react';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useMutation } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCartStore } from '../../store/cartStore';
 import { api } from '../../lib/api';
-import { useMutation } from '@tanstack/react-query';
 import { presentUpiCheckout } from '../../lib/upiPrompt';
+import { Button, Card, EmptyState, Header, Icon, Screen } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
 export default function CartScreen({ navigation }: any) {
   const { items, removeItem, updateQty, clear, total, count } = useCartStore();
+  const insets = useSafeAreaInsets();
 
   // POST /supplements/checkout prices the cart server-side and, with useUpi, returns
   // { paymentId, amount, vpa, payeeName }. The SupplementOrder itself is only created
@@ -31,115 +32,70 @@ export default function CartScreen({ navigation }: any) {
   });
 
   function checkout() {
-    checkoutMutation.mutate({
-      items: items.map((i) => ({ supplementId: i.id, quantity: i.quantity })),
-      useUpi: true,
-    });
+    checkoutMutation.mutate({ items: items.map((i) => ({ supplementId: i.id, quantity: i.quantity })), useUpi: true });
   }
 
   if (items.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹ Back</Text></TouchableOpacity>
-          <Text style={styles.title}>Cart</Text>
-        </View>
-        <View style={styles.emptyWrap}>
-          <Text style={{ fontSize: 64 }}>🛒</Text>
-          <Text style={styles.emptyText}>Your cart is empty</Text>
-          <TouchableOpacity style={styles.shopBtn} onPress={() => navigation.navigate('StoreMain')}>
-            <Text style={styles.shopBtnText}>Browse Supplements</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Screen>
+        <Header title="Cart" onBack={() => navigation.goBack()} />
+        <EmptyState icon="shopping-cart" title="Your cart is empty" action={{ label: 'Browse supplements', onPress: () => navigation.navigate('StoreMain') }} />
+      </Screen>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹ Back</Text></TouchableOpacity>
-        <Text style={styles.title}>Cart ({count()} items)</Text>
-      </View>
-
-      <FlatList
-        data={items}
-        keyExtractor={(i) => i.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160 }}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemPrice}>₹{(item.discountPrice ?? item.price) * item.quantity}</Text>
-            </View>
-            <View style={styles.qtyRow}>
-              <TouchableOpacity style={styles.qtyBtn} onPress={() => updateQty(item.id, item.quantity - 1)}>
-                <Text style={styles.qtyBtnText}>−</Text>
+    <View style={{ flex: 1 }}>
+      <Screen>
+        <Header title={`Cart (${count()} items)`} onBack={() => navigation.goBack()} />
+        <FlatList
+          data={items}
+          keyExtractor={(i) => i.id}
+          contentContainerStyle={{ paddingBottom: 180 }}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <Card padding="md" style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+                <Text style={styles.itemPrice}>₹{((item.discountPrice ?? item.price) * item.quantity).toLocaleString('en-IN')}</Text>
+              </View>
+              <View style={styles.qtyRow}>
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => updateQty(item.id, item.quantity - 1)} hitSlop={6}>
+                  <Icon name="minus" size={16} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.qtyNum}>{item.quantity}</Text>
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => updateQty(item.id, item.quantity + 1)} hitSlop={6}>
+                  <Icon name="plus" size={16} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity onPress={() => removeItem(item.id)} hitSlop={8} style={{ padding: 4 }}>
+                <Icon name="trash-2" size={18} color={colors.danger} />
               </TouchableOpacity>
-              <Text style={styles.qtyNum}>{item.quantity}</Text>
-              <TouchableOpacity style={styles.qtyBtn} onPress={() => updateQty(item.id, item.quantity + 1)}>
-                <Text style={styles.qtyBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity onPress={() => removeItem(item.id)} style={{ padding: 6 }}>
-              <Text style={{ color: '#EF4444', fontSize: 18 }}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
+            </Card>
+          )}
+        />
+      </Screen>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: spacing.xl + insets.bottom }]}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalAmount}>₹{total().toFixed(0)}</Text>
+          <Text style={styles.totalAmount}>₹{total().toLocaleString('en-IN', { maximumFractionDigits: 0 })}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.checkoutBtn}
-          onPress={checkout}
-          disabled={checkoutMutation.isPending}
-        >
-          {checkoutMutation.isPending
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.checkoutBtnText}>Place Order</Text>}
-        </TouchableOpacity>
+        <Button title="Place order · Pay via UPI" size="lg" icon="smartphone" onPress={checkout} loading={checkoutMutation.isPending} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 16 },
-  back: { color: '#FF4D00', fontSize: 16, marginBottom: 10 },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
-  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  emptyText: { color: '#9CA3AF', fontSize: 16 },
-  shopBtn: { backgroundColor: '#FF4D00', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  shopBtnText: { color: '#fff', fontWeight: '700' },
-  card: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#1A1A1A', borderRadius: 12, padding: 14,
-    marginBottom: 10, borderWidth: 1, borderColor: '#2A2A2A',
-  },
-  itemName: { color: '#F9FAFB', fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  itemPrice: { color: '#FF4D00', fontSize: 14, fontWeight: '700' },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  qtyBtn: {
-    width: 32, height: 32, borderRadius: 8, backgroundColor: '#2A2A2A',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  qtyBtnText: { color: '#F9FAFB', fontSize: 18, fontWeight: '700' },
-  qtyNum: { color: '#F9FAFB', fontSize: 16, fontWeight: '700', minWidth: 20, textAlign: 'center' },
-  footer: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#1A1A1A', padding: 20,
-    borderTopWidth: 1, borderTopColor: '#2A2A2A',
-  },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
-  totalLabel: { color: '#9CA3AF', fontSize: 16 },
-  totalAmount: { color: '#F9FAFB', fontSize: 20, fontWeight: '800' },
-  checkoutBtn: {
-    backgroundColor: '#FF4D00', borderRadius: 14, paddingVertical: 16, alignItems: 'center',
-  },
-  checkoutBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
+  itemName: { color: colors.text, ...typography.label, fontWeight: '600', marginBottom: 4 },
+  itemPrice: { color: colors.primary, ...typography.label, fontWeight: '700', ...typography.number },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  qtyBtn: { width: 30, height: 30, borderRadius: radius.sm, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  qtyNum: { color: colors.text, ...typography.body, fontWeight: '700', minWidth: 20, textAlign: 'center', ...typography.number },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, padding: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
+  totalLabel: { color: colors.textSecondary, ...typography.body },
+  totalAmount: { color: colors.text, fontSize: 20, fontWeight: '800', ...typography.number },
 });

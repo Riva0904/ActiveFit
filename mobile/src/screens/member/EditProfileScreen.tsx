@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, ScrollView, Image, Platform,
-} from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { Avatar, Button, Card, Field, Header, Icon, Loading, Screen, TextField } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 export default function EditProfileScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
@@ -24,33 +23,22 @@ export default function EditProfileScreen({ navigation }: any) {
     const perm = source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
     if (!perm.granted) {
       Alert.alert('Permission required', 'Allow access in Settings to continue');
       return;
     }
-
-    const opts: ImagePicker.ImagePickerOptions = {
-      allowsEditing: true, aspect: [1, 1], quality: 0.8,
-    };
+    const opts: ImagePicker.ImagePickerOptions = { allowsEditing: true, aspect: [1, 1], quality: 0.8 };
     const result = source === 'camera'
       ? await ImagePicker.launchCameraAsync(opts)
       : await ImagePicker.launchImageLibraryAsync({ ...opts, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-
     if (result.canceled || !result.assets[0]) return;
 
     setUploading(true);
     try {
       const asset = result.assets[0];
       const formData = new FormData();
-      formData.append('file', {
-        uri: asset.uri,
-        type: 'image/jpeg',
-        name: 'profile.jpg',
-      } as any);
-      const res: any = await api.post('/chat/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      formData.append('file', { uri: asset.uri, type: 'image/jpeg', name: 'profile.jpg' } as any);
+      const res: any = await api.post('/chat/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setAvatar(res.url);
     } catch (e: any) {
       Alert.alert('Upload failed', e?.message ?? 'Try again');
@@ -77,12 +65,7 @@ export default function EditProfileScreen({ navigation }: any) {
         phone: phone.trim() || undefined,
         avatar: avatar || undefined,
       }) as any;
-      updateUser({
-        firstName: updated.firstName,
-        lastName: updated.lastName,
-        phone: updated.phone,
-        avatar: updated.avatar,
-      });
+      updateUser({ firstName: updated.firstName, lastName: updated.lastName, phone: updated.phone, avatar: updated.avatar });
       queryClient.invalidateQueries({ queryKey: ['mobile-home'] });
       Alert.alert('Saved', 'Profile updated', [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (e: any) {
@@ -92,129 +75,53 @@ export default function EditProfileScreen({ navigation }: any) {
     }
   }
 
-  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 48 }}>
-      {/* Header */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>‹ Back</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen scroll keyboard>
+      <Header title="Edit Profile" onBack={() => navigation.goBack()} />
 
-      {/* Avatar section */}
       <View style={styles.avatarSection}>
         <TouchableOpacity style={styles.avatarWrap} onPress={showPicker} disabled={uploading} activeOpacity={0.8}>
-          {avatar ? (
-            <Image source={{ uri: avatar }} style={styles.avatarImg} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.initials}>{initials}</Text>
-            </View>
-          )}
+          <Avatar uri={avatar || null} firstName={user?.firstName} lastName={user?.lastName} size={100} ring />
           <View style={styles.cameraOverlay}>
-            {uploading
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={{ fontSize: 16 }}>📷</Text>}
+            {uploading ? <Loading /> : <Icon name="camera" size={15} color={colors.text} />}
           </View>
         </TouchableOpacity>
         <Text style={styles.avatarName}>{firstName || user?.firstName} {lastName || user?.lastName}</Text>
         <Text style={styles.avatarHint}>Tap photo to change</Text>
       </View>
 
-      {/* Fields */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Personal Info</Text>
-
-        {[
-          { label: 'First Name', value: firstName, set: setFirstName, placeholder: 'John' },
-          { label: 'Last Name', value: lastName, set: setLastName, placeholder: 'Doe' },
-          { label: 'Phone', value: phone, set: setPhone, placeholder: '+91 9876543210', keyboard: 'phone-pad' as const },
-        ].map(({ label, value, set, placeholder, keyboard }) => (
-          <View key={label} style={styles.field}>
-            <Text style={styles.fieldLabel}>{label}</Text>
-            <TextInput
-              style={styles.input}
-              value={value}
-              onChangeText={set}
-              keyboardType={keyboard ?? 'default'}
-              placeholderTextColor="#4B5563"
-              placeholder={placeholder}
-            />
-          </View>
-        ))}
-
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Email</Text>
-          <TextInput
-            style={[styles.input, styles.inputDisabled]}
-            value={user?.email ?? ''}
-            editable={false}
-          />
+      <Card>
+        <Text style={styles.cardTitle}>Personal info</Text>
+        <Field label="First name" style={styles.field}>
+          <TextField value={firstName} onChangeText={setFirstName} placeholder="John" />
+        </Field>
+        <Field label="Last name" style={styles.field}>
+          <TextField value={lastName} onChangeText={setLastName} placeholder="Doe" />
+        </Field>
+        <Field label="Phone" style={styles.field}>
+          <TextField value={phone} onChangeText={setPhone} placeholder="+91 9876543210" keyboardType="phone-pad" />
+        </Field>
+        <Field label="Email" style={{ marginBottom: 0 }}>
+          <TextField value={user?.email ?? ''} editable={false} style={{ opacity: 0.45 }} />
           <Text style={styles.hint}>Email cannot be changed</Text>
-        </View>
-      </View>
+        </Field>
+      </Card>
 
-      <TouchableOpacity
-        style={[styles.saveBtn, (loading || uploading) && styles.saveBtnDisabled]}
-        onPress={save}
-        disabled={loading || uploading}
-        activeOpacity={0.85}
-      >
-        {loading
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.saveBtnText}>Save Changes</Text>}
-      </TouchableOpacity>
-    </ScrollView>
+      <Button title="Save changes" size="lg" onPress={save} loading={loading} disabled={uploading} />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  topBar: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 8 },
-  backBtn: { alignSelf: 'flex-start' },
-  backText: { color: '#FF4D00', fontSize: 16, fontWeight: '600' },
-
-  avatarSection: { alignItems: 'center', paddingVertical: 28 },
-  avatarWrap: { position: 'relative', marginBottom: 12 },
-  avatarImg: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#FF4D00' },
-  avatarPlaceholder: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: '#FF4D00',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  initials: { color: '#fff', fontSize: 34, fontWeight: '800' },
+  avatarSection: { alignItems: 'center', paddingBottom: spacing.xxl },
+  avatarWrap: { position: 'relative', marginBottom: spacing.md },
   cameraOverlay: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#1F1F1F', borderWidth: 2, borderColor: '#0F0F0F',
-    alignItems: 'center', justifyContent: 'center',
+    position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16,
+    backgroundColor: colors.surfaceRaised, borderWidth: 2, borderColor: colors.bg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  avatarName: { color: '#F9FAFB', fontSize: 20, fontWeight: '700', marginBottom: 4 },
-  avatarHint: { color: '#6B7280', fontSize: 13 },
-
-  card: {
-    marginHorizontal: 20, backgroundColor: '#1A1A1A',
-    borderRadius: 18, padding: 20,
-    borderWidth: 1, borderColor: '#1F1F1F', marginBottom: 20,
-  },
-  cardTitle: { color: '#9CA3AF', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 16 },
-
-  field: { marginBottom: 14 },
-  fieldLabel: { color: '#6B7280', fontSize: 12, fontWeight: '600', marginBottom: 6 },
-  input: {
-    backgroundColor: '#1A1A1A', borderRadius: 12, borderWidth: 1, borderColor: '#2A2A2A',
-    color: '#F9FAFB', fontSize: 15, paddingHorizontal: 16, paddingVertical: 13,
-  },
-  inputDisabled: { opacity: 0.45 },
-  hint: { color: '#374151', fontSize: 11, marginTop: 4 },
-
-  saveBtn: {
-    marginHorizontal: 20, backgroundColor: '#FF4D00',
-    borderRadius: 16, paddingVertical: 17, alignItems: 'center',
-    shadowColor: '#FF4D00', shadowOpacity: 0.35, shadowRadius: 10, elevation: 6,
-  },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  avatarName: { color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  avatarHint: { color: colors.textMuted, ...typography.label },
+  cardTitle: { color: colors.textSecondary, ...typography.section, marginBottom: spacing.lg },
+  field: { marginBottom: spacing.lg },
+  hint: { color: colors.textFaint, ...typography.micro, marginTop: 4 },
 });

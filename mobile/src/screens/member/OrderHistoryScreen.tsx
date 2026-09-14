@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { Card, EmptyState, Header, Loading, Screen } from '../../components';
+import { colors, radius, spacing, tint, typography } from '../../theme';
 
 const STATUS_COLOR: Record<string, string> = {
-  PENDING: '#F59E0B', CONFIRMED: '#3B82F6',
-  DELIVERED: '#22C55E', CANCELLED: '#EF4444',
+  PENDING: colors.warning, CONFIRMED: colors.info, DELIVERED: colors.success, CANCELLED: colors.danger,
 };
 
 export default function OrderHistoryScreen({ navigation }: any) {
@@ -17,58 +18,47 @@ export default function OrderHistoryScreen({ navigation }: any) {
   const orders: any[] = Array.isArray(data) ? data : (data as any)?.data ?? [];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹ Back</Text></TouchableOpacity>
-        <Text style={styles.title}>Order History</Text>
-      </View>
+    <Screen>
+      <Header title="Order History" onBack={() => navigation.goBack()} />
 
-      {isLoading ? <ActivityIndicator color="#FF4D00" style={{ marginTop: 40 }} /> : (
+      {isLoading ? (
+        <Loading />
+      ) : (
         <FlatList
           data={orders}
           keyExtractor={(i) => i.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.row}>
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const color = STATUS_COLOR[item.status] ?? colors.textMuted;
+            const names = (item.items ?? item.orderItems ?? []).map((i: any) => i.supplement?.name ?? i.name).filter(Boolean).join(', ');
+            return (
+              <Card padding="md" style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.orderId}>Order #{item.id?.slice(-8).toUpperCase()}</Text>
+                  <Text style={styles.orderId}>{item.orderNumber ?? `Order #${item.id?.slice(-8).toUpperCase()}`}</Text>
                   <Text style={styles.date}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : ''}</Text>
-                  <Text style={styles.items}>
-                    {(item.items ?? item.orderItems ?? []).map((i: any) => i.supplement?.name ?? i.name).filter(Boolean).join(', ') || 'Supplement order'}
-                  </Text>
+                  <Text style={styles.items} numberOfLines={2}>{names || 'Supplement order'}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                  <Text style={styles.amount}>₹{item.totalAmount ?? item.amount}</Text>
-                  <View style={[styles.badge, { backgroundColor: STATUS_COLOR[item.status] ?? '#6B7280' }]}>
-                    <Text style={styles.badgeText}>{item.status}</Text>
-                  </View>
+                  <Text style={styles.amount}>₹{Number(item.totalAmount ?? item.amount).toLocaleString('en-IN')}</Text>
+                  <View style={[styles.badge, { backgroundColor: tint(color, '22') }]}><Text style={[styles.badgeText, { color }]}>{item.status}</Text></View>
                 </View>
-              </View>
-            </View>
-          )}
-          ListEmptyComponent={<Text style={styles.empty}>No orders yet</Text>}
+              </Card>
+            );
+          }}
+          ListEmptyComponent={<EmptyState icon="package" title="No orders yet" />}
         />
       )}
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 24 },
-  back: { color: '#FF4D00', fontSize: 16, marginBottom: 10 },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
-  card: {
-    backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16,
-    marginBottom: 10, borderWidth: 1, borderColor: '#2A2A2A',
-  },
-  row: { flexDirection: 'row', alignItems: 'flex-start' },
-  orderId: { color: '#F9FAFB', fontSize: 14, fontWeight: '700', marginBottom: 2 },
-  date: { color: '#6B7280', fontSize: 12, marginBottom: 4 },
-  items: { color: '#9CA3AF', fontSize: 12, lineHeight: 18 },
-  amount: { color: '#FF4D00', fontSize: 16, fontWeight: '700' },
-  badge: { borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  empty: { color: '#4B5563', textAlign: 'center', marginTop: 40 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginBottom: spacing.sm },
+  orderId: { color: colors.text, ...typography.label, fontWeight: '700', marginBottom: 2, ...typography.number },
+  date: { color: colors.textMuted, ...typography.caption, marginBottom: 4 },
+  items: { color: colors.textSecondary, ...typography.caption, lineHeight: 18 },
+  amount: { color: colors.text, ...typography.h2, ...typography.number },
+  badge: { borderRadius: radius.sm - 2, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeText: { fontSize: 10, fontWeight: '700' },
 });

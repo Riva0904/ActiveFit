@@ -1,12 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { Card, EmptyState, Header, HeroStat, Icon, Loading, Screen, SectionTitle, type IconName } from '../../components';
+import { colors, spacing, tint, typography } from '../../theme';
 
-const BADGE_ICONS: Record<string, string> = {
-  STREAK_7: '🔥', STREAK_30: '🔥', STREAK_100: '🔥',
-  FIRST_CHECKIN: '✅', CHECKINS_50: '🏅', CHECKINS_100: '🏆',
-  WEIGHT_LOSS: '⚡', MUSCLE_GAIN: '💪',
+const BADGE_ICONS: Record<string, IconName> = {
+  STREAK_7: 'fire', STREAK_30: 'fire', STREAK_100: 'fire',
+  FIRST_CHECKIN: 'check', CHECKINS_50: 'medal-outline', CHECKINS_100: 'trophy-outline',
+  WEIGHT_LOSS: 'zap', MUSCLE_GAIN: 'dumbbell',
 };
 
 export default function GamificationScreen({ navigation }: any) {
@@ -25,62 +27,44 @@ export default function GamificationScreen({ navigation }: any) {
   const rank: string = (pts as any)?.rank ?? '';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹ Back</Text></TouchableOpacity>
-        <Text style={styles.title}>Achievements</Text>
-      </View>
+    <Screen scroll>
+      <Header title="Achievements" onBack={() => navigation.goBack()} />
 
-      {ptsLoading ? <ActivityIndicator color="#FF4D00" /> : (
-        <View style={styles.pointsCard}>
-          <Text style={styles.pointsNum}>{points}</Text>
-          <Text style={styles.pointsLabel}>Total Points</Text>
-          {rank ? <Text style={styles.rank}>Rank: {rank}</Text> : null}
+      {ptsLoading ? (
+        <Loading />
+      ) : (
+        <Card accent="primary" style={styles.pointsCard}>
+          <HeroStat value={points} label="Total points" />
+          {rank ? <Text style={styles.rank}>Rank {rank}</Text> : null}
+        </Card>
+      )}
+
+      <SectionTitle title="Badges earned" />
+      {badgesLoading ? (
+        <Loading />
+      ) : badgeList.length === 0 ? (
+        <EmptyState icon="award" title="No badges yet" subtitle="Complete goals to earn badges" />
+      ) : (
+        <View style={styles.grid}>
+          {badgeList.map((b: any, i: number) => (
+            <Card key={i} style={styles.badge}>
+              <View style={styles.badgeIcon}><Icon name={BADGE_ICONS[b.type] ?? 'award'} size={24} color={colors.warning} /></View>
+              <Text style={styles.badgeName} numberOfLines={2}>{b.name ?? String(b.type ?? '').replace(/_/g, ' ')}</Text>
+              <Text style={styles.badgeDate}>{b.earnedAt ? new Date(b.earnedAt).toLocaleDateString('en-IN') : ''}</Text>
+            </Card>
+          ))}
         </View>
       )}
-
-      <Text style={styles.sectionTitle}>🏅 Badges Earned</Text>
-      {badgesLoading ? <ActivityIndicator color="#FF4D00" style={{ marginTop: 20 }} /> : (
-        badgeList.length === 0 ? (
-          <Text style={styles.empty}>Complete goals to earn badges!</Text>
-        ) : (
-          <View style={styles.badgeGrid}>
-            {badgeList.map((b: any, i: number) => (
-              <View key={i} style={styles.badge}>
-                <Text style={styles.badgeIcon}>{b.icon ?? BADGE_ICONS[b.type] ?? '🏅'}</Text>
-                <Text style={styles.badgeName}>{b.name ?? b.type?.replace(/_/g, ' ')}</Text>
-                <Text style={styles.badgeDate}>
-                  {b.earnedAt ? new Date(b.earnedAt).toLocaleDateString('en-IN') : ''}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )
-      )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 24 },
-  back: { color: '#FF4D00', fontSize: 16, marginBottom: 10 },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
-  pointsCard: {
-    margin: 20, backgroundColor: '#1A1A1A', borderRadius: 16, padding: 28,
-    alignItems: 'center', borderWidth: 1, borderColor: '#FF4D00',
-  },
-  pointsNum: { color: '#FF4D00', fontSize: 48, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  pointsLabel: { color: '#9CA3AF', fontSize: 14, marginTop: 4 },
-  rank: { color: '#F59E0B', fontSize: 13, marginTop: 8, fontWeight: '600' },
-  sectionTitle: { color: '#E5E7EB', fontSize: 15, fontWeight: '700', paddingHorizontal: 20, marginBottom: 14 },
-  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 10 },
-  badge: {
-    width: '47%', backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16,
-    alignItems: 'center', borderWidth: 1, borderColor: '#2A2A2A',
-  },
-  badgeIcon: { fontSize: 36, marginBottom: 8 },
-  badgeName: { color: '#F9FAFB', fontSize: 12, fontWeight: '600', textAlign: 'center', marginBottom: 4 },
-  badgeDate: { color: '#4B5563', fontSize: 10, textAlign: 'center' },
-  empty: { color: '#4B5563', fontSize: 13, paddingHorizontal: 20, textAlign: 'center', marginTop: 12 },
+  pointsCard: { alignItems: 'center', paddingVertical: spacing.xxl + spacing.sm },
+  rank: { color: colors.warning, ...typography.label, fontWeight: '600', marginTop: spacing.sm },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  badge: { width: '47.5%', alignItems: 'center', marginBottom: 0 },
+  badgeIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: tint(colors.warning), alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  badgeName: { color: colors.text, ...typography.caption, fontWeight: '600', textAlign: 'center', marginBottom: 4 },
+  badgeDate: { color: colors.textFaint, fontSize: 10, textAlign: 'center' },
 });

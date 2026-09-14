@@ -20,6 +20,11 @@ export const colors = {
   warning: '#F59E0B',
   info: '#3B82F6',
   purple: '#7C3AED',
+  pink: '#EC4899',
+  cyan: '#06B6D4',
+  gold: '#FBBF24',
+  silver: '#C0C4CC',
+  bronze: '#CD7F32',
   white: '#FFFFFF',
 } as const;
 

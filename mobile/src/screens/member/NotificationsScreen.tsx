@@ -1,10 +1,9 @@
 import React from 'react';
-import {
-  View, Text, StyleSheet, FlatList, ActivityIndicator,
-  TouchableOpacity, RefreshControl,
-} from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { Card, EmptyState, Header, Loading, Screen } from '../../components';
+import { colors, spacing, typography } from '../../theme';
 
 export default function NotificationsScreen({ navigation }: any) {
   const queryClient = useQueryClient();
@@ -20,75 +19,51 @@ export default function NotificationsScreen({ navigation }: any) {
   });
 
   const items: any[] = Array.isArray(data) ? data : (data as any)?.data ?? [];
+  const hasUnread = items.some((n) => !n.isRead);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-          <Text style={styles.backText}>‹ Back</Text>
-        </TouchableOpacity>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={styles.title}>Notifications</Text>
-          {items.some((n) => !n.isRead) && (
-            <TouchableOpacity onPress={() => markAllRead.mutate()}>
-              <Text style={styles.markAll}>Mark all read</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+    <Screen>
+      <Header
+        title="Notifications"
+        onBack={() => navigation.goBack()}
+        right={hasUnread ? (
+          <TouchableOpacity onPress={() => markAllRead.mutate()} hitSlop={8}>
+            <Text style={styles.markAll}>Mark all read</Text>
+          </TouchableOpacity>
+        ) : undefined}
+      />
 
       {isLoading ? (
-        <ActivityIndicator color="#FF4D00" style={{ marginTop: 40 }} />
-      ) : items.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>🔔</Text>
-          <Text style={styles.emptyTitle}>No notifications</Text>
-        </View>
+        <Loading />
       ) : (
         <FlatList
           data={items}
           keyExtractor={(i) => i.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#FF4D00" />}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
           renderItem={({ item }) => (
-            <View style={[styles.card, !item.isRead && styles.unread]}>
-              {!item.isRead && <View style={styles.dot} />}
+            <Card padding="md" style={styles.row} accent={item.isRead ? undefined : 'primary'}>
+              {!item.isRead ? <View style={styles.dot} /> : null}
               <View style={{ flex: 1 }}>
-                <Text style={styles.notifTitle}>{item.title}</Text>
-                <Text style={styles.notifBody}>{item.message}</Text>
-                <Text style={styles.notifDate}>
-                  {item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : ''}
-                </Text>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.body}>{item.message}</Text>
+                <Text style={styles.date}>{item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : ''}</Text>
               </View>
-            </View>
+            </Card>
           )}
+          ListEmptyComponent={<EmptyState icon="bell" title="No notifications" subtitle="You're all caught up" />}
         />
       )}
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 24 },
-  back: { marginBottom: 12 },
-  backText: { color: '#FF4D00', fontSize: 16 },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
-  markAll: { color: '#FF4D00', fontSize: 13 },
-  emptyCard: { alignItems: 'center', marginTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { color: '#9CA3AF', fontSize: 16 },
-  card: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16,
-    marginBottom: 10, borderWidth: 1, borderColor: '#2A2A2A',
-  },
-  unread: { borderColor: '#FF4D00' },
-  dot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF4D00',
-    marginRight: 10, marginTop: 5,
-  },
-  notifTitle: { color: '#F9FAFB', fontSize: 14, fontWeight: '700', marginBottom: 4 },
-  notifBody: { color: '#9CA3AF', fontSize: 13, marginBottom: 6 },
-  notifDate: { color: '#4B5563', fontSize: 11 },
+  markAll: { color: colors.primary, ...typography.label, fontWeight: '600', marginTop: 6 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginTop: 6 },
+  title: { color: colors.text, ...typography.body, fontWeight: '700', marginBottom: 4 },
+  body: { color: colors.textSecondary, ...typography.label, marginBottom: 6 },
+  date: { color: colors.textFaint, ...typography.micro },
 });

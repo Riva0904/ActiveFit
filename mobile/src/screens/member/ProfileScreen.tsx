@@ -33,7 +33,7 @@ export default function ProfileScreen({ navigation }: any) {
         { label: 'Payment History', icon: 'credit-card', color: colors.info, onPress: () => navigation.navigate('PaymentHistory') },
         { label: 'Progress Log', icon: 'trending-up', color: colors.success, onPress: () => navigation.navigate('ProgressLog') },
         { label: 'My Trainer', icon: 'dumbbell', color: colors.purple, onPress: () => navigation.navigate('MyTrainer') },
-        { label: 'Referrals', icon: 'gift', color: '#EC4899', onPress: () => navigation.navigate('Referrals') },
+        { label: 'Referrals', icon: 'gift', color: colors.pink, onPress: () => navigation.navigate('Referrals') },
       ];
 
   const chatTarget = role === 'SUPER_ADMIN' ? 'SuperAdminChat' : role === 'GYM_ADMIN' ? 'GymAdminChat' : 'Chat';
@@ -53,7 +53,7 @@ export default function ProfileScreen({ navigation }: any) {
     {
       title: 'Support',
       items: [
-        { label: chatLabel, icon: 'message-circle', color: '#06B6D4', onPress: () => navigation.navigate(chatTarget) },
+        { label: chatLabel, icon: 'message-circle', color: colors.cyan, onPress: () => navigation.navigate(chatTarget) },
         ...(!isTrainer && !isAdminRole
           ? [{ label: 'Gamification & Badges', icon: 'trophy-outline' as IconName, color: colors.warning, onPress: () => navigation.navigate('Gamification') }]
           : []),
