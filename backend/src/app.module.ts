@@ -40,6 +40,7 @@ import { isPrimaryInstance } from './common/utils/cluster';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { MobileModule } from './mobile/mobile.module';
+import { ActivitiesModule } from './activities/activities.module';
 
 @Module({
   imports: [
@@ -104,6 +105,7 @@ import { MobileModule } from './mobile/mobile.module';
     AnalyticsModule,
     GamificationModule,
     MobileModule,
+    ActivitiesModule,
   ],
   // Order matters: global guards execute in registration order, and all of them run
   // before any controller-level @UseGuards(). JwtAuthGuard must therefore be global

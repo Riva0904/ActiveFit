@@ -9,6 +9,7 @@ export const POINTS_CONFIG = {
   REFERRAL_SIGNUP: 50,
   MEMBERSHIP_PAYMENT: 20,
   PT_SESSION_BOOKED: 15,
+  RUN_LOGGED: 15,
 } as const;
 
 export type PointsActivity = keyof typeof POINTS_CONFIG;

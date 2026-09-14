@@ -398,6 +398,7 @@ model Member {
   workoutAssignments  WorkoutAssignment[]
   dietAssignments     DietAssignment[]
   progressLogs        ProgressLog[]
+  activityRuns        ActivityRun[]
   trainerAssignments  TrainerAssignment[]
   ptSessions          PtSession[]
 
@@ -734,6 +735,28 @@ model ProgressLog {
 
   @@index([memberId])
   @@map("progress_logs")
+}
+
+/// A GPS-tracked run recorded from the mobile app (foreground tracking, v1).
+model ActivityRun {
+  id              String   @id @default(uuid())
+  memberId        String
+  gymId           String
+  startedAt       DateTime
+  endedAt         DateTime
+  distanceMeters  Int
+  durationSec     Int
+  calories        Int?
+  avgPaceSecPerKm Int?
+  /// [[lat, lng, tsEpochSec], ...] — never returned in list responses
+  route           Json
+  createdAt       DateTime @default(now())
+
+  member          Member   @relation(fields: [memberId], references: [id])
+
+  @@index([memberId, startedAt])
+  @@index([gymId])
+  @@map("activity_runs")
 }
 
 model Notification {
