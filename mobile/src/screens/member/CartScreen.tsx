@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   qtyNum: { color: '#F9FAFB', fontSize: 16, fontWeight: '700', minWidth: 20, textAlign: 'center' },
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#141414', padding: 20,
+    backgroundColor: '#1A1A1A', padding: 20,
     borderTopWidth: 1, borderTopColor: '#2A2A2A',
   },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },

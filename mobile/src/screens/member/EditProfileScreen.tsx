@@ -171,7 +171,7 @@ export default function EditProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
   topBar: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 8 },
   backBtn: { alignSelf: 'flex-start' },
   backText: { color: '#FF4D00', fontSize: 16, fontWeight: '600' },
@@ -188,14 +188,14 @@ const styles = StyleSheet.create({
   cameraOverlay: {
     position: 'absolute', bottom: 0, right: 0,
     width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#1F1F1F', borderWidth: 2, borderColor: '#0A0A0A',
+    backgroundColor: '#1F1F1F', borderWidth: 2, borderColor: '#0F0F0F',
     alignItems: 'center', justifyContent: 'center',
   },
   avatarName: { color: '#F9FAFB', fontSize: 20, fontWeight: '700', marginBottom: 4 },
   avatarHint: { color: '#6B7280', fontSize: 13 },
 
   card: {
-    marginHorizontal: 20, backgroundColor: '#141414',
+    marginHorizontal: 20, backgroundColor: '#1A1A1A',
     borderRadius: 18, padding: 20,
     borderWidth: 1, borderColor: '#1F1F1F', marginBottom: 20,
   },

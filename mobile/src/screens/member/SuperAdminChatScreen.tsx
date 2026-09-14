@@ -310,7 +310,7 @@ const convStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
 
   convRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    padding: 16, borderBottomWidth: 1, borderBottomColor: '#141414',
+    padding: 16, borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
   },
   convInfo: { flex: 1 },
   convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '78%', padding: 12, borderRadius: 18 },
   bubbleOwn: { backgroundColor: '#FF4D00', borderBottomRightRadius: 4 },
   bubbleOther: {
-    backgroundColor: '#141414', borderBottomLeftRadius: 4,
+    backgroundColor: '#1A1A1A', borderBottomLeftRadius: 4,
     borderWidth: 1, borderColor: '#1F1F1F',
   },
   senderName: { color: '#7C3AED', fontSize: 11, fontWeight: '700', marginBottom: 3 },
@@ -364,10 +364,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 10, padding: 12,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     borderTopWidth: 1, borderTopColor: '#1A1A1A',
-    backgroundColor: '#0A0A0A', alignItems: 'flex-end',
+    backgroundColor: '#0F0F0F', alignItems: 'flex-end',
   },
   input: {
-    flex: 1, backgroundColor: '#141414', borderRadius: 22, borderWidth: 1,
+    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 22, borderWidth: 1,
     borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 14,
     paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100,
   },

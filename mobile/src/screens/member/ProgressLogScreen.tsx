@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   logNotes: { color: '#6B7280', fontSize: 12, marginTop: 10 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modal: {
-    backgroundColor: '#141414', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 24, maxHeight: '80%',
   },
   modalTitle: { color: '#F9FAFB', fontSize: 18, fontWeight: '700', marginBottom: 20 },

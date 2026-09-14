@@ -1,7 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Icon, type IconName } from '../components';
+import { colors, spacing } from '../theme';
 
 import TrainerHomeScreen from '../screens/trainer/HomeScreen';
 import TrainerMembersScreen from '../screens/trainer/MembersScreen';
@@ -22,14 +25,17 @@ const Tab = createBottomTabNavigator();
 const SessionsStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 
-const ORANGE = '#FF4D00';
-const GRAY = '#9CA3AF';
+const TAB_ICONS: Record<string, IconName> = {
+  Home: 'home', Members: 'users', Sessions: 'dumbbell', Attendance: 'calendar', Profile: 'user',
+};
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    Home: '🏠', Members: '👥', Sessions: '🏋️', Attendance: '📅', Profile: '👤',
-  };
-  return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{icons[name]}</Text>;
+function TabIcon({ name, focused, color }: { name: string; focused: boolean; color: string }) {
+  return (
+    <View style={styles.tab}>
+      <Icon name={TAB_ICONS[name] ?? 'home'} size={24} color={color} />
+      <View style={[styles.dot, { opacity: focused ? 1 : 0 }]} />
+    </View>
+  );
 }
 
 function SessionsStackNavigator() {
@@ -56,14 +62,23 @@ function TrainerProfileStackNavigator() {
 }
 
 export default function TrainerTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: ORANGE,
-        tabBarInactiveTintColor: GRAY,
-        tabBarStyle: { paddingBottom: 8, paddingTop: 6, backgroundColor: '#0F0F0F', borderTopColor: '#1A1A1A' },
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: colors.bg,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: spacing.sm,
+        },
+        tabBarIcon: ({ focused, color }) => <TabIcon name={route.name} focused={focused} color={color} />,
       })}
     >
       <Tab.Screen name="Home" component={TrainerHomeScreen} />
@@ -74,3 +89,8 @@ export default function TrainerTabs() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tab: { alignItems: 'center', justifyContent: 'center', width: 44, height: 40 },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primary, marginTop: 4 },
+});

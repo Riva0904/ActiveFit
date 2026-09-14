@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 60 },
   emptyText: { color: '#9CA3AF', fontSize: 16, fontWeight: '600' },
   emptySub: { color: '#4B5563', fontSize: 13, textAlign: 'center', paddingHorizontal: 40 },
-  inputRow: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: '#2A2A2A', backgroundColor: '#141414', alignItems: 'flex-end' },
+  inputRow: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: '#2A2A2A', backgroundColor: '#1A1A1A', alignItems: 'flex-end' },
   input: { flex: 1, backgroundColor: '#1A1A1A', borderRadius: 20, borderWidth: 1, borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 14, paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF4D00', alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },

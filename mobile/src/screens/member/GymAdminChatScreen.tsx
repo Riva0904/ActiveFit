@@ -444,7 +444,7 @@ export default function GymAdminChatScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingTop: 56, paddingBottom: 12, paddingHorizontal: 16,
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1, paddingVertical: 8, alignItems: 'center',
-    borderRadius: 10, backgroundColor: '#141414',
+    borderRadius: 10, backgroundColor: '#1A1A1A',
   },
   tabBtnActive: { backgroundColor: '#FF4D00' },
   tabText: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
 
   convRow: {
     flexDirection: 'row', gap: 12, padding: 16,
-    borderBottomWidth: 1, borderBottomColor: '#141414',
+    borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
   },
   convAvatar: {
     width: 44, height: 44, borderRadius: 14,
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   msgRowOwn: { justifyContent: 'flex-end' },
   bubble: { maxWidth: '78%', padding: 12, borderRadius: 18 },
   bubbleOwn: { backgroundColor: '#FF4D00', borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: '#141414', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#1F1F1F' },
+  bubbleOther: { backgroundColor: '#1A1A1A', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#1F1F1F' },
   senderName: { color: '#FF4D00', fontSize: 11, fontWeight: '700', marginBottom: 3 },
   msgText: { color: '#E5E7EB', fontSize: 14, lineHeight: 20 },
   msgTextOwn: { color: '#fff' },
@@ -523,10 +523,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 10, padding: 12,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     borderTopWidth: 1, borderTopColor: '#1A1A1A',
-    backgroundColor: '#0A0A0A', alignItems: 'flex-end',
+    backgroundColor: '#0F0F0F', alignItems: 'flex-end',
   },
   input: {
-    flex: 1, backgroundColor: '#141414', borderRadius: 22, borderWidth: 1,
+    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 22, borderWidth: 1,
     borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 14,
     paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100,
   },

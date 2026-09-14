@@ -220,7 +220,7 @@ export default function MyTrainerScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
   header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 24 },
   back: { color: '#FF4D00', fontSize: 16, marginBottom: 12 },
   title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
 
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    marginHorizontal: 20, marginBottom: 12, backgroundColor: '#141414',
+    marginHorizontal: 20, marginBottom: 12, backgroundColor: '#1A1A1A',
     borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#1F1F1F',
   },
   avatarWrap: {

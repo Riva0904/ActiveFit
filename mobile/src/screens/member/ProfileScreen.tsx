@@ -157,7 +157,7 @@ export default function ProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
 
   hero: {
     alignItems: 'center', paddingTop: 56, paddingBottom: 28,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   editBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 26, height: 26, borderRadius: 13,
-    backgroundColor: '#1A1A1A', borderWidth: 2, borderColor: '#0A0A0A',
+    backgroundColor: '#1A1A1A', borderWidth: 2, borderColor: '#0F0F0F',
     alignItems: 'center', justifyContent: 'center',
   },
 
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
 
   memberCodeWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#141414', borderRadius: 10, borderWidth: 1,
+    backgroundColor: '#1A1A1A', borderRadius: 10, borderWidth: 1,
     borderColor: '#2A2A2A', paddingHorizontal: 12, paddingVertical: 6,
   },
   memberCodeLabel: { color: '#6B7280', fontSize: 11 },
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2, paddingHorizontal: 24, marginBottom: 8, marginTop: 12,
   },
   card: {
-    marginHorizontal: 16, backgroundColor: '#141414',
+    marginHorizontal: 16, backgroundColor: '#1A1A1A',
     borderRadius: 18, borderWidth: 1, borderColor: '#1F1F1F',
   },
   row: {

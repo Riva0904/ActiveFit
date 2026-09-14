@@ -203,8 +203,8 @@ function getGreeting() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0A', gap: 16 },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0F0F', gap: 16 },
   loadingText: { color: '#4B5563', fontSize: 13, textAlign: 'center', lineHeight: 20 },
 
   header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 20, overflow: 'hidden' },
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   statPill: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#141414', borderRadius: 12, borderWidth: 1,
+    backgroundColor: '#1A1A1A', borderRadius: 12, borderWidth: 1,
     paddingHorizontal: 12, paddingVertical: 8,
   },
   statDot: { width: 8, height: 8, borderRadius: 4 },
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   checkBtnSub: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
 
   memberCard: {
-    marginHorizontal: 20, marginBottom: 20, backgroundColor: '#141414',
+    marginHorizontal: 20, marginBottom: 20, backgroundColor: '#1A1A1A',
     borderRadius: 18, padding: 18, borderWidth: 1, borderColor: ORANGE + '50',
   },
   memberCardWarn: { borderColor: '#EF444480' },
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 10 },
   quickCard: {
-    width: '30%', backgroundColor: '#141414', borderRadius: 16,
+    width: '30%', backgroundColor: '#1A1A1A', borderRadius: 16,
     padding: 18, alignItems: 'center', borderWidth: 1, borderColor: '#1F1F1F',
   },
   quickIcon: { fontSize: 26, marginBottom: 8 },

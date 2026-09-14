@@ -1,8 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCartStore } from '../store/cartStore';
+import { Icon, type IconName } from '../components';
+import { colors, radius, spacing } from '../theme';
 
 import MemberHomeScreen from '../screens/member/HomeScreen';
 import AttendanceScreen from '../screens/member/AttendanceScreen';
@@ -38,36 +41,44 @@ import CartScreen from '../screens/member/CartScreen';
 import OrderHistoryScreen from '../screens/member/OrderHistoryScreen';
 
 const Tab = createBottomTabNavigator();
+const HomeStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 const AttendanceStack = createStackNavigator();
 const PlansStack = createStackNavigator();
 const StoreStack = createStackNavigator();
 
-const ORANGE = '#FF4D00';
-const GRAY = '#9CA3AF';
+const TAB_ICONS: Record<string, IconName> = {
+  Home: 'home',
+  Attendance: 'calendar',
+  Plans: 'dumbbell',
+  Store: 'shopping-cart',
+  Profile: 'user',
+};
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    Home: '🏠', Attendance: '📅', Plans: '💪', Store: '🛒', Profile: '👤',
-  };
-  return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{icons[name]}</Text>;
-}
-
-function CartIcon({ focused }: { focused: boolean }) {
+/** Icon-only tab: line icon + a small orange dot under the focused one. */
+function TabIcon({ route, focused, color }: { route: string; focused: boolean; color: string }) {
   const count = useCartStore((s) => s.count());
+  const showBadge = route === 'Store' && count > 0;
   return (
-    <View>
-      <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>🛒</Text>
-      {count > 0 && (
-        <View style={{
-          position: 'absolute', top: -4, right: -6,
-          backgroundColor: ORANGE, borderRadius: 8,
-          minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{count}</Text>
+    <View style={styles.tab}>
+      <Icon name={TAB_ICONS[route] ?? 'home'} size={24} color={color} />
+      {showBadge && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
         </View>
       )}
+      <View style={[styles.dot, { opacity: focused ? 1 : 0 }]} />
     </View>
+  );
+}
+
+// Home gets its own stack so Phase 4 (Run / RunDetail) can push screens without
+// touching the tab structure again.
+function HomeStackNavigator() {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="HomeMain" component={MemberHomeScreen} />
+    </HomeStack.Navigator>
   );
 }
 
@@ -127,20 +138,26 @@ function StoreStackNavigator() {
 }
 
 export default function MemberTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: ORANGE,
-        tabBarInactiveTintColor: GRAY,
-        tabBarStyle: { paddingBottom: 8, paddingTop: 6, backgroundColor: '#0F0F0F', borderTopColor: '#1A1A1A' },
-        tabBarIcon: ({ focused }) =>
-          route.name === 'Store'
-            ? <CartIcon focused={focused} />
-            : <TabIcon name={route.name} focused={focused} />,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: colors.bg,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: spacing.sm,
+        },
+        tabBarIcon: ({ focused, color }) => <TabIcon route={route.name} focused={focused} color={color} />,
       })}
     >
-      <Tab.Screen name="Home" component={MemberHomeScreen} />
+      <Tab.Screen name="Home" component={HomeStackNavigator} />
       <Tab.Screen name="Attendance" component={AttendanceStackNavigator} />
       <Tab.Screen name="Plans" component={PlansStackNavigator} />
       <Tab.Screen name="Store" component={StoreStackNavigator} />
@@ -148,3 +165,16 @@ export default function MemberTabs() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tab: { alignItems: 'center', justifyContent: 'center', width: 44, height: 40 },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primary, marginTop: 4 },
+  badge: {
+    position: 'absolute', top: -2, right: 2,
+    backgroundColor: colors.primary, borderRadius: radius.pill,
+    minWidth: 16, height: 16, paddingHorizontal: 3,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.bg,
+  },
+  badgeText: { color: colors.white, fontSize: 9, fontWeight: '700' },
+});

@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuthStore } from '../store/authStore';
+import { Loading } from '../components';
+import { navTheme } from '../theme/navigation';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
@@ -37,16 +38,10 @@ export default function RootNavigator() {
     hydrate();
   }, []);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0F0F' }}>
-        <ActivityIndicator color="#FF4D00" size="large" />
-      </View>
-    );
-  }
+  if (isLoading) return <Loading fullScreen />;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       {user ? <AppNavigator role={user.role} /> : <AuthStack />}
     </NavigationContainer>
   );

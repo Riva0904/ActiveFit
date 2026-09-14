@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#141414', padding: 20, borderTopWidth: 1, borderTopColor: '#2A2A2A',
+    backgroundColor: '#1A1A1A', padding: 20, borderTopWidth: 1, borderTopColor: '#2A2A2A',
   },
   selectedSummary: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   summaryLabel: { color: '#9CA3AF', fontSize: 14 },

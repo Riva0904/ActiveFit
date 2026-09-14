@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   emptyText: { color: '#9CA3AF', fontSize: 16, fontWeight: '600' },
   emptySub: { color: '#4B5563', fontSize: 13 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: '#141414', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+  modal: { backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   modalTitle: { color: '#F9FAFB', fontSize: 18, fontWeight: '700', marginBottom: 20 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#2A2A2A' },
