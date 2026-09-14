@@ -6,7 +6,8 @@ import { useAuthStore } from '../../store/authStore';
 import { MobileHomeData } from '../../types';
 import { usePushToken } from '../../hooks/usePushToken';
 import { Avatar, Card, Icon, Loading, Screen, SectionTitle, StatPill, StatRow, type IconName } from '../../components';
-import { ActivityChecklist, type ChecklistItem } from '../../components/widgets';
+import { ActivityChecklist, RunSummaryCard, type ChecklistItem } from '../../components/widgets';
+import type { ActivityRun } from '../../types';
 import { useDailyChecklistStore } from '../../store/dailyChecklistStore';
 import { colors, radius, shadow, spacing, tint, typography } from '../../theme';
 
@@ -58,6 +59,13 @@ export default function HomeScreen({ navigation }: any) {
     enabled: isMember, staleTime: 5 * 60_000,
   });
 
+  const { data: latestRun } = useQuery<ActivityRun | null>({
+    queryKey: ['runs', 'latest'],
+    queryFn: () => api.get('/activities/runs/latest') as any,
+    enabled: isMember, staleTime: 60_000,
+  });
+  const ranToday = !!latestRun && new Date(latestRun.startedAt).toDateString() === new Date().toDateString();
+
   const checklistDone = useDailyChecklistStore((s) => s.isDone);
   const checklistToggle = useDailyChecklistStore((s) => s.toggle);
 
@@ -88,6 +96,11 @@ export default function HomeScreen({ navigation }: any) {
           key: 'diet', icon: 'food-apple-outline' as IconName, label: data.activeDiet.name, subtitle: 'Diet plan',
           done: checklistDone('diet'), onPress: () => checklistToggle('diet'), color: colors.success,
         }] : []),
+        {
+          key: 'run', icon: 'run' as IconName, label: 'Go for a run',
+          subtitle: ranToday && latestRun ? `${(latestRun.distanceMeters / 1000).toFixed(2)} km today` : 'GPS-tracked',
+          done: ranToday, onPress: ranToday ? undefined : () => navigation.navigate('Run'), color: colors.info,
+        },
       ]
     : [];
 
@@ -205,6 +218,18 @@ export default function HomeScreen({ navigation }: any) {
         <>
           <SectionTitle title="Today" action={{ label: `${checklist.filter((c) => c.done).length}/${checklist.length} done`, onPress: () => {} }} />
           <ActivityChecklist items={checklist} />
+        </>
+      )}
+
+      {/* ── Last run ── */}
+      {isMember && (
+        <>
+          <SectionTitle title="Activity" />
+          <RunSummaryCard
+            run={latestRun}
+            onStart={() => navigation.navigate('Run')}
+            onPress={latestRun ? () => navigation.navigate('RunDetail', { id: latestRun.id }) : undefined}
+          />
         </>
       )}
 

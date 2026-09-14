@@ -8,6 +8,8 @@ import { Icon, type IconName } from '../components';
 import { colors, radius, spacing } from '../theme';
 
 import MemberHomeScreen from '../screens/member/HomeScreen';
+import RunScreen from '../screens/member/RunScreen';
+import RunDetailScreen from '../screens/member/RunDetailScreen';
 import AttendanceScreen from '../screens/member/AttendanceScreen';
 import PlansScreen from '../screens/member/PlansScreen';
 import StoreScreen from '../screens/member/StoreScreen';
@@ -78,6 +80,8 @@ function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={MemberHomeScreen} />
+      <HomeStack.Screen name="Run" component={RunScreen} />
+      <HomeStack.Screen name="RunDetail" component={RunDetailScreen} />
     </HomeStack.Navigator>
   );
 }

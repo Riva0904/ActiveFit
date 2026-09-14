@@ -55,6 +55,26 @@ export interface TrainerHomeData {
   unreadNotifications: number;
 }
 
+export interface RoutePoint {
+  lat: number;
+  lng: number;
+  /** Unix epoch seconds */
+  ts: number;
+}
+
+export interface ActivityRun {
+  id: string;
+  startedAt: string;
+  endedAt: string;
+  distanceMeters: number;
+  durationSec: number;
+  calories: number | null;
+  avgPaceSecPerKm: number | null;
+  createdAt: string;
+  /** Present only on /activities/runs/:id and /activities/runs/latest */
+  route?: RoutePoint[];
+}
+
 export interface Notification {
   id: string;
   type: string;
