@@ -1,9 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PointsService } from '../gamification/points.service';
+import { CreateProgressLogDto } from './dto/create-progress-log.dto';
 
 @Injectable()
 export class ProgressLogsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private pointsService: PointsService,
+  ) {}
 
   async findByUser(userId: string, gymId: string) {
     const member = await this.prisma.member.findFirst({ where: { userId, gymId } });
@@ -15,19 +20,32 @@ export class ProgressLogsService {
     });
   }
 
-  async create(userId: string, gymId: string, data: any) {
+  async create(userId: string, gymId: string, data: CreateProgressLogDto) {
     const member = await this.prisma.member.findFirst({ where: { userId, gymId } });
-    if (!member) return null;
+    if (!member) throw new BadRequestException('Member profile not found');
 
-    const { weight, height } = data;
+    const { weight, height, logDate, ...rest } = data;
     let bmi: number | undefined;
     if (weight && height) {
       const heightM = height / 100;
       bmi = parseFloat((weight / (heightM * heightM)).toFixed(1));
     }
 
-    return this.prisma.progressLog.create({
-      data: { ...data, bmi: bmi ?? data.bmi, memberId: member.id, gymId },
+    const log = await this.prisma.progressLog.create({
+      data: {
+        ...rest,
+        weight,
+        height,
+        bmi,
+        ...(logDate ? { logDate: new Date(logDate) } : {}),
+        memberId: member.id,
+        gymId,
+      },
     });
+
+    // PROGRESS_LOG has been in POINTS_CONFIG since the start but was never awarded.
+    await this.pointsService.award(member.id, gymId, 'PROGRESS_LOG');
+
+    return log;
   }
 }

@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal,
-} from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { Alert, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { latestWeight } from '../../lib/weight';
+import { Button, Card, EmptyState, Field, Header, Loading, Screen, SectionTitle, TextField } from '../../components';
+import { WeightGauge } from '../../components/widgets';
+import { colors, radius, spacing, typography } from '../../theme';
+
+const DEFAULT_WEIGHT = 70;
 
 export default function ProgressLogScreen({ navigation }: any) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [weight, setWeight] = useState('');
+  const [draft, setDraft] = useState(DEFAULT_WEIGHT);
   const [bodyFat, setBodyFat] = useState('');
   const [chest, setChest] = useState('');
   const [waist, setWaist] = useState('');
@@ -21,173 +24,128 @@ export default function ProgressLogScreen({ navigation }: any) {
     queryFn: () => api.get('/progress-logs/my') as any,
   });
 
+  const logs: any[] = Array.isArray(data) ? data : (data as any)?.data ?? [];
+  const latest = latestWeight(logs);
+
+  // Seed the ruler from the most recent log once it arrives.
+  useEffect(() => { if (latest !== null) setDraft(latest); }, [latest]);
+
   const logMutation = useMutation({
     mutationFn: (body: any) => api.post('/progress-logs', body) as any,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['progress-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['my-points'] });
       setShowForm(false);
-      setWeight(''); setBodyFat(''); setChest(''); setWaist(''); setHips(''); setNotes('');
+      setBodyFat(''); setChest(''); setWaist(''); setHips(''); setNotes('');
       Alert.alert('Logged!', 'Progress entry saved');
     },
-    onError: (e: any) => Alert.alert('Error', e?.message),
+    onError: (e: any) => Alert.alert('Error', e?.message ?? 'Could not save'),
   });
 
-  const logs: any[] = Array.isArray(data) ? data : (data as any)?.data ?? [];
+  const num = (s: string) => (s.trim() ? parseFloat(s) : undefined);
 
-  function submit() {
-    if (!weight) return Alert.alert('Required', 'Enter at least your weight');
+  function submitFull() {
     logMutation.mutate({
-      weight: parseFloat(weight),
-      bodyFatPercentage: bodyFat ? parseFloat(bodyFat) : undefined,
-      chest: chest ? parseFloat(chest) : undefined,
-      waist: waist ? parseFloat(waist) : undefined,
-      hips: hips ? parseFloat(hips) : undefined,
-      notes: notes || undefined,
+      weight: draft,
+      bodyFat: num(bodyFat),
+      chest: num(chest),
+      waist: num(waist),
+      hips: num(hips),
+      notes: notes.trim() || undefined,
     });
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹ Back</Text></TouchableOpacity>
-        <View style={styles.headerRow}>
-          <Text style={styles.title}>Progress Log</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowForm(true)}>
-            <Text style={styles.addBtnText}>+ Log</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <Screen scroll>
+      <Header
+        title="Progress Log"
+        subtitle={latest !== null ? `Last logged ${latest} kg` : 'Track your body measurements'}
+        onBack={() => navigation.goBack()}
+        right={<Button title="Details" variant="secondary" icon="plus" onPress={() => setShowForm(true)} />}
+      />
 
-      {isLoading ? <ActivityIndicator color="#FF4D00" style={{ marginTop: 40 }} /> : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-          {logs.length === 0 ? (
-            <View style={styles.emptyWrap}>
-              <Text style={{ fontSize: 48 }}>📊</Text>
-              <Text style={styles.emptyText}>No progress logged yet</Text>
-              <Text style={styles.emptySub}>Tap + Log to record your measurements</Text>
+      <Card style={styles.gaugeCard}>
+        <WeightGauge value={draft} onChange={setDraft} label="Current weight" />
+        <Button
+          title={`Log ${draft.toFixed(1)} kg`}
+          size="lg"
+          icon="check"
+          style={{ marginTop: spacing.xl }}
+          onPress={() => logMutation.mutate({ weight: draft })}
+          loading={logMutation.isPending && !showForm}
+        />
+      </Card>
+
+      <SectionTitle title="History" />
+      {isLoading ? (
+        <Loading />
+      ) : logs.length === 0 ? (
+        <EmptyState icon="trending-up" title="No progress logged yet" subtitle="Slide the ruler to your weight and tap Log" />
+      ) : (
+        logs.map((log: any, i: number) => (
+          <Card key={log.id ?? i} padding="md">
+            <Text style={styles.logDate}>
+              {new Date(log.logDate ?? log.createdAt).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+            </Text>
+            <View style={styles.metricsRow}>
+              {log.weight != null ? <Metric label="Weight" value={`${log.weight} kg`} highlight /> : null}
+              {log.bodyFat != null ? <Metric label="Body fat" value={`${log.bodyFat}%`} /> : null}
+              {log.bmi != null ? <Metric label="BMI" value={`${log.bmi}`} /> : null}
+              {log.chest != null ? <Metric label="Chest" value={`${log.chest} cm`} /> : null}
+              {log.waist != null ? <Metric label="Waist" value={`${log.waist} cm`} /> : null}
+              {log.hips != null ? <Metric label="Hips" value={`${log.hips} cm`} /> : null}
             </View>
-          ) : (
-            logs.map((log: any, i: number) => (
-              <View key={log.id ?? i} style={styles.card}>
-                <Text style={styles.logDate}>
-                  {new Date(log.date ?? log.createdAt).toLocaleDateString('en-IN', {
-                    weekday: 'short', day: 'numeric', month: 'short',
-                  })}
-                </Text>
-                <View style={styles.metricsRow}>
-                  {log.weight && <Metric label="Weight" value={`${log.weight} kg`} highlight />}
-                  {log.bodyFatPercentage && <Metric label="Body Fat" value={`${log.bodyFatPercentage}%`} />}
-                  {log.chest && <Metric label="Chest" value={`${log.chest} cm`} />}
-                  {log.waist && <Metric label="Waist" value={`${log.waist} cm`} />}
-                  {log.hips && <Metric label="Hips" value={`${log.hips} cm`} />}
-                </View>
-                {log.notes && <Text style={styles.logNotes}>{log.notes}</Text>}
-              </View>
-            ))
-          )}
-        </ScrollView>
+            {log.notes ? <Text style={styles.logNotes}>{log.notes}</Text> : null}
+          </Card>
+        ))
       )}
 
-      <Modal visible={showForm} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Log Progress</Text>
-            <ScrollView>
-              {[
-                { label: 'Weight (kg) *', value: weight, set: setWeight },
-                { label: 'Body Fat %', value: bodyFat, set: setBodyFat },
-                { label: 'Chest (cm)', value: chest, set: setChest },
-                { label: 'Waist (cm)', value: waist, set: setWaist },
-                { label: 'Hips (cm)', value: hips, set: setHips },
-              ].map(({ label, value, set }) => (
-                <View key={label} style={styles.field}>
-                  <Text style={styles.fieldLabel}>{label}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={value}
-                    onChangeText={set}
-                    keyboardType="decimal-pad"
-                    placeholder="0"
-                    placeholderTextColor="#4B5563"
-                  />
-                </View>
-              ))}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Notes</Text>
-                <TextInput
-                  style={[styles.input, { height: 80 }]}
-                  value={notes}
-                  onChangeText={setNotes}
-                  multiline
-                  placeholder="Optional notes…"
-                  placeholderTextColor="#4B5563"
-                />
-              </View>
+      <Modal visible={showForm} animationType="slide" transparent onRequestClose={() => setShowForm(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Log measurements</Text>
+            <Text style={styles.sheetSub}>Weight {draft.toFixed(1)} kg from the ruler · others optional</Text>
+            <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 340 }}>
+              <Field label="Body fat %" style={styles.field}><TextField value={bodyFat} onChangeText={setBodyFat} keyboardType="decimal-pad" placeholder="0" /></Field>
+              <Field label="Chest (cm)" style={styles.field}><TextField value={chest} onChangeText={setChest} keyboardType="decimal-pad" placeholder="0" /></Field>
+              <Field label="Waist (cm)" style={styles.field}><TextField value={waist} onChangeText={setWaist} keyboardType="decimal-pad" placeholder="0" /></Field>
+              <Field label="Hips (cm)" style={styles.field}><TextField value={hips} onChangeText={setHips} keyboardType="decimal-pad" placeholder="0" /></Field>
+              <Field label="Notes" style={styles.field}><TextField value={notes} onChangeText={setNotes} multiline placeholder="Optional notes…" /></Field>
             </ScrollView>
-            <View style={styles.modalBtns}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowForm(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={submit} disabled={logMutation.isPending}>
-                {logMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save</Text>}
-              </TouchableOpacity>
+            <View style={styles.btnRow}>
+              <Button title="Cancel" variant="secondary" style={{ flex: 1 }} onPress={() => setShowForm(false)} />
+              <Button title="Save" style={{ flex: 2 }} onPress={submitFull} loading={logMutation.isPending && showForm} />
             </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </Screen>
   );
 }
 
 function Metric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <View style={{ alignItems: 'center' }}>
-      <Text style={{ color: highlight ? '#FF4D00' : '#F9FAFB', fontSize: 15, fontWeight: '700' }}>{value}</Text>
-      <Text style={{ color: '#6B7280', fontSize: 11 }}>{label}</Text>
+    <View style={styles.metric}>
+      <Text style={[styles.metricValue, highlight && { color: colors.primary }]}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 20 },
-  back: { color: '#FF4D00', fontSize: 16, marginBottom: 10 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
-  addBtn: { backgroundColor: '#FF4D00', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  emptyWrap: { alignItems: 'center', marginTop: 60, gap: 12 },
-  emptyText: { color: '#9CA3AF', fontSize: 16, fontWeight: '600' },
-  emptySub: { color: '#4B5563', fontSize: 13 },
-  card: {
-    backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: '#2A2A2A',
-  },
-  logDate: { color: '#F9FAFB', fontSize: 14, fontWeight: '700', marginBottom: 12 },
-  metricsRow: { flexDirection: 'row', gap: 20, flexWrap: 'wrap' },
-  logNotes: { color: '#6B7280', fontSize: 12, marginTop: 10 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modal: {
-    backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 24, maxHeight: '80%',
-  },
-  modalTitle: { color: '#F9FAFB', fontSize: 18, fontWeight: '700', marginBottom: 20 },
-  field: { marginBottom: 14 },
-  fieldLabel: { color: '#9CA3AF', fontSize: 12, marginBottom: 6 },
-  input: {
-    backgroundColor: '#1A1A1A', borderRadius: 10, borderWidth: 1,
-    borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 15,
-    paddingHorizontal: 14, paddingVertical: 12,
-  },
-  modalBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  cancelBtn: {
-    flex: 1, paddingVertical: 14, alignItems: 'center',
-    backgroundColor: '#2A2A2A', borderRadius: 12,
-  },
-  cancelBtnText: { color: '#9CA3AF', fontWeight: '600' },
-  saveBtn: {
-    flex: 1, paddingVertical: 14, alignItems: 'center',
-    backgroundColor: '#FF4D00', borderRadius: 12,
-  },
-  saveBtnText: { color: '#fff', fontWeight: '700' },
+  gaugeCard: { paddingVertical: spacing.xxl },
+  logDate: { color: colors.textSecondary, ...typography.caption, fontWeight: '600', marginBottom: spacing.sm },
+  metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
+  metric: { alignItems: 'flex-start', minWidth: 64 },
+  metricValue: { color: colors.text, ...typography.body, fontWeight: '700', ...typography.number },
+  metricLabel: { color: colors.textMuted, ...typography.micro },
+  logNotes: { color: colors.textMuted, ...typography.caption, marginTop: spacing.sm },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.bg, borderTopLeftRadius: radius.xl + 4, borderTopRightRadius: radius.xl + 4, padding: spacing.xxl, paddingBottom: 40, borderTopWidth: 1, borderColor: colors.border },
+  handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.xl },
+  sheetTitle: { color: colors.text, fontSize: 20, fontWeight: '800', marginBottom: 4 },
+  sheetSub: { color: colors.textMuted, ...typography.label, marginBottom: spacing.lg },
+  field: { marginBottom: spacing.md },
+  btnRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
 });

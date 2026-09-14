@@ -4,7 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import QRCode from 'react-native-qrcode-svg';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
-import { Card, Header, HeroStat, Icon, Loading, Screen, type IconName } from '../../components';
+import { Card, Header, HeroStat, Icon, Loading, Screen, SectionTitle, type IconName } from '../../components';
+import { WeeklyBarChart } from '../../components/widgets';
+import { useWeeklyActivity } from '../../hooks/useWeeklyActivity';
 import { colors, spacing, tint, typography } from '../../theme';
 
 const ACTIONS: { label: string; icon: IconName; screen: string }[] = [
@@ -29,6 +31,8 @@ export default function AttendanceScreen({ navigation }: any) {
     enabled: isMember,
   });
 
+  const week = useWeeklyActivity(isMember);
+
   if (isLoading) return <Loading fullScreen />;
 
   const qrToken: string = homeData?.qrToken ?? '';
@@ -50,6 +54,22 @@ export default function AttendanceScreen({ navigation }: any) {
         )}
         {homeData?.memberCode ? <Text style={styles.memberCode}>{homeData.memberCode}</Text> : null}
       </Card>
+
+      {isMember && (
+        <>
+          <SectionTitle title="This week" action={{ label: `${week.visits} visit${week.visits === 1 ? '' : 's'}`, onPress: () => navigation.navigate('AttendanceHistory') }} />
+          <Card>
+            {week.isLoading ? (
+              <Loading />
+            ) : (
+              <WeeklyBarChart values={week.values} presence={week.presence} highlightIndex={week.highlightIndex} highlightLabel={week.highlightLabel} />
+            )}
+            <Text style={styles.weekSummary}>
+              {week.totalMinutes > 0 ? `${week.totalMinutes} min in the gym this week` : 'No completed sessions yet this week'}
+            </Text>
+          </Card>
+        </>
+      )}
 
       {isMember && (
         <View style={styles.streakRow}>
@@ -84,6 +104,7 @@ const styles = StyleSheet.create({
   noQr: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
   noQrText: { color: colors.textMuted, ...typography.label },
   memberCode: { color: colors.primary, fontWeight: '700', fontSize: 18, marginTop: spacing.lg, letterSpacing: 4, ...typography.number },
+  weekSummary: { color: colors.textMuted, ...typography.caption, textAlign: 'center', marginTop: spacing.sm },
 
   streakRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   streakCard: { flex: 1, alignItems: 'center', paddingVertical: spacing.xl },

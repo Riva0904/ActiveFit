@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ProgressLogsService } from './progress-logs.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CreateProgressLogDto } from './dto/create-progress-log.dto';
 
 @ApiTags('Progress Logs')
 @ApiBearerAuth()
@@ -17,7 +18,7 @@ export class ProgressLogsController {
   }
 
   @Post()
-  create(@Body() body: any, @CurrentUser() user: any) {
+  create(@Body() body: CreateProgressLogDto, @CurrentUser() user: any) {
     return this.progressLogsService.create(user.id, user.gymId, body);
   }
 }

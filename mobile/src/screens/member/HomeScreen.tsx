@@ -5,7 +5,9 @@ import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { MobileHomeData } from '../../types';
 import { usePushToken } from '../../hooks/usePushToken';
-import { Avatar, Card, Icon, Loading, Screen, SectionTitle, StatPill, type IconName } from '../../components';
+import { Avatar, Card, Icon, Loading, Screen, SectionTitle, StatPill, StatRow, type IconName } from '../../components';
+import { ActivityChecklist, type ChecklistItem } from '../../components/widgets';
+import { useDailyChecklistStore } from '../../store/dailyChecklistStore';
 import { colors, radius, shadow, spacing, tint, typography } from '../../theme';
 
 export default function HomeScreen({ navigation }: any) {
@@ -31,6 +33,34 @@ export default function HomeScreen({ navigation }: any) {
     onError: (err: any) => Alert.alert('Check-out failed', err?.message ?? 'Try again'),
   });
 
+  // This screen also serves STAFF / GYM_ADMIN / SUPER_ADMIN (they use the app for
+  // chat + notifications). Membership, plans and the store need a Member row, and
+  // self check-in is allowed only for MEMBER/TRAINER/STAFF on the backend.
+  const role = user?.role ?? 'MEMBER';
+  const isMember = role === 'MEMBER';
+  const canCheckIn = isMember || role === 'STAFF';
+
+  // Member-only stats for the StatRow (all three endpoints are @Roles(MEMBER)).
+  const now = new Date();
+  const { data: calendar } = useQuery({
+    queryKey: ['attendance-calendar', now.getMonth(), now.getFullYear()],
+    queryFn: () => api.get('/attendance/calendar', { params: { month: now.getMonth() + 1, year: now.getFullYear() } }) as any,
+    enabled: isMember, staleTime: 5 * 60_000,
+  });
+  const { data: streak } = useQuery({
+    queryKey: ['attendance-streak'],
+    queryFn: () => api.get('/attendance/streak') as any,
+    enabled: isMember, staleTime: 5 * 60_000,
+  });
+  const { data: insights } = useQuery({
+    queryKey: ['my-insights'],
+    queryFn: () => api.get('/attendance/my-insights') as any,
+    enabled: isMember, staleTime: 5 * 60_000,
+  });
+
+  const checklistDone = useDailyChecklistStore((s) => s.isDone);
+  const checklistToggle = useDailyChecklistStore((s) => s.toggle);
+
   if (isLoading) return <Loading fullScreen text={'Connecting…\nFirst load may take 60s'} />;
 
   const isCheckedIn = data?.isCheckedInToday ?? false;
@@ -38,12 +68,28 @@ export default function HomeScreen({ navigation }: any) {
   const daysLeft = end ? Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000)) : null;
   const busy = checkInMutation.isPending || checkOutMutation.isPending;
 
-  // This screen also serves STAFF / GYM_ADMIN / SUPER_ADMIN (they use the app for
-  // chat + notifications). Membership, plans and the store need a Member row, and
-  // self check-in is allowed only for MEMBER/TRAINER/STAFF on the backend.
-  const role = user?.role ?? 'MEMBER';
-  const isMember = role === 'MEMBER';
-  const canCheckIn = isMember || role === 'STAFF';
+  const monthVisits = ((calendar as any)?.presentDates ?? []).length;
+  const currentStreak = (streak as any)?.currentStreak ?? 0;
+  const avgMin = (insights as any)?.avgDuration ? Math.round((insights as any).avgDuration) : null;
+
+  const checklist: ChecklistItem[] = isMember
+    ? [
+        {
+          key: 'checkin', icon: 'map-pin', label: 'Check in at the gym',
+          subtitle: isCheckedIn && data?.checkedInAt ? `Since ${new Date(data.checkedInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : 'Tap when you arrive',
+          done: isCheckedIn, busy,
+          onPress: () => (isCheckedIn ? checkOutMutation.mutate() : checkInMutation.mutate()),
+        },
+        ...(data?.activeWorkout ? [{
+          key: 'workout', icon: 'dumbbell' as IconName, label: data.activeWorkout.name, subtitle: 'Workout plan',
+          done: checklistDone('workout'), onPress: () => checklistToggle('workout'), color: colors.purple,
+        }] : []),
+        ...(data?.activeDiet ? [{
+          key: 'diet', icon: 'food-apple-outline' as IconName, label: data.activeDiet.name, subtitle: 'Diet plan',
+          done: checklistDone('diet'), onPress: () => checklistToggle('diet'), color: colors.success,
+        }] : []),
+      ]
+    : [];
 
   const quickActions: { label: string; icon: IconName; tab: string }[] = isMember
     ? [
@@ -75,11 +121,19 @@ export default function HomeScreen({ navigation }: any) {
             <Avatar uri={user?.avatar} firstName={user?.firstName} lastName={user?.lastName} ring />
           </TouchableOpacity>
         </View>
-        <View style={styles.statsRow}>
-          <StatPill label="Status" value={isCheckedIn ? 'Active' : 'Not In'} color={isCheckedIn ? colors.success : colors.textMuted} />
-          {data?.activeWorkout && <StatPill label="Workout" value={data.activeWorkout.name} color={colors.purple} />}
-          {data?.activeDiet && <StatPill label="Diet" value={data.activeDiet.name} color={colors.success} />}
-        </View>
+        {isMember ? (
+          <Card style={styles.statCard} padding="md">
+            <StatRow items={[
+              { label: 'Visits · month', value: monthVisits },
+              { label: 'Streak', value: currentStreak, unit: currentStreak === 1 ? 'day' : 'days', color: currentStreak > 0 ? colors.primary : undefined },
+              { label: 'Avg session', value: avgMin ?? '—', unit: avgMin ? 'min' : undefined },
+            ]} />
+          </Card>
+        ) : (
+          <View style={styles.statsRow}>
+            <StatPill label="Status" value={isCheckedIn ? 'Active' : 'Not In'} color={isCheckedIn ? colors.success : colors.textMuted} />
+          </View>
+        )}
       </View>
 
       {/* ── Check-in ── */}
@@ -146,6 +200,14 @@ export default function HomeScreen({ navigation }: any) {
         </Card>
       )}
 
+      {/* ── Today's checklist ── */}
+      {checklist.length > 0 && (
+        <>
+          <SectionTitle title="Today" action={{ label: `${checklist.filter((c) => c.done).length}/${checklist.length} done`, onPress: () => {} }} />
+          <ActivityChecklist items={checklist} />
+        </>
+      )}
+
       {/* ── Quick Actions ── */}
       <SectionTitle title="Quick Actions" />
       <View style={styles.quickGrid}>
@@ -177,6 +239,7 @@ const styles = StyleSheet.create({
   greeting: { color: colors.textMuted, ...typography.label },
   name: { color: colors.text, fontSize: 24, fontWeight: '800', marginTop: 2 },
   statsRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  statCard: { marginBottom: 0 },
 
   checkBtn: {
     marginBottom: spacing.lg, backgroundColor: colors.primary,
