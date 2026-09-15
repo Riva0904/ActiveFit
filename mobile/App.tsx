@@ -1,4 +1,6 @@
 import 'react-native-gesture-handler';
+// Registers the background location task at module scope — must precede any component code.
+import './src/lib/runTask';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -9,6 +11,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './src/lib/queryClient';
 import RootNavigator from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
+import { useRunStore } from './src/store/runStore';
 
 // Keep the native splash up until Inter is loaded so nothing renders in the system font.
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -20,6 +23,9 @@ export default function App() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
+
+  // Restore a run that was in progress when the app was killed / swiped away.
+  useEffect(() => { useRunStore.getState().hydrate().catch(() => {}); }, []);
 
   if (!ready) return null;
 

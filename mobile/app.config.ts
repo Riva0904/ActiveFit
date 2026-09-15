@@ -56,12 +56,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-location',
       {
-        // Foreground-only v1: no background modes, no ACCESS_BACKGROUND_LOCATION.
-        locationWhenInUsePermission: 'ActiveBoost records your run route while the app is open.',
-        locationAlwaysAndWhenInUsePermission: 'ActiveBoost records your run route while the app is open.',
+        // Background run tracking: Android uses a foreground service (needs only
+        // "while in use" + FOREGROUND_SERVICE_LOCATION, added by this flag — NOT
+        // ACCESS_BACKGROUND_LOCATION); iOS gets UIBackgroundModes: ['location'].
+        locationWhenInUsePermission: 'ActiveBoost records your run route, including while the screen is off during a run.',
+        locationAlwaysAndWhenInUsePermission: 'ActiveBoost records your run route, including while the screen is off during a run.',
+        isAndroidForegroundServiceEnabled: true,
+        isAndroidBackgroundLocationEnabled: false,
+        isIosBackgroundLocationEnabled: true,
       },
     ],
   ],
-  extra: { eas: { projectId: '6910a57c-75eb-4eee-94fe-98c2e03c34cc' } },
+  extra: {
+    eas: { projectId: '6910a57c-75eb-4eee-94fe-98c2e03c34cc' },
+    // Lets RunMap swap the Google MapView for an SVG route sketch when no key is baked in.
+    hasGoogleMapsKey: !!process.env.GOOGLE_MAPS_ANDROID_API_KEY,
+  },
   owner: 'activeboost',
 } as unknown as ExpoConfig);
