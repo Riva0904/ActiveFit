@@ -27,11 +27,6 @@ export class WorkoutPlansController {
     return this.workoutPlansService.generateAiPlan(user.id, user.gymId, body.goal, body.level, body.daysPerWeek, body.equipment);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: any) {
-    return this.workoutPlansService.update(id, body, user.gymId);
-  }
-
   // ── Premium Packages ──────────────────────────────────────────────────────
 
   @Get('packages')
@@ -70,5 +65,15 @@ export class WorkoutPlansController {
   @Roles(Role.MEMBER)
   buyPackage(@Param('id') id: string, @Body() body: { useUpi?: boolean }, @CurrentUser() user: any) {
     return this.workoutPlansService.purchasePackage(id, user.id, user.gymId, !!body?.useUpi);
+  }
+
+  // Declared last so the ':id' wildcard cannot shadow the 'packages/:id' routes
+  // above it. Previously it also carried no @Roles, letting any authenticated
+  // user edit any workout plan in their gym.
+  @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.TRAINER)
+  update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: any) {
+    return this.workoutPlansService.update(id, body, user.gymId);
   }
 }

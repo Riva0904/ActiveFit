@@ -6,6 +6,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CreateGymDto } from './dto/create-gym.dto';
+import { SetGymPlanDto, UpdateGymAdminDto, UpdateGymProfileDto, UpdateGymStatusDto } from './dto/update-gym.dto';
 
 @ApiTags('Gyms')
 @ApiBearerAuth()
@@ -24,7 +26,7 @@ export class GymsController {
   @Post()
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create gym' })
-  create(@Body() body: any) {
+  create(@Body() body: CreateGymDto) {
     return this.gymsService.create(body);
   }
 
@@ -42,18 +44,34 @@ export class GymsController {
     return this.gymsService.getStats(id);
   }
 
+  // Profile fields only. Subscription columns (saasPlan/saasStatus/saasExpiresAt)
+  // are not accepted here from any role — they follow the GymSubscription row.
   @Patch(':id')
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN)
-  @ApiOperation({ summary: 'Update gym' })
-  update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: any) {
+  @ApiOperation({ summary: 'Update gym profile' })
+  update(@Param('id') id: string, @Body() body: UpdateGymProfileDto, @CurrentUser() user: any) {
+    return this.gymsService.update(id, body, user);
+  }
+
+  @Patch(':id/admin')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update gym incl. super-admin-only fields (status, maxMembers, slug)' })
+  updateAsAdmin(@Param('id') id: string, @Body() body: UpdateGymAdminDto, @CurrentUser() user: any) {
     return this.gymsService.update(id, body, user);
   }
 
   @Patch(':id/status')
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update gym status' })
-  updateStatus(@Param('id') id: string, @Body('status') status: any) {
-    return this.gymsService.updateStatus(id, status);
+  updateStatus(@Param('id') id: string, @Body() body: UpdateGymStatusDto) {
+    return this.gymsService.updateStatus(id, body.status);
+  }
+
+  @Patch(':id/subscription-plan')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Set a gym SaaS tier (Super Admin only)' })
+  setPlan(@Param('id') id: string, @Body() body: SetGymPlanDto, @CurrentUser() user: any) {
+    return this.gymsService.setPlan(id, body, user);
   }
 
   @Delete(':id')

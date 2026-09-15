@@ -1,10 +1,16 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../common/services/audit.service';
 import { GymStatus } from '@prisma/client';
+import { CreateGymDto } from './dto/create-gym.dto';
+import { pickUpdatableGymFields, SetGymPlanDto, UpdateGymAdminDto, UpdateGymProfileDto } from './dto/update-gym.dto';
 
 @Injectable()
 export class GymsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+  ) {}
 
   async findAll(query: any) {
     const { page = 1, limit = 10, search, status } = query;
@@ -46,19 +52,38 @@ export class GymsService {
     return gym;
   }
 
-  async create(data: any) {
-    return this.prisma.gym.create({ data });
+  async create(data: CreateGymDto) {
+    return this.prisma.gym.create({ data: data as any });
   }
 
-  async update(id: string, data: any, user: any) {
-    const gym = await this.prisma.gym.findUnique({ where: { id } });
+  /**
+   * Update a gym's profile. `data` is already DTO-filtered by the global pipe;
+   * it is filtered again here by role so a future `@Body() any` regression can't
+   * reopen the privilege-escalation hole (saasPlan/saasStatus/saasExpiresAt are
+   * not writable by anyone — subscriptions own those columns).
+   */
+  async update(id: string, data: UpdateGymProfileDto | UpdateGymAdminDto, user: any) {
+    const gym = await this.prisma.gym.findFirst({ where: { id, deletedAt: null } });
     if (!gym) throw new NotFoundException('Gym not found');
 
     if (user.role === 'GYM_ADMIN' && user.gymId !== id) {
       throw new ForbiddenException('Not authorized');
     }
 
-    return this.prisma.gym.update({ where: { id }, data });
+    const safeData = pickUpdatableGymFields(data as Record<string, unknown>, user.role);
+    const updated = await this.prisma.gym.update({ where: { id }, data: safeData });
+
+    await this.audit.log({
+      gymId: id,
+      userId: user.id,
+      action: 'GYM_UPDATED',
+      entity: 'Gym',
+      entityId: id,
+      oldValues: Object.fromEntries(Object.keys(safeData).map((k) => [k, (gym as any)[k]])),
+      newValues: safeData,
+    });
+
+    return updated;
   }
 
   async remove(id: string) {
@@ -73,6 +98,32 @@ export class GymsService {
   async updateStatus(id: string, status: GymStatus) {
     await this.findOne(id);
     return this.prisma.gym.update({ where: { id }, data: { status } });
+  }
+
+  /**
+   * Set a gym's SaaS tier. SUPER_ADMIN only and always audited — this is the one
+   * sanctioned writer of the saas* columns, which is why they are stripped from
+   * every other update path.
+   */
+  async setPlan(id: string, dto: SetGymPlanDto, user: any) {
+    const gym = await this.findOne(id);
+    const data: Record<string, unknown> = { saasPlan: dto.plan };
+    if (dto.status) data.saasStatus = dto.status;
+    if (dto.expiresAt) data.saasExpiresAt = new Date(dto.expiresAt);
+
+    const updated = await this.prisma.gym.update({ where: { id }, data });
+
+    await this.audit.log({
+      gymId: id,
+      userId: user?.id,
+      action: 'GYM_PLAN_CHANGED',
+      entity: 'Gym',
+      entityId: id,
+      oldValues: { saasPlan: gym.saasPlan, saasStatus: gym.saasStatus, saasExpiresAt: gym.saasExpiresAt },
+      newValues: { ...data, reason: dto.reason },
+    });
+
+    return updated;
   }
 
   async getStats(gymId: string) {

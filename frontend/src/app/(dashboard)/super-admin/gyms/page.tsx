@@ -470,7 +470,10 @@ export default function GymsPage() {
 
   const handleEdit = async (data: any) => {
     if (!editGym) return;
-    await gymsApi.update(editGym.id, data);
+    // The tier is not a profile field — it goes through the audited plan endpoint.
+    const { saasPlan, ...profile } = data ?? {};
+    await gymsApi.updateAsAdmin(editGym.id, profile);
+    if (saasPlan && saasPlan !== editGym.saasPlan) await gymsApi.setPlan(editGym.id, saasPlan);
     toast.success('Gym updated successfully!');
     setEditGym(null);
     setViewGym(null);

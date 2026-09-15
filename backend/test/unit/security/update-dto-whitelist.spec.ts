@@ -4,6 +4,7 @@ import { UpdateTrainerDto } from '../../../src/trainers/dto/update-trainer.dto';
 import { UpdateStaffDto } from '../../../src/staffs/dto/update-staff.dto';
 import { UpdateSupplementDto } from '../../../src/supplements/dto/update-supplement.dto';
 import { UpdateMembershipDto } from '../../../src/memberships/dto/update-membership.dto';
+import { SetGymPlanDto, UpdateGymAdminDto, UpdateGymProfileDto, UpdateGymStatusDto } from '../../../src/gyms/dto/update-gym.dto';
 
 /**
  * These endpoints used to take `@Body() body: any`, which the global ValidationPipe
@@ -125,5 +126,74 @@ describe('UpdateMembershipDto', () => {
 
   it('rejects an unknown status', async () => {
     await expect(validate(UpdateMembershipDto, { status: 'FREE_FOREVER' })).rejects.toThrow(BadRequestException);
+  });
+});
+
+// ─── Gym update: the free-ENTERPRISE hole ───────────────────────────────────
+
+describe('UpdateGymProfileDto (gym admin)', () => {
+  // PATCH /gyms/:id took `@Body() body: any`, so a GYM_ADMIN could grant
+  // themselves any tier for free. These columns now belong to subscriptions.
+  it.each([
+    ['saasPlan', 'ENTERPRISE'],
+    ['saasStatus', 'ACTIVE'],
+    ['saasExpiresAt', '2099-01-01T00:00:00.000Z'],
+    ['maxMembers', 99999],
+    ['status', 'ACTIVE'],
+    ['slug', 'hacked'],
+    ['razorpayAccountId', 'acc_x'],
+    ['id', 'gym-other'],
+    ['deletedAt', null],
+    ['createdAt', '2020-01-01T00:00:00.000Z'],
+  ])('rejects %s', async (field, value) => {
+    await expect(validate(UpdateGymProfileDto, { name: 'My Gym', [field]: value })).rejects.toThrow(BadRequestException);
+  });
+
+  it('accepts the settings-page payout payload', async () => {
+    const body = {
+      payoutUpiVpa: 'gym@upi', payoutAccountHolder: 'Ajith', payoutBankAccountNumber: '123456',
+      payoutBankIfsc: 'HDFC0001', payoutPhone: '+91 9876543210',
+    };
+    await expect(validate(UpdateGymProfileDto, body)).resolves.toMatchObject(body);
+  });
+
+  it('accepts the reminders toggle and a profile edit', async () => {
+    await expect(validate(UpdateGymProfileDto, { renewalRemindersEnabled: false })).resolves.toMatchObject({ renewalRemindersEnabled: false });
+    await expect(validate(UpdateGymProfileDto, { name: 'A', city: 'Bangalore', amenities: ['Sauna'], workingDays: ['MON'] })).resolves.toBeDefined();
+  });
+
+  it('rejects a malformed email', async () => {
+    await expect(validate(UpdateGymProfileDto, { email: 'not-an-email' })).rejects.toThrow(BadRequestException);
+  });
+});
+
+describe('UpdateGymAdminDto (super admin)', () => {
+  it('accepts status, maxMembers and slug', async () => {
+    const body = { status: 'ACTIVE', maxMembers: 500, slug: 'fitness-hub' };
+    await expect(validate(UpdateGymAdminDto, body)).resolves.toMatchObject(body);
+  });
+
+  it.each(['saasPlan', 'saasStatus', 'saasExpiresAt'])('still rejects %s — tiers move through the plan endpoint', async (field) => {
+    await expect(validate(UpdateGymAdminDto, { [field]: 'ENTERPRISE' })).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects an uppercase slug', async () => {
+    await expect(validate(UpdateGymAdminDto, { slug: 'Fitness Hub' })).rejects.toThrow(BadRequestException);
+  });
+});
+
+describe('SetGymPlanDto / UpdateGymStatusDto', () => {
+  it('accepts a valid tier change', async () => {
+    await expect(validate(SetGymPlanDto, { plan: 'PROFESSIONAL', reason: 'paid by UPI' })).resolves.toMatchObject({ plan: 'PROFESSIONAL' });
+  });
+
+  it('rejects an unknown tier and unknown extras', async () => {
+    await expect(validate(SetGymPlanDto, { plan: 'FREE_FOREVER' })).rejects.toThrow(BadRequestException);
+    await expect(validate(SetGymPlanDto, { plan: 'STARTER', gymId: 'other' })).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects an unknown gym status', async () => {
+    await expect(validate(UpdateGymStatusDto, { status: 'SUPER_ACTIVE' })).rejects.toThrow(BadRequestException);
+    await expect(validate(UpdateGymStatusDto, { status: 'ACTIVE' })).resolves.toMatchObject({ status: 'ACTIVE' });
   });
 });

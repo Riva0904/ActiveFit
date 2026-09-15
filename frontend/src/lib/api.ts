@@ -81,8 +81,14 @@ export const gymsApi = {
   getOne: (id: string) => api.get(`/gyms/${id}`),
   getStats: (id: string) => api.get(`/gyms/${id}/stats`),
   create: (data: any) => api.post('/gyms', data),
+  // Profile fields only — the backend rejects saasPlan/maxMembers/slug here.
   update: (id: string, data: any) => api.patch(`/gyms/${id}`, data),
+  // Super admin: profile + status/maxMembers/slug.
+  updateAsAdmin: (id: string, data: any) => api.patch(`/gyms/${id}/admin`, data),
   updateStatus: (id: string, status: string) => api.patch(`/gyms/${id}/status`, { status }),
+  // The only sanctioned way to change a gym's tier (super admin, audited).
+  setPlan: (id: string, plan: string, extra?: { status?: string; expiresAt?: string; reason?: string }) =>
+    api.patch(`/gyms/${id}/subscription-plan`, { plan, ...extra }),
   remove: (id: string) => api.delete(`/gyms/${id}`),
 };
 

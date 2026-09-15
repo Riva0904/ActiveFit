@@ -112,7 +112,7 @@ export default function SubscriptionsPage() {
   const changePlan = async (gymId: string, plan: string) => {
     setUpdating(gymId);
     try {
-      await gymsApi.update(gymId, { saasPlan: plan });
+      await gymsApi.setPlan(gymId, plan);
       toast.success(`Plan updated to ${plan}`);
       fetchGyms();
     } catch { } finally { setUpdating(null); }
