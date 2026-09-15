@@ -42,7 +42,7 @@ describe('DietPlansService', () => {
     it('defaults to 4 meals at 2000 kcal, assigns the plan and notifies the member', async () => {
       const plan: any = await service.generateAiDiet('user-001', 'gym-001', 'WEIGHT_LOSS');
 
-      expect(plan).toMatchObject({ name: 'AI WEIGHT LOSS Diet Plan', goal: 'WEIGHT_LOSS', totalCalories: 2000, isAiGenerated: true, gymId: 'gym-001', restrictions: ['NO_RESTRICTION'] });
+      expect(plan).toMatchObject({ name: 'Weight Loss Diet Plan', goal: 'WEIGHT_LOSS', totalCalories: 2000, isAiGenerated: true, gymId: 'gym-001', restrictions: ['NO_RESTRICTION'] });
       expect(plan.meals).toHaveLength(4);
       const total = plan.meals.reduce((s: number, m: any) => s + m.calories, 0);
       expect(Math.abs(total - 2000)).toBeLessThanOrEqual(plan.meals.length); // rounding slack

@@ -20,8 +20,11 @@ export class WorkoutPlansController {
   }
 
   @Post('ai-generate')
-  generateAiPlan(@Body() body: { goal: string; level: string }, @CurrentUser() user: any) {
-    return this.workoutPlansService.generateAiPlan(user.id, user.gymId, body.goal, body.level);
+  generateAiPlan(
+    @Body() body: { goal: string; level: string; daysPerWeek?: number; equipment?: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.workoutPlansService.generateAiPlan(user.id, user.gymId, body.goal, body.level, body.daysPerWeek, body.equipment);
   }
 
   @Patch(':id')

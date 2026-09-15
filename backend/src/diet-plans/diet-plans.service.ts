@@ -84,8 +84,10 @@ export class DietPlansService {
       calories: Math.round((m.ratio / totalRatio) * cal),
     }));
 
+    const titleCase = (s: string) => s.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const prefLabel = pref === 'NO_RESTRICTION' ? '' : `${titleCase(pref)} `;
     const aiPlan = {
-      name: `AI ${goal.replace(/_/g, ' ')} Diet Plan`,
+      name: `${prefLabel}${titleCase(goal)} Diet Plan`,
       goal,
       totalCalories: cal,
       isAiGenerated: true,

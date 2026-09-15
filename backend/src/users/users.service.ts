@@ -285,8 +285,20 @@ export class UsersService {
 
   async updateOwnProfile(id: string, data: any) {
     // Strip fields a user must never self-assign
-    const { role, gymId, isActive, isEmailVerified, password, memberCode, qrCode, ...safeData } = data;
+    const { role, gymId, isActive, isEmailVerified, password, memberCode, qrCode, refreshToken, ...safeData } = data;
     await this.findOne(id);
+    try {
+      return await this.updateOwn(id, safeData);
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        const field = (e.meta?.target as string[] | undefined)?.[0] ?? 'field';
+        throw new ConflictException(`A user with this ${field} already exists`);
+      }
+      throw e;
+    }
+  }
+
+  private updateOwn(id: string, safeData: any) {
     return this.prisma.user.update({
       where: { id },
       data: safeData,

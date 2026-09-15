@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { generateWorkoutPlan } from './ai-workout.generator';
 
 @Injectable()
 export class WorkoutPlansService {
@@ -24,21 +25,19 @@ export class WorkoutPlansService {
     });
   }
 
-  async generateAiPlan(userId: string, gymId: string, goal: string, level: string) {
+  async generateAiPlan(userId: string, gymId: string, goal: string, level: string, daysPerWeek?: number, equipment?: string) {
     const member = await this.prisma.member.findFirst({ where: { userId, gymId } });
+    const generated = generateWorkoutPlan({ goal, level, daysPerWeek, equipment });
     const aiPlan = {
-      name: `AI ${goal} Workout Plan`,
-      goal,
-      difficulty: level?.toUpperCase() ?? 'BEGINNER',
-      durationWeeks: 4,
+      name: generated.name,
+      goal: generated.goal,
+      difficulty: generated.difficulty,
+      durationWeeks: generated.durationWeeks,
+      description: generated.description,
       isAiGenerated: true,
       gymId,
       trainerId: null,
-      exercises: [
-        { day: 'Monday', name: 'Push-ups', sets: 3, reps: 15, rest: 60 },
-        { day: 'Wednesday', name: 'Squats', sets: 4, reps: 12, rest: 90 },
-        { day: 'Friday', name: 'Pull-ups', sets: 3, reps: 10, rest: 60 },
-      ],
+      exercises: generated.exercises as unknown as object[],
     };
 
     const plan = await this.prisma.workoutPlan.create({ data: aiPlan });

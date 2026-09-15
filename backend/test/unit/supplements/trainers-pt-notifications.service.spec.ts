@@ -366,8 +366,9 @@ describe('WorkoutPlansService', () => {
 
     const plan: any = await service.generateAiPlan('user-001', 'gym-001', 'Weight Loss', 'beginner');
 
-    expect(plan).toMatchObject({ isAiGenerated: true, goal: 'Weight Loss', difficulty: 'BEGINNER', gymId: 'gym-001' });
+    expect(plan).toMatchObject({ isAiGenerated: true, goal: 'WEIGHT_LOSS', difficulty: 'BEGINNER', gymId: 'gym-001' });
     expect(Array.isArray(plan.exercises)).toBe(true);
+    expect(plan.exercises.length).toBeGreaterThan(3); // real generator, not the old 3-exercise stub
     expect(prisma.workoutAssignment.create.mock.calls[0][0].data).toMatchObject({ workoutPlanId: 'wp-ai', memberId: 'member-001', gymId: 'gym-001', isActive: true });
     expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-001', gymId: 'gym-001', type: 'GENERAL' }));
   });
