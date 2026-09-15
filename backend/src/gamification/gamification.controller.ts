@@ -18,15 +18,22 @@ export class GamificationController {
     private badgeService: BadgeService,
   ) {}
 
+  // Points and badges are stored against Member.id, but the JWT only carries the
+  // User id (`sub`) — there is no memberId claim. Reading with the user id made
+  // every member's points and badges come back empty, so resolve the row first.
+
   @Get('my/points')
   async getMyPoints(@CurrentUser() user: any) {
-    const member = { id: user.memberId ?? user.id }; // resolved from JWT claim
-    return { points: await this.pointsService.getMemberPoints(member.id, user.gymId) };
+    const memberId = await this.pointsService.resolveMemberId(user.id, user.gymId);
+    if (!memberId) return { points: 0 }; // trainer/staff/admin: no member profile
+    return { points: await this.pointsService.getMemberPoints(memberId, user.gymId) };
   }
 
   @Get('my/badges')
   async getMyBadges(@CurrentUser() user: any) {
-    return this.badgeService.getMemberBadges(user.memberId ?? user.id, user.gymId);
+    const memberId = await this.pointsService.resolveMemberId(user.id, user.gymId);
+    if (!memberId) return [];
+    return this.badgeService.getMemberBadges(memberId, user.gymId);
   }
 
   @Get('leaderboard')

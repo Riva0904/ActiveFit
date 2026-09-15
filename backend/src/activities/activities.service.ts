@@ -80,7 +80,11 @@ export class ActivitiesService {
   /** Most recent run including its route (Home summary card). */
   async latest(userId: string, gymId: string) {
     const member = await this.memberOf(userId, gymId);
-    const run = await this.prisma.activityRun.findFirst({ where: { memberId: member.id, gymId }, orderBy: { startedAt: 'desc' } });
+    // createdAt breaks ties so two runs sharing a startedAt resolve deterministically.
+    const run = await this.prisma.activityRun.findFirst({
+      where: { memberId: member.id, gymId },
+      orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
+    });
     if (!run) return null;
     const route = (run.route as unknown as [number, number, number][]).map(([lat, lng, ts]) => ({ lat, lng, ts }));
     return { ...run, route };

@@ -44,6 +44,17 @@ export class PointsService {
     }
   }
 
+  /**
+   * Member row id for a logged-in user, or null when they have none (trainer,
+   * staff, admin). Points and badges are keyed by Member.id, but the JWT only
+   * carries the User id — callers must translate before reading.
+   */
+  async resolveMemberId(userId: string, gymId: string): Promise<string | null> {
+    if (!userId || !gymId) return null;
+    const member = await this.prisma.member.findFirst({ where: { userId, gymId }, select: { id: true } });
+    return member?.id ?? null;
+  }
+
   async getMemberPoints(memberId: string, gymId: string): Promise<number> {
     const logs = await this.prisma.auditLog.findMany({
       where: { gymId, entity: 'Points', entityId: memberId, action: 'POINTS_AWARDED' },
