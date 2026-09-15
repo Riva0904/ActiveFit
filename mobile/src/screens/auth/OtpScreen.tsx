@@ -3,6 +3,7 @@ import { View, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator
 import { Text } from '../../components/Text';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { colors } from '../../theme';
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 60;
@@ -107,24 +108,24 @@ export default function OtpScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F', padding: 24, paddingTop: 60 },
+  container: { flex: 1, backgroundColor: colors.bg, padding: 24, paddingTop: 60 },
   back: { marginBottom: 32 },
-  backText: { color: '#9CA3AF', fontSize: 15 },
-  title: { fontSize: 28, fontWeight: '800', color: '#F9FAFB', marginBottom: 8 },
-  subtitle: { color: '#9CA3AF', fontSize: 14, marginBottom: 32, lineHeight: 22 },
+  backText: { color: colors.textSecondary, fontSize: 15 },
+  title: { fontSize: 28, fontWeight: '800', color: colors.text, marginBottom: 8 },
+  subtitle: { color: colors.textSecondary, fontSize: 14, marginBottom: 32, lineHeight: 22 },
   otpRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
   otpBox: {
     width: 48, height: 56, borderRadius: 12,
-    backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#374151',
-    textAlign: 'center', color: '#F9FAFB', fontSize: 22, fontWeight: '700',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    textAlign: 'center', color: colors.text, fontSize: 22, fontWeight: '700',
   },
-  otpBoxFilled: { borderColor: '#FF4D00' },
+  otpBoxFilled: { borderColor: colors.primary },
   btn: {
-    backgroundColor: '#FF4D00', borderRadius: 12,
+    backgroundColor: colors.primary, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center', marginBottom: 16,
   },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   resendRow: { alignItems: 'center' },
-  countdownText: { color: '#6B7280', fontSize: 14 },
-  resendText: { color: '#FF4D00', fontSize: 14, fontWeight: '600' },
+  countdownText: { color: colors.textMuted, fontSize: 14 },
+  resendText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
 });

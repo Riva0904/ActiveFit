@@ -15,12 +15,12 @@ interface RunMapProps {
 
 // Muted dark basemap so the orange route pops (Google Maps style JSON; ignored on Apple Maps).
 const DARK_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#1A1A1A' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#6B7280' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0F0F0F' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2A2A2A' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#202020' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0B1220' }] },
+  { elementType: 'geometry', stylers: [{ color: colors.surface }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: colors.textMuted }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: colors.bg }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: colors.border }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: colors.surfaceRaised }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: colors.bgDeep }] },
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
 ];

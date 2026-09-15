@@ -3,11 +3,12 @@ import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 
 import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { colors } from '../../theme';
 
 const STATUS_COLORS: Record<string, string> = {
-  PAID: '#22C55E',
-  PENDING: '#F59E0B',
-  PROCESSING: '#3B82F6',
+  PAID: colors.success,
+  PENDING: colors.warning,
+  PROCESSING: colors.info,
 };
 
 export default function SalaryScreen({ navigation }: any) {
@@ -42,7 +43,7 @@ export default function SalaryScreen({ navigation }: any) {
           keyExtractor={(p) => p.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
           renderItem={({ item }) => {
-            const statusColor = STATUS_COLORS[item.status] ?? '#6B7280';
+            const statusColor = STATUS_COLORS[item.status] ?? colors.textMuted;
             return (
               <View style={styles.card}>
                 <View style={styles.cardTop}>
@@ -54,7 +55,7 @@ export default function SalaryScreen({ navigation }: any) {
                 <View style={styles.cardBottom}>
                   <View>
                     <Text style={styles.amountLabel}>Amount</Text>
-                    <Text style={[styles.amount, { color: '#FF4D00', fontSize: 18 }]}>
+                    <Text style={[styles.amount, { color: colors.primary, fontSize: 18 }]}>
                       ₹{(item.amount ?? 0).toLocaleString('en-IN')}
                     </Text>
                   </View>
@@ -81,30 +82,30 @@ export default function SalaryScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: colors.bg },
   header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 20 },
-  back: { color: '#FF4D00', fontSize: 16, marginBottom: 10 },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
+  back: { color: colors.primary, fontSize: 16, marginBottom: 10 },
+  title: { color: colors.text, fontSize: 22, fontWeight: '700' },
   summaryCard: {
-    marginHorizontal: 20, marginBottom: 20, backgroundColor: '#1A1A1A',
-    borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#FF4D00',
+    marginHorizontal: 20, marginBottom: 20, backgroundColor: colors.surface,
+    borderRadius: 16, padding: 20, borderWidth: 1, borderColor: colors.primary,
     alignItems: 'center',
   },
-  summaryLabel: { color: '#9CA3AF', fontSize: 13, marginBottom: 8 },
-  summaryAmount: { color: '#FF4D00', fontSize: 32, fontWeight: '800' },
+  summaryLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
+  summaryAmount: { color: colors.primary, fontSize: 32, fontWeight: '800' },
   card: {
-    backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16,
-    marginBottom: 10, borderWidth: 1, borderColor: '#2A2A2A',
+    backgroundColor: colors.surface, borderRadius: 14, padding: 16,
+    marginBottom: 10, borderWidth: 1, borderColor: colors.border,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  period: { color: '#F9FAFB', fontSize: 15, fontWeight: '700' },
+  period: { color: colors.text, fontSize: 15, fontWeight: '700' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
   statusText: { fontSize: 11, fontWeight: '700' },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
-  amountLabel: { color: '#6B7280', fontSize: 11, marginBottom: 2 },
-  amount: { color: '#F9FAFB', fontSize: 14, fontWeight: '700' },
-  paidAt: { color: '#9CA3AF', fontSize: 11, marginTop: 10 },
-  payMethod: { color: '#4B5563', fontSize: 11, marginTop: 2 },
+  amountLabel: { color: colors.textMuted, fontSize: 11, marginBottom: 2 },
+  amount: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  paidAt: { color: colors.textSecondary, fontSize: 11, marginTop: 10 },
+  payMethod: { color: colors.textFaint, fontSize: 11, marginTop: 2 },
   emptyWrap: { alignItems: 'center', marginTop: 60, gap: 12 },
-  emptyText: { color: '#9CA3AF', fontSize: 16 },
+  emptyText: { color: colors.textSecondary, fontSize: 16 },
 });

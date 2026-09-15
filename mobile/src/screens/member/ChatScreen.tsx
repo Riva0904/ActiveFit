@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { getSocket } from '../../lib/socket';
+import { colors } from '../../theme';
 
 export default function ChatScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
@@ -97,7 +98,7 @@ export default function ChatScreen({ navigation }: any) {
           <View>
             <View style={styles.headerRow}>
               <Text style={styles.title}>Support Chat</Text>
-              <View style={[styles.dot, { backgroundColor: socketReady ? '#22C55E' : '#6B7280' }]} />
+              <View style={[styles.dot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
             </View>
             <Text style={styles.sub}>{socketReady ? 'Connected' : 'Reconnecting…'}</Text>
           </View>
@@ -151,7 +152,7 @@ export default function ChatScreen({ navigation }: any) {
                     {user?.avatar ? (
                       <Image source={{ uri: user.avatar }} style={styles.msgAvatarImg} />
                     ) : (
-                      <View style={[styles.msgAvatarPlaceholder, { backgroundColor: '#FF4D00' }]}>
+                      <View style={[styles.msgAvatarPlaceholder, { backgroundColor: colors.primary }]}>
                         <Text style={styles.msgAvatarText}>{initials}</Text>
                       </View>
                     )}
@@ -194,26 +195,26 @@ export default function ChatScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: colors.bg },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingTop: 56, paddingBottom: 12, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
-    backgroundColor: '#0F0F0F',
+    borderBottomWidth: 1, borderBottomColor: colors.surface,
+    backgroundColor: colors.bg,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  back: { color: '#FF4D00', fontSize: 28, lineHeight: 30 },
+  back: { color: colors.primary, fontSize: 28, lineHeight: 30 },
   headerInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
   adminAvatar: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#2A2A2A',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  title: { color: '#F9FAFB', fontSize: 16, fontWeight: '700' },
+  title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  sub: { color: '#6B7280', fontSize: 12, marginTop: 1 },
+  sub: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
 
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 12, gap: 8 },
   msgRowOwn: { justifyContent: 'flex-end' },
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
   msgAvatarImg: { width: 28, height: 28, borderRadius: 14 },
   msgAvatarPlaceholder: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center',
   },
   msgAvatarText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
@@ -229,37 +230,37 @@ const styles = StyleSheet.create({
     maxWidth: '72%', padding: 12, borderRadius: 18,
   },
   bubbleOwn: {
-    backgroundColor: '#FF4D00', borderBottomRightRadius: 4,
+    backgroundColor: colors.primary, borderBottomRightRadius: 4,
   },
   bubbleOther: {
-    backgroundColor: '#1A1A1A', borderBottomLeftRadius: 4,
-    borderWidth: 1, borderColor: '#1F1F1F',
+    backgroundColor: colors.surface, borderBottomLeftRadius: 4,
+    borderWidth: 1, borderColor: colors.surfaceRaised,
   },
-  senderName: { color: '#FF4D00', fontSize: 11, fontWeight: '700', marginBottom: 3 },
-  msgText: { color: '#E5E7EB', fontSize: 14, lineHeight: 20 },
+  senderName: { color: colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 3 },
+  msgText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   msgTextOwn: { color: '#fff' },
-  ts: { color: '#6B7280', fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  ts: { color: colors.textMuted, fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
   tsOwn: { color: 'rgba(255,255,255,0.6)' },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
-  emptyTitle: { color: '#9CA3AF', fontSize: 16, fontWeight: '600', marginBottom: 6 },
-  emptySub: { color: '#4B5563', fontSize: 13 },
+  emptyTitle: { color: colors.textSecondary, fontSize: 16, fontWeight: '600', marginBottom: 6 },
+  emptySub: { color: colors.textFaint, fontSize: 13 },
 
   inputBar: {
     flexDirection: 'row', gap: 10, padding: 12,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-    borderTopWidth: 1, borderTopColor: '#1A1A1A',
-    backgroundColor: '#0F0F0F', alignItems: 'flex-end',
+    borderTopWidth: 1, borderTopColor: colors.surface,
+    backgroundColor: colors.bg, alignItems: 'flex-end',
   },
   input: {
-    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 22, borderWidth: 1,
-    borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 14,
+    flex: 1, backgroundColor: colors.surface, borderRadius: 22, borderWidth: 1,
+    borderColor: colors.border, color: colors.text, fontSize: 14,
     paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100,
   },
   sendBtn: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF4D00',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#FF4D00', shadowOpacity: 0.4, shadowRadius: 8, elevation: 4,
+    shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4,
   },
   sendBtnOff: { opacity: 0.35, shadowOpacity: 0 },
   sendIcon: { color: '#fff', fontSize: 18 },

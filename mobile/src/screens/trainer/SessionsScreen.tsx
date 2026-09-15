@@ -3,9 +3,10 @@ import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert 
 import { Text } from '../../components/Text';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { colors } from '../../theme';
 
 const STATUS_COLORS: Record<string, string> = {
-  SCHEDULED: '#3B82F6', COMPLETED: '#22C55E', CANCELLED: '#EF4444', NO_SHOW: '#F59E0B',
+  SCHEDULED: colors.info, COMPLETED: colors.success, CANCELLED: colors.danger, NO_SHOW: colors.warning,
 };
 
 export default function TrainerSessionsScreen({ navigation }: any) {
@@ -28,7 +29,7 @@ export default function TrainerSessionsScreen({ navigation }: any) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, marginBottom: 4 }}>
         <Text style={styles.header}>PT Sessions</Text>
         <TouchableOpacity
-          style={{ backgroundColor: '#FF4D00', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 }}
+          style={{ backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 }}
           onPress={() => navigation.navigate('CreateSession')}
         >
           <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>+ Create</Text>
@@ -55,7 +56,7 @@ export default function TrainerSessionsScreen({ navigation }: any) {
                     })} · {item.duration}m
                   </Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: STATUS_COLORS[item.status] ?? '#6B7280' }]}>
+                <View style={[styles.badge, { backgroundColor: STATUS_COLORS[item.status] ?? colors.textMuted }]}>
                   <Text style={styles.badgeText}>{item.status}</Text>
                 </View>
               </View>
@@ -78,22 +79,22 @@ export default function TrainerSessionsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
+  container: { flex: 1, backgroundColor: colors.bg },
+  header: { color: colors.text, fontSize: 22, fontWeight: '700' },
   card: {
-    backgroundColor: '#1A1A1A', borderRadius: 14, padding: 14,
-    marginBottom: 10, borderWidth: 1, borderColor: '#2A2A2A',
+    backgroundColor: colors.surface, borderRadius: 14, padding: 14,
+    marginBottom: 10, borderWidth: 1, borderColor: colors.border,
   },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
-  title: { color: '#F9FAFB', fontSize: 15, fontWeight: '600', marginBottom: 2 },
-  member: { color: '#9CA3AF', fontSize: 13, marginBottom: 2 },
-  time: { color: '#6B7280', fontSize: 12 },
+  title: { color: colors.text, fontSize: 15, fontWeight: '600', marginBottom: 2 },
+  member: { color: colors.textSecondary, fontSize: 13, marginBottom: 2 },
+  time: { color: colors.textMuted, fontSize: 12 },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '600' },
   completeBtn: {
-    marginTop: 12, backgroundColor: '#22C55E', borderRadius: 10,
+    marginTop: 12, backgroundColor: colors.success, borderRadius: 10,
     paddingVertical: 10, alignItems: 'center',
   },
   completeBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  empty: { color: '#4B5563', fontSize: 14, textAlign: 'center', marginTop: 32 },
+  empty: { color: colors.textFaint, fontSize: 14, textAlign: 'center', marginTop: 32 },
 });

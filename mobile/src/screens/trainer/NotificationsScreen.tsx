@@ -3,6 +3,7 @@ import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert 
 import { Text } from '../../components/Text';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { colors } from '../../theme';
 
 export default function TrainerNotificationsScreen() {
   const queryClient = useQueryClient();
@@ -67,27 +68,27 @@ export default function TrainerNotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
+  container: { flex: 1, backgroundColor: colors.bg },
+  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: colors.surface },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
-  markAllBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#1A1A1A', borderRadius: 8 },
-  markAllText: { color: '#FF4D00', fontSize: 13, fontWeight: '600' },
-  unreadBadge: { color: '#FF4D00', fontSize: 12, marginTop: 4 },
+  title: { color: colors.text, fontSize: 22, fontWeight: '700' },
+  markAllBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: 8 },
+  markAllText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  unreadBadge: { color: colors.primary, fontSize: 12, marginTop: 4 },
   card: {
-    backgroundColor: '#1A1A1A', borderRadius: 14, padding: 14,
-    marginBottom: 10, marginTop: 10, borderWidth: 1, borderColor: '#2A2A2A',
+    backgroundColor: colors.surface, borderRadius: 14, padding: 14,
+    marginBottom: 10, marginTop: 10, borderWidth: 1, borderColor: colors.border,
     position: 'relative',
   },
-  cardUnread: { borderColor: '#FF4D00', borderWidth: 1.5 },
+  cardUnread: { borderColor: colors.primary, borderWidth: 1.5 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  notifTitle: { color: '#F9FAFB', fontSize: 14, fontWeight: '700', flex: 1 },
-  notifTime: { color: '#6B7280', fontSize: 11 },
-  notifBody: { color: '#9CA3AF', fontSize: 13, lineHeight: 18 },
+  notifTitle: { color: colors.text, fontSize: 14, fontWeight: '700', flex: 1 },
+  notifTime: { color: colors.textMuted, fontSize: 11 },
+  notifBody: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
   unreadDot: {
     position: 'absolute', top: 12, right: 12,
-    width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF4D00',
+    width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary,
   },
   emptyWrap: { alignItems: 'center', marginTop: 60, gap: 12 },
-  emptyText: { color: '#9CA3AF', fontSize: 16 },
+  emptyText: { color: colors.textSecondary, fontSize: 16 },
 });

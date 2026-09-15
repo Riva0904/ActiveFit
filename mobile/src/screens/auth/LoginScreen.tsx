@@ -3,6 +3,7 @@ import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Pl
 import { Text } from '../../components/Text';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../lib/api';
+import { colors } from '../../theme';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -82,24 +83,24 @@ export default function LoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: colors.bg },
   inner: { flex: 1, justifyContent: 'center', padding: 24 },
-  logo: { fontSize: 36, fontWeight: '800', color: '#FF4D00', textAlign: 'center', marginBottom: 4 },
-  tagline: { fontSize: 14, color: '#9CA3AF', textAlign: 'center', marginBottom: 32 },
+  logo: { fontSize: 36, fontWeight: '800', color: colors.primary, textAlign: 'center', marginBottom: 4 },
+  tagline: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: 32 },
   card: {
-    backgroundColor: '#1A1A1A', borderRadius: 16, padding: 24,
-    borderWidth: 1, borderColor: '#2A2A2A',
+    backgroundColor: colors.surface, borderRadius: 16, padding: 24,
+    borderWidth: 1, borderColor: colors.border,
   },
-  label: { color: '#E5E7EB', fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  label: { color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 6 },
   input: {
-    backgroundColor: '#262626', borderWidth: 1, borderColor: '#374151',
+    backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border,
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
-    color: '#F9FAFB', fontSize: 15, marginBottom: 16,
+    color: colors.text, fontSize: 15, marginBottom: 16,
   },
   forgotRow: { alignItems: 'flex-end', marginTop: -8, marginBottom: 20 },
-  forgotText: { color: '#FF4D00', fontSize: 13 },
+  forgotText: { color: colors.primary, fontSize: 13 },
   btn: {
-    backgroundColor: '#FF4D00', borderRadius: 12,
+    backgroundColor: colors.primary, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center',
   },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },

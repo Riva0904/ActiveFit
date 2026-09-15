@@ -4,6 +4,7 @@ import { Text } from '../../components/Text';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { colors } from '../../theme';
 
 export default function TrainerAttendanceScreen() {
   const queryClient = useQueryClient();
@@ -33,7 +34,7 @@ export default function TrainerAttendanceScreen() {
         <>
           <View style={styles.statusCard}>
             <Text style={styles.statusLabel}>Today's Status</Text>
-            <Text style={[styles.statusValue, { color: isCheckedIn ? '#22C55E' : '#EF4444' }]}>
+            <Text style={[styles.statusValue, { color: isCheckedIn ? colors.success : colors.danger }]}>
               {isCheckedIn ? '✅ Checked In' : '❌ Not Checked In'}
             </Text>
             {isCheckedIn && (homeData as any)?.checkedInAt && (
@@ -63,17 +64,17 @@ export default function TrainerAttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F', padding: 20, paddingTop: 56 },
-  header: { color: '#F9FAFB', fontSize: 22, fontWeight: '700', marginBottom: 24 },
+  container: { flex: 1, backgroundColor: colors.bg, padding: 20, paddingTop: 56 },
+  header: { color: colors.text, fontSize: 22, fontWeight: '700', marginBottom: 24 },
   statusCard: {
-    backgroundColor: '#1A1A1A', borderRadius: 16, padding: 24,
-    borderWidth: 1, borderColor: '#2A2A2A', alignItems: 'center', marginBottom: 24,
+    backgroundColor: colors.surface, borderRadius: 16, padding: 24,
+    borderWidth: 1, borderColor: colors.border, alignItems: 'center', marginBottom: 24,
   },
-  statusLabel: { color: '#9CA3AF', fontSize: 13, marginBottom: 8 },
+  statusLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
   statusValue: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
-  checkTime: { color: '#6B7280', fontSize: 12 },
+  checkTime: { color: colors.textMuted, fontSize: 12 },
   btn: {
-    backgroundColor: '#FF4D00', borderRadius: 14,
+    backgroundColor: colors.primary, borderRadius: 14,
     paddingVertical: 16, alignItems: 'center',
   },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },

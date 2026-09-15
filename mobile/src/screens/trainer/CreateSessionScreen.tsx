@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndi
 import { Text } from '../../components/Text';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { colors, tint } from '../../theme';
 
 export default function CreateSessionScreen({ navigation }: any) {
   const queryClient = useQueryClient();
@@ -71,7 +72,7 @@ export default function CreateSessionScreen({ navigation }: any) {
                   <Text style={styles.memberAvatarText}>{name[0]?.toUpperCase() ?? 'M'}</Text>
                 </View>
                 <Text style={[styles.memberName, isSelected && styles.memberNameSelected]}>{name}</Text>
-                {isSelected && <Text style={{ color: '#FF4D00', fontSize: 18 }}>✓</Text>}
+                {isSelected && <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>}
               </TouchableOpacity>
             );
           })
@@ -151,39 +152,39 @@ export default function CreateSessionScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: colors.bg },
   header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 24 },
-  back: { color: '#FF4D00', fontSize: 16, marginBottom: 10 },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
+  back: { color: colors.primary, fontSize: 16, marginBottom: 10 },
+  title: { color: colors.text, fontSize: 22, fontWeight: '700' },
   section: { paddingHorizontal: 20, marginBottom: 24 },
-  sectionLabel: { color: '#9CA3AF', fontSize: 12, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  noMembers: { color: '#6B7280', fontSize: 13, fontStyle: 'italic' },
+  sectionLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  noMembers: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },
   memberRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#1A1A1A', borderRadius: 12, padding: 14,
-    marginBottom: 8, borderWidth: 1, borderColor: '#2A2A2A',
+    backgroundColor: colors.surface, borderRadius: 12, padding: 14,
+    marginBottom: 8, borderWidth: 1, borderColor: colors.border,
   },
-  memberRowSelected: { borderColor: '#FF4D00' },
+  memberRowSelected: { borderColor: colors.primary },
   memberAvatar: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#FF4D0030', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: tint(colors.primary, '30'), alignItems: 'center', justifyContent: 'center',
   },
-  memberAvatarText: { color: '#FF4D00', fontSize: 16, fontWeight: '700' },
-  memberName: { flex: 1, color: '#F9FAFB', fontSize: 14, fontWeight: '600' },
-  memberNameSelected: { color: '#FF4D00' },
+  memberAvatarText: { color: colors.primary, fontSize: 16, fontWeight: '700' },
+  memberName: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
+  memberNameSelected: { color: colors.primary },
   field: { marginBottom: 14 },
-  fieldLabel: { color: '#9CA3AF', fontSize: 12, marginBottom: 6 },
+  fieldLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 6 },
   input: {
-    backgroundColor: '#1A1A1A', borderRadius: 10, borderWidth: 1,
-    borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 15,
+    backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1,
+    borderColor: colors.border, color: colors.text, fontSize: 15,
     paddingHorizontal: 14, paddingVertical: 12, marginBottom: 0,
   },
   durationRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  durationChip: { paddingHorizontal: 12, paddingVertical: 12, borderRadius: 10, backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#2A2A2A' },
-  durationChipActive: { backgroundColor: '#FF4D00', borderColor: '#FF4D00' },
-  durationChipText: { color: '#9CA3AF', fontSize: 13, fontWeight: '600' },
+  durationChip: { paddingHorizontal: 12, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  durationChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  durationChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   durationChipTextActive: { color: '#fff' },
-  createBtn: { marginHorizontal: 20, backgroundColor: '#FF4D00', borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
+  createBtn: { marginHorizontal: 20, backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
   createBtnDisabled: { opacity: 0.6 },
   createBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

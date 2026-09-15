@@ -15,7 +15,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
-  splash: { backgroundColor: '#0F0F0F' },
+  splash: { backgroundColor: '#0E1520' },
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.activeboost.mobile',
@@ -31,7 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     enableProguardInReleaseBuilds: true,
     enableShrinkResourcesInReleaseBuilds: true,
     adaptiveIcon: {
-      backgroundColor: '#0F0F0F',
+      backgroundColor: '#0E1520',
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',
       monochromeImage: './assets/android-icon-monochrome.png',

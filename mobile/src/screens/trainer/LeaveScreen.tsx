@@ -3,13 +3,14 @@ import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert,
 import { Text } from '../../components/Text';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { colors } from '../../theme';
 
 const LEAVE_TYPES = ['Sick', 'Casual', 'Emergency', 'Other'];
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: '#F59E0B',
-  APPROVED: '#22C55E',
-  REJECTED: '#EF4444',
+  PENDING: colors.warning,
+  APPROVED: colors.success,
+  REJECTED: colors.danger,
 };
 
 export default function LeaveScreen({ navigation }: any) {
@@ -71,7 +72,7 @@ export default function LeaveScreen({ navigation }: any) {
           keyExtractor={(r) => r.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
           renderItem={({ item }) => {
-            const statusColor = STATUS_COLORS[item.status] ?? '#6B7280';
+            const statusColor = STATUS_COLORS[item.status] ?? colors.textMuted;
             return (
               <View style={styles.card}>
                 <View style={styles.cardTop}>
@@ -162,38 +163,38 @@ export default function LeaveScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: colors.bg },
   header: { paddingTop: 56, paddingHorizontal: 20, marginBottom: 20 },
-  back: { color: '#FF4D00', fontSize: 16, marginBottom: 10 },
+  back: { color: colors.primary, fontSize: 16, marginBottom: 10 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: '#F9FAFB', fontSize: 22, fontWeight: '700' },
-  addBtn: { backgroundColor: '#FF4D00', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  title: { color: colors.text, fontSize: 22, fontWeight: '700' },
+  addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  card: { backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: '#2A2A2A' },
+  card: { backgroundColor: colors.surface, borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  leaveType: { color: '#F9FAFB', fontSize: 15, fontWeight: '700' },
+  leaveType: { color: colors.text, fontSize: 15, fontWeight: '700' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
   statusText: { fontSize: 11, fontWeight: '700' },
-  leaveDates: { color: '#9CA3AF', fontSize: 13, marginBottom: 6 },
-  leaveReason: { color: '#6B7280', fontSize: 12 },
-  adminNote: { color: '#FF4D00', fontSize: 12, marginTop: 6, fontStyle: 'italic' },
+  leaveDates: { color: colors.textSecondary, fontSize: 13, marginBottom: 6 },
+  leaveReason: { color: colors.textMuted, fontSize: 12 },
+  adminNote: { color: colors.primary, fontSize: 12, marginTop: 6, fontStyle: 'italic' },
   emptyWrap: { alignItems: 'center', marginTop: 60, gap: 12 },
-  emptyText: { color: '#9CA3AF', fontSize: 16, fontWeight: '600' },
-  emptySub: { color: '#4B5563', fontSize: 13 },
+  emptyText: { color: colors.textSecondary, fontSize: 16, fontWeight: '600' },
+  emptySub: { color: colors.textFaint, fontSize: 13 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
-  modalTitle: { color: '#F9FAFB', fontSize: 18, fontWeight: '700', marginBottom: 20 },
+  modal: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+  modalTitle: { color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 20 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#2A2A2A' },
-  chipActive: { backgroundColor: '#FF4D00', borderColor: '#FF4D00' },
-  chipText: { color: '#9CA3AF', fontSize: 12, fontWeight: '600' },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
   chipTextActive: { color: '#fff' },
   field: { marginBottom: 14 },
-  fieldLabel: { color: '#9CA3AF', fontSize: 12, marginBottom: 6 },
-  input: { backgroundColor: '#1A1A1A', borderRadius: 10, borderWidth: 1, borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 15, paddingHorizontal: 14, paddingVertical: 12 },
+  fieldLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 6 },
+  input: { backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, color: colors.text, fontSize: 15, paddingHorizontal: 14, paddingVertical: 12 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  cancelBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', backgroundColor: '#2A2A2A', borderRadius: 12 },
-  cancelBtnText: { color: '#9CA3AF', fontWeight: '600' },
-  saveBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', backgroundColor: '#FF4D00', borderRadius: 12 },
+  cancelBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', backgroundColor: colors.border, borderRadius: 12 },
+  cancelBtnText: { color: colors.textSecondary, fontWeight: '600' },
+  saveBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12 },
   saveBtnText: { color: '#fff', fontWeight: '700' },
 });

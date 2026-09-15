@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { getSocket } from '../../lib/socket';
+import { colors } from '../../theme';
 
 export default function TrainerChatScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
@@ -81,7 +82,7 @@ export default function TrainerChatScreen({ navigation }: any) {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Admin Chat</Text>
-          <View style={[styles.dot, { backgroundColor: socketReady ? '#22C55E' : '#6B7280' }]} />
+          <View style={[styles.dot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
         </View>
         <Text style={styles.sub}>Chat with gym administration</Text>
       </View>
@@ -143,26 +144,26 @@ export default function TrainerChatScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
+  container: { flex: 1, backgroundColor: colors.bg },
+  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.surface },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { color: '#F9FAFB', fontSize: 20, fontWeight: '700' },
+  title: { color: colors.text, fontSize: 20, fontWeight: '700' },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  sub: { color: '#6B7280', fontSize: 12, marginTop: 2 },
-  bubble: { maxWidth: '80%', padding: 12, borderRadius: 16, marginBottom: 8, borderWidth: 1, borderColor: '#2A2A2A' },
-  bubbleOwn: { alignSelf: 'flex-end', backgroundColor: '#FF4D00', borderTopRightRadius: 4, borderColor: '#FF4D00' },
-  bubbleOther: { alignSelf: 'flex-start', backgroundColor: '#1A1A1A', borderTopLeftRadius: 4 },
-  senderName: { color: '#FF4D00', fontSize: 11, fontWeight: '700', marginBottom: 4 },
-  msgText: { color: '#F9FAFB', fontSize: 14, lineHeight: 20 },
+  sub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  bubble: { maxWidth: '80%', padding: 12, borderRadius: 16, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
+  bubbleOwn: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderTopRightRadius: 4, borderColor: colors.primary },
+  bubbleOther: { alignSelf: 'flex-start', backgroundColor: colors.surface, borderTopLeftRadius: 4 },
+  senderName: { color: colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 4 },
+  msgText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   msgTextOwn: { color: '#fff' },
-  ts: { color: '#6B7280', fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  ts: { color: colors.textMuted, fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
   tsOwn: { color: 'rgba(255,255,255,0.7)' },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 60 },
-  emptyText: { color: '#9CA3AF', fontSize: 16, fontWeight: '600' },
-  emptySub: { color: '#4B5563', fontSize: 13, textAlign: 'center', paddingHorizontal: 40 },
-  inputRow: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: '#2A2A2A', backgroundColor: '#1A1A1A', alignItems: 'flex-end' },
-  input: { flex: 1, backgroundColor: '#1A1A1A', borderRadius: 20, borderWidth: 1, borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 14, paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100 },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF4D00', alignItems: 'center', justifyContent: 'center' },
+  emptyText: { color: colors.textSecondary, fontSize: 16, fontWeight: '600' },
+  emptySub: { color: colors.textFaint, fontSize: 13, textAlign: 'center', paddingHorizontal: 40 },
+  inputRow: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface, alignItems: 'flex-end' },
+  input: { flex: 1, backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: colors.border, color: colors.text, fontSize: 14, paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100 },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
   sendIcon: { color: '#fff', fontSize: 18 },
 });

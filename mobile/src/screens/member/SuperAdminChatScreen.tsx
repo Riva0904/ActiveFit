@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { getSocket } from '../../lib/socket';
+import { colors } from '../../theme';
 
 interface Conversation {
   id: string;
@@ -164,7 +165,7 @@ export default function SuperAdminChatScreen({ navigation }: any) {
               {' '}· {socketReady ? 'Live' : 'Connecting…'}
             </Text>
           </View>
-          <View style={[styles.statusDot, { backgroundColor: socketReady ? '#22C55E' : '#6B7280' }]} />
+          <View style={[styles.statusDot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
         </View>
 
         {loadingConvs ? (
@@ -232,7 +233,7 @@ export default function SuperAdminChatScreen({ navigation }: any) {
             <Text style={styles.sub}>{selected.user.firstName} {selected.user.lastName} · GYM ADMIN</Text>
           </View>
         </View>
-        <View style={[styles.statusDot, { backgroundColor: socketReady ? '#22C55E' : '#6B7280' }]} />
+        <View style={[styles.statusDot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
       </View>
 
       {loadingMsgs ? (
@@ -301,78 +302,78 @@ export default function SuperAdminChatScreen({ navigation }: any) {
 const convStyles = StyleSheet.create({
   gymAvatar: {
     width: 44, height: 44, borderRadius: 14,
-    backgroundColor: '#7C3AED',
+    backgroundColor: colors.purple,
     alignItems: 'center', justifyContent: 'center',
   },
   gymAvatarText: { color: '#fff', fontSize: 15, fontWeight: '800' },
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: colors.bg },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingTop: 56, paddingBottom: 12, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
+    borderBottomWidth: 1, borderBottomColor: colors.surface,
     gap: 10,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  back: { color: '#FF4D00', fontSize: 28, lineHeight: 30 },
+  back: { color: colors.primary, fontSize: 28, lineHeight: 30 },
   convHeaderInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
-  title: { color: '#F9FAFB', fontSize: 16, fontWeight: '700', flex: 1 },
-  sub: { color: '#6B7280', fontSize: 11, marginTop: 1 },
+  title: { color: colors.text, fontSize: 16, fontWeight: '700', flex: 1 },
+  sub: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
 
   convRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    padding: 16, borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
+    padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surface,
   },
   convInfo: { flex: 1 },
   convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  convName: { color: '#F9FAFB', fontSize: 15, fontWeight: '700', flex: 1 },
-  convTime: { color: '#4B5563', fontSize: 11 },
+  convName: { color: colors.text, fontSize: 15, fontWeight: '700', flex: 1 },
+  convTime: { color: colors.textFaint, fontSize: 11 },
   convBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  convAdmin: { color: '#9CA3AF', fontSize: 12, flex: 1 },
+  convAdmin: { color: colors.textSecondary, fontSize: 12, flex: 1 },
   unreadBadge: {
     width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.purple, alignItems: 'center', justifyContent: 'center',
   },
   unreadText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  convPreview: { color: '#4B5563', fontSize: 12 },
+  convPreview: { color: colors.textFaint, fontSize: 12 },
 
   msgRow: { flexDirection: 'row', marginBottom: 10 },
   msgRowOwn: { justifyContent: 'flex-end' },
   bubble: { maxWidth: '78%', padding: 12, borderRadius: 18 },
-  bubbleOwn: { backgroundColor: '#FF4D00', borderBottomRightRadius: 4 },
+  bubbleOwn: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
   bubbleOther: {
-    backgroundColor: '#1A1A1A', borderBottomLeftRadius: 4,
-    borderWidth: 1, borderColor: '#1F1F1F',
+    backgroundColor: colors.surface, borderBottomLeftRadius: 4,
+    borderWidth: 1, borderColor: colors.surfaceRaised,
   },
-  senderName: { color: '#7C3AED', fontSize: 11, fontWeight: '700', marginBottom: 3 },
-  msgText: { color: '#E5E7EB', fontSize: 14, lineHeight: 20 },
+  senderName: { color: colors.purple, fontSize: 11, fontWeight: '700', marginBottom: 3 },
+  msgText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   msgTextOwn: { color: '#fff' },
-  ts: { color: '#6B7280', fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  ts: { color: colors.textMuted, fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
   tsOwn: { color: 'rgba(255,255,255,0.6)' },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
-  emptyTitle: { color: '#9CA3AF', fontSize: 16, fontWeight: '600', marginBottom: 6 },
-  emptySub: { color: '#4B5563', fontSize: 13, textAlign: 'center', paddingHorizontal: 40 },
+  emptyTitle: { color: colors.textSecondary, fontSize: 16, fontWeight: '600', marginBottom: 6 },
+  emptySub: { color: colors.textFaint, fontSize: 13, textAlign: 'center', paddingHorizontal: 40 },
 
   inputBar: {
     flexDirection: 'row', gap: 10, padding: 12,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-    borderTopWidth: 1, borderTopColor: '#1A1A1A',
-    backgroundColor: '#0F0F0F', alignItems: 'flex-end',
+    borderTopWidth: 1, borderTopColor: colors.surface,
+    backgroundColor: colors.bg, alignItems: 'flex-end',
   },
   input: {
-    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 22, borderWidth: 1,
-    borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 14,
+    flex: 1, backgroundColor: colors.surface, borderRadius: 22, borderWidth: 1,
+    borderColor: colors.border, color: colors.text, fontSize: 14,
     paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100,
   },
   sendBtn: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF4D00',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#FF4D00', shadowOpacity: 0.4, shadowRadius: 8, elevation: 4,
+    shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4,
   },
   sendBtnOff: { opacity: 0.35, shadowOpacity: 0 },
   sendIcon: { color: '#fff', fontSize: 18 },

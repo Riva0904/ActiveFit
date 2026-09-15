@@ -1,7 +1,8 @@
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type RefreshControlProps, type ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing } from '../theme';
+import { colors, gradients, spacing } from '../theme';
 
 interface ScreenProps {
   children: React.ReactNode;
@@ -17,9 +18,9 @@ interface ScreenProps {
 }
 
 /**
- * Root of every screen: dark ground + real safe-area top inset (replaces the
- * hardcoded `paddingTop: 56` every screen used to carry). All stacks run with
- * `headerShown: false`, so the inset is always ours to apply.
+ * Root of every screen: navy ground with a faint top→bottom gradient (the
+ * reference dashboard's page is never a flat colour) + real safe-area top
+ * inset. All stacks run with `headerShown: false`, so the inset is always ours.
  */
 export function Screen({ children, scroll, padded = true, refreshControl, contentContainerStyle, keyboard, style }: ScreenProps) {
   const insets = useSafeAreaInsets();
@@ -42,17 +43,26 @@ export function Screen({ children, scroll, padded = true, refreshControl, conten
     body = <View style={[styles.fill, { paddingTop: top }, padded && styles.padded, contentContainerStyle]}>{children}</View>;
   }
 
+  const ground = <LinearGradient colors={[...gradients.screen]} style={StyleSheet.absoluteFill} pointerEvents="none" />;
+
   if (keyboard) {
     return (
-      <KeyboardAvoidingView style={[styles.fill, style]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={[styles.root, style]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {ground}
         {body}
       </KeyboardAvoidingView>
     );
   }
-  return <View style={[styles.fill, style]}>{body}</View>;
+  return (
+    <View style={[styles.root, style]}>
+      {ground}
+      {body}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: colors.bg },
+  fill: { flex: 1 },
   padded: { paddingHorizontal: spacing.screen },
 });

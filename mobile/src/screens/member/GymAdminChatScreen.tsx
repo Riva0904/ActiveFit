@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { getSocket } from '../../lib/socket';
+import { colors } from '../../theme';
 
 type TabType = 'gym' | 'support';
 
@@ -19,9 +20,9 @@ interface Conversation {
 
 function roleColor(role: string) {
   const map: Record<string, string> = {
-    MEMBER: '#3B82F6', TRAINER: '#8B5CF6', STAFF: '#0D9488',
+    MEMBER: colors.info, TRAINER: colors.purple, STAFF: colors.cyan,
   };
-  return map[role] ?? '#6B7280';
+  return map[role] ?? colors.textMuted;
 }
 
 function timeAgo(dateStr: string) {
@@ -199,7 +200,7 @@ export default function GymAdminChatScreen({ navigation }: any) {
             <Text style={styles.back}>‹</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Messages</Text>
-          <View style={[styles.statusDot, { backgroundColor: socketReady ? '#22C55E' : '#6B7280' }]} />
+          <View style={[styles.statusDot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
         </View>
 
         {/* Tabs */}
@@ -288,7 +289,7 @@ export default function GymAdminChatScreen({ navigation }: any) {
             <Text style={styles.back}>‹</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Platform Support</Text>
-          <View style={[styles.statusDot, { backgroundColor: socketReady ? '#22C55E' : '#6B7280' }]} />
+          <View style={[styles.statusDot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
         </View>
 
         <View style={styles.tabBar}>
@@ -385,7 +386,7 @@ export default function GymAdminChatScreen({ navigation }: any) {
             <Text style={styles.headerSub}>{selectedConv?.user.role}</Text>
           </View>
         </View>
-        <View style={[styles.statusDot, { backgroundColor: socketReady ? '#22C55E' : '#6B7280' }]} />
+        <View style={[styles.statusDot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
       </View>
 
       {loadingMsgs ? (
@@ -442,45 +443,45 @@ export default function GymAdminChatScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  container: { flex: 1, backgroundColor: colors.bg },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingTop: 56, paddingBottom: 12, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: '#1A1A1A', gap: 10,
+    borderBottomWidth: 1, borderBottomColor: colors.surface, gap: 10,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  back: { color: '#FF4D00', fontSize: 28, lineHeight: 30 },
+  back: { color: colors.primary, fontSize: 28, lineHeight: 30 },
   headerInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
-  title: { color: '#F9FAFB', fontSize: 17, fontWeight: '700', flex: 1 },
-  headerSub: { color: '#6B7280', fontSize: 11 },
+  title: { color: colors.text, fontSize: 17, fontWeight: '700', flex: 1 },
+  headerSub: { color: colors.textMuted, fontSize: 11 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
 
   tabBar: {
     flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8,
-    gap: 8, borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
+    gap: 8, borderBottomWidth: 1, borderBottomColor: colors.surface,
   },
   tabBtn: {
     flex: 1, paddingVertical: 8, alignItems: 'center',
-    borderRadius: 10, backgroundColor: '#1A1A1A',
+    borderRadius: 10, backgroundColor: colors.surface,
   },
-  tabBtnActive: { backgroundColor: '#FF4D00' },
-  tabText: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
+  tabBtnActive: { backgroundColor: colors.primary },
+  tabText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
   tabTextActive: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
   supportHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 16, borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
+    padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surface,
   },
   supportAvatar: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#1A1A2A', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center',
   },
-  supportName: { color: '#F9FAFB', fontSize: 15, fontWeight: '700' },
-  supportSub: { color: '#6B7280', fontSize: 12 },
+  supportName: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  supportSub: { color: colors.textMuted, fontSize: 12 },
 
   convRow: {
     flexDirection: 'row', gap: 12, padding: 16,
-    borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
+    borderBottomWidth: 1, borderBottomColor: colors.surface,
   },
   convAvatar: {
     width: 44, height: 44, borderRadius: 14,
@@ -490,46 +491,46 @@ const styles = StyleSheet.create({
   convAvatarText: { fontSize: 15, fontWeight: '700' },
   convInfo: { flex: 1 },
   convTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  convName: { color: '#F9FAFB', fontSize: 14, fontWeight: '700' },
-  convTime: { color: '#4B5563', fontSize: 11 },
+  convName: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  convTime: { color: colors.textFaint, fontSize: 11 },
   convBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
   rolePill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   rolePillText: { fontSize: 10, fontWeight: '700' },
   unreadBadge: {
     width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#FF4D00', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
   },
   unreadText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  convPreview: { color: '#4B5563', fontSize: 12 },
+  convPreview: { color: colors.textFaint, fontSize: 12 },
 
   msgRow: { flexDirection: 'row', marginBottom: 10 },
   msgRowOwn: { justifyContent: 'flex-end' },
   bubble: { maxWidth: '78%', padding: 12, borderRadius: 18 },
-  bubbleOwn: { backgroundColor: '#FF4D00', borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: '#1A1A1A', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#1F1F1F' },
-  senderName: { color: '#FF4D00', fontSize: 11, fontWeight: '700', marginBottom: 3 },
-  msgText: { color: '#E5E7EB', fontSize: 14, lineHeight: 20 },
+  bubbleOwn: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
+  bubbleOther: { backgroundColor: colors.surface, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: colors.surfaceRaised },
+  senderName: { color: colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 3 },
+  msgText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   msgTextOwn: { color: '#fff' },
-  ts: { color: '#6B7280', fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  ts: { color: colors.textMuted, fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
   tsOwn: { color: 'rgba(255,255,255,0.6)' },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
-  emptyTitle: { color: '#9CA3AF', fontSize: 16, fontWeight: '600', marginBottom: 6 },
-  emptySub: { color: '#4B5563', fontSize: 13, textAlign: 'center', paddingHorizontal: 40 },
+  emptyTitle: { color: colors.textSecondary, fontSize: 16, fontWeight: '600', marginBottom: 6 },
+  emptySub: { color: colors.textFaint, fontSize: 13, textAlign: 'center', paddingHorizontal: 40 },
 
   inputBar: {
     flexDirection: 'row', gap: 10, padding: 12,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-    borderTopWidth: 1, borderTopColor: '#1A1A1A',
-    backgroundColor: '#0F0F0F', alignItems: 'flex-end',
+    borderTopWidth: 1, borderTopColor: colors.surface,
+    backgroundColor: colors.bg, alignItems: 'flex-end',
   },
   input: {
-    flex: 1, backgroundColor: '#1A1A1A', borderRadius: 22, borderWidth: 1,
-    borderColor: '#2A2A2A', color: '#F9FAFB', fontSize: 14,
+    flex: 1, backgroundColor: colors.surface, borderRadius: 22, borderWidth: 1,
+    borderColor: colors.border, color: colors.text, fontSize: 14,
     paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100,
   },
   sendBtn: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF4D00',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
   },
   sendBtnOff: { opacity: 0.35 },

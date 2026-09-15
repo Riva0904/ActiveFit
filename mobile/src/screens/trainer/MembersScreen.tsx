@@ -3,6 +3,7 @@ import { View, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { colors } from '../../theme';
 
 export default function TrainerMembersScreen() {
   const { data, isLoading } = useQuery({
@@ -43,18 +44,18 @@ export default function TrainerMembersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F0F0F' },
-  header: { color: '#F9FAFB', fontSize: 22, fontWeight: '700', paddingHorizontal: 20, paddingTop: 56, marginBottom: 4 },
+  container: { flex: 1, backgroundColor: colors.bg },
+  header: { color: colors.text, fontSize: 22, fontWeight: '700', paddingHorizontal: 20, paddingTop: 56, marginBottom: 4 },
   card: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A',
-    borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#2A2A2A',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border,
   },
   avatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF4D00',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  name: { color: '#F9FAFB', fontSize: 15, fontWeight: '600', marginBottom: 2 },
-  code: { color: '#9CA3AF', fontSize: 12 },
-  empty: { color: '#4B5563', fontSize: 14, textAlign: 'center', marginTop: 32 },
+  name: { color: colors.text, fontSize: 15, fontWeight: '600', marginBottom: 2 },
+  code: { color: colors.textSecondary, fontSize: 12 },
+  empty: { color: colors.textFaint, fontSize: 14, textAlign: 'center', marginTop: 32 },
 });
