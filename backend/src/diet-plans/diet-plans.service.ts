@@ -138,8 +138,14 @@ export class DietPlansService {
     });
   }
 
+  /**
+   * Create a diet plan. A premium plan is sold in the store and needs the
+   * PREMIUM_PACKAGES entitlement; a plain plan is just built for members and is
+   * available on every tier.
+   */
   async createPackage(data: any, gymId: string, trainerId?: string) {
-    await this.entitlements.assertFeature(gymId, 'PREMIUM_PACKAGES');
+    const isPremium = data.isPremium ?? true;
+    if (isPremium) await this.entitlements.assertFeature(gymId, 'PREMIUM_PACKAGES');
 
     return (this.prisma.dietPlan as any).create({
       data: {
@@ -150,13 +156,72 @@ export class DietPlansService {
         totalCalories: data.totalCalories ?? null,
         meals: data.meals ?? [],
         restrictions: data.restrictions ?? [],
-        isPremium: true,
-        price: data.price,
+        isPremium,
+        price: isPremium ? data.price : null,
         durationDays: data.durationDays ?? 30,
         description: data.description ?? null,
-        isTemplate: true,
+        isTemplate: isPremium,
       },
     });
+  }
+
+  /** Gym-admin/trainer view: every plan in the gym, not only the sellable ones. */
+  async listAll(gymId: string, query: { search?: string; premium?: string } = {}) {
+    const where: any = { gymId, deletedAt: null };
+    if (query.search) where.name = { contains: query.search, mode: 'insensitive' };
+    if (query.premium === 'true') where.isPremium = true;
+    if (query.premium === 'false') where.isPremium = false;
+
+    return (this.prisma.dietPlan as any).findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { assignments: true } } },
+    });
+  }
+
+  async updatePlan(id: string, data: any, gymId: string) {
+    const plan = await (this.prisma.dietPlan as any).findFirst({ where: { id, gymId, deletedAt: null } });
+    if (!plan) throw new NotFoundException('Diet plan not found');
+    return (this.prisma.dietPlan as any).update({ where: { id }, data });
+  }
+
+  async softDelete(id: string, gymId: string) {
+    const plan = await (this.prisma.dietPlan as any).findFirst({ where: { id, gymId, deletedAt: null } });
+    if (!plan) throw new NotFoundException('Diet plan not found');
+    await this.prisma.dietAssignment.updateMany({ where: { dietPlanId: id, gymId }, data: { isActive: false } });
+    return (this.prisma.dietPlan as any).update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
+  /** Assign one plan to several members at once; re-assigning refreshes the term. */
+  async assignToMembers(planId: string, memberIds: string[], gymId: string) {
+    const plan: any = await (this.prisma.dietPlan as any).findFirst({ where: { id: planId, gymId, deletedAt: null } });
+    if (!plan) throw new NotFoundException('Diet plan not found');
+
+    const members = await this.prisma.member.findMany({
+      where: { id: { in: memberIds }, gymId, deletedAt: null },
+      select: { id: true, userId: true },
+    });
+    if (members.length === 0) throw new NotFoundException('No matching members in this gym');
+
+    const results = [];
+    for (const member of members) {
+      results.push(await this.assignPlanToMember(member.id, planId, gymId));
+    }
+    return { assigned: results.length, skipped: memberIds.length - results.length, assignments: results };
+  }
+
+  async listAssignments(planId: string, gymId: string) {
+    return this.prisma.dietAssignment.findMany({
+      where: { dietPlanId: planId, gymId, isActive: true },
+      include: { member: { select: { id: true, memberCode: true, user: { select: { firstName: true, lastName: true, avatar: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async unassign(assignmentId: string, gymId: string) {
+    const assignment = await this.prisma.dietAssignment.findFirst({ where: { id: assignmentId, gymId } });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    return this.prisma.dietAssignment.update({ where: { id: assignmentId }, data: { isActive: false } });
   }
 
   async updatePackage(id: string, data: any, gymId: string) {

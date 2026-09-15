@@ -88,8 +88,13 @@ export class WorkoutPlansService {
     });
   }
 
+  /**
+   * Create a workout plan. Premium plans are sold in the store and need the
+   * PREMIUM_PACKAGES entitlement; plain plans are built for members on any tier.
+   */
   async createPackage(data: any, gymId: string, trainerId?: string) {
-    await this.entitlements.assertFeature(gymId, 'PREMIUM_PACKAGES');
+    const isPremium = data.isPremium ?? true;
+    if (isPremium) await this.entitlements.assertFeature(gymId, 'PREMIUM_PACKAGES');
 
     return (this.prisma.workoutPlan as any).create({
       data: {
@@ -100,13 +105,66 @@ export class WorkoutPlansService {
         difficulty: data.difficulty ?? 'BEGINNER',
         durationWeeks: data.durationWeeks ?? 4,
         exercises: data.exercises ?? [],
-        isPremium: true,
-        price: data.price,
+        isPremium,
+        price: isPremium ? data.price : null,
         durationDays: data.durationDays ?? 30,
         description: data.description ?? null,
-        isTemplate: true,
+        isTemplate: isPremium,
       },
     });
+  }
+
+  /** Gym-admin/trainer view: every plan in the gym, not only the sellable ones. */
+  async listAll(gymId: string, query: { search?: string; premium?: string } = {}) {
+    const where: any = { gymId, deletedAt: null };
+    if (query.search) where.name = { contains: query.search, mode: 'insensitive' };
+    if (query.premium === 'true') where.isPremium = true;
+    if (query.premium === 'false') where.isPremium = false;
+
+    return (this.prisma.workoutPlan as any).findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { assignments: true } } },
+    });
+  }
+
+  async softDelete(id: string, gymId: string) {
+    const plan = await (this.prisma.workoutPlan as any).findFirst({ where: { id, gymId, deletedAt: null } });
+    if (!plan) throw new NotFoundException('Workout plan not found');
+    await this.prisma.workoutAssignment.updateMany({ where: { workoutPlanId: id, gymId }, data: { isActive: false } });
+    return (this.prisma.workoutPlan as any).update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
+  /** Assign one plan to several members at once. */
+  async assignToMembers(planId: string, memberIds: string[], gymId: string) {
+    const plan: any = await (this.prisma.workoutPlan as any).findFirst({ where: { id: planId, gymId, deletedAt: null } });
+    if (!plan) throw new NotFoundException('Workout plan not found');
+
+    const members = await this.prisma.member.findMany({
+      where: { id: { in: memberIds }, gymId, deletedAt: null },
+      select: { id: true },
+    });
+    if (members.length === 0) throw new NotFoundException('No matching members in this gym');
+
+    const results = [];
+    for (const member of members) {
+      results.push(await this.assignPlanToMember(member.id, planId, gymId));
+    }
+    return { assigned: results.length, skipped: memberIds.length - results.length, assignments: results };
+  }
+
+  async listAssignments(planId: string, gymId: string) {
+    return this.prisma.workoutAssignment.findMany({
+      where: { workoutPlanId: planId, gymId, isActive: true },
+      include: { member: { select: { id: true, memberCode: true, user: { select: { firstName: true, lastName: true, avatar: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async unassign(assignmentId: string, gymId: string) {
+    const assignment = await this.prisma.workoutAssignment.findFirst({ where: { id: assignmentId, gymId } });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    return this.prisma.workoutAssignment.update({ where: { id: assignmentId }, data: { isActive: false } });
   }
 
   async updatePackage(id: string, data: any, gymId: string) {
