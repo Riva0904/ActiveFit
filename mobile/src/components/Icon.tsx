@@ -14,12 +14,14 @@ const FEATHER = [
   'headphones', 'trending-up', 'activity', 'map-pin', 'play', 'pause', 'square', 'send',
   'image', 'trash-2', 'info', 'alert-circle', 'copy', 'share-2', 'star', 'heart', 'settings',
   'file-text', 'package', 'minus', 'more-horizontal', 'camera', 'inbox', 'sun', 'moon', 'mail',
+  'user-plus', 'user-x', 'user-check', 'filter', 'pie-chart', 'percent', 'phone', 'slash', 'list', 'grid',
 ] as const;
 
 const MCI = [
   'dumbbell', 'run', 'fire', 'food-apple-outline', 'trophy-outline', 'medal-outline',
   'scale-bathroom', 'qrcode', 'map-marker-path', 'chart-timeline-variant', 'calendar-check',
   'account-heart-outline', 'pill', 'whistle-outline', 'ticket-percent-outline',
+  'crown-outline', 'cash-multiple', 'receipt', 'account-group-outline', 'clipboard-text-outline', 'bank-outline',
 ] as const;
 
 export type FeatherName = (typeof FEATHER)[number];

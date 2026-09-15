@@ -11,6 +11,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import MemberTabs from './MemberTabs';
 import TrainerTabs from './TrainerTabs';
+import AdminTabs from './AdminTabs';
 
 const Stack = createStackNavigator();
 
@@ -27,6 +28,9 @@ function AuthStack() {
 
 function AppNavigator({ role }: { role: string }) {
   if (role === 'TRAINER') return <TrainerTabs />;
+  // Gym admins and super admins used to land in the member app, where every tab
+  // was a member-only feature that 403'd for them.
+  if (role === 'GYM_ADMIN' || role === 'SUPER_ADMIN') return <AdminTabs />;
   // MEMBER, STAFF — member app UI
   return <MemberTabs />;
 }

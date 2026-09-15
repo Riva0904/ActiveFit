@@ -21,10 +21,16 @@ export default function ProfileScreen({ navigation }: any) {
   const isTrainer = role === 'TRAINER';
   const isAdminRole = role === 'SUPER_ADMIN' || role === 'GYM_ADMIN' || role === 'STAFF';
 
+  const isGymAdmin = role === 'GYM_ADMIN';
+
   const gymItems: MenuItem[] = isTrainer
     ? [
         { label: 'Leave Requests', icon: 'file-text', color: colors.purple, onPress: () => navigation.navigate('Leave') },
         { label: 'Salary History', icon: 'dollar-sign', color: colors.success, onPress: () => navigation.navigate('Salary') },
+      ]
+    : isGymAdmin
+    ? [
+        { label: 'Subscription & plan', icon: 'crown-outline', color: colors.gold, onPress: () => navigation.navigate('Subscription') },
       ]
     : isAdminRole
     ? []
