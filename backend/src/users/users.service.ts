@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { AuditService } from '../common/services/audit.service';
 import { scopedWhere } from '../common/utils/gym-scope';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -14,43 +15,14 @@ export class UsersService {
     private prisma: PrismaService,
     private emailService: EmailService,
     private auditService: AuditService,
+    private entitlements: EntitlementsService,
   ) {}
 
+  /** Plan caps now live in EntitlementsService, which reads the gym's subscription. */
   private async checkPlanLimits(gymId: string, targetRole: string): Promise<void> {
-    const gym = await this.prisma.gym.findUnique({
-      where: { id: gymId },
-      select: { saasPlan: true },
-    });
-    if (!gym) return;
-
-    const plan = await this.prisma.saaSSubscriptionPlan.findUnique({
-      where: { plan: gym.saasPlan },
-      select: { maxMembers: true, maxTrainers: true, maxStaff: true },
-    });
-    if (!plan) return;
-
-    if (targetRole === 'MEMBER') {
-      const count = await this.prisma.member.count({ where: { gymId, deletedAt: null } });
-      if (count >= plan.maxMembers) {
-        throw new BadRequestException(
-          `Your ${gym.saasPlan} plan allows a maximum of ${plan.maxMembers} members. Please upgrade your plan.`,
-        );
-      }
-    } else if (targetRole === 'TRAINER') {
-      const count = await this.prisma.trainer.count({ where: { gymId, deletedAt: null } });
-      if (count >= plan.maxTrainers) {
-        throw new BadRequestException(
-          `Your ${gym.saasPlan} plan allows a maximum of ${plan.maxTrainers} trainers. Please upgrade your plan.`,
-        );
-      }
-    } else if (targetRole === 'STAFF') {
-      const count = await this.prisma.staff.count({ where: { gymId, deletedAt: null } });
-      if (count >= plan.maxStaff) {
-        throw new BadRequestException(
-          `Your ${gym.saasPlan} plan allows a maximum of ${plan.maxStaff} staff members. Please upgrade your plan.`,
-        );
-      }
-    }
+    const key = targetRole === 'MEMBER' ? 'members' : targetRole === 'TRAINER' ? 'trainers' : targetRole === 'STAFF' ? 'staff' : null;
+    if (!key) return;
+    await this.entitlements.assertWithinLimit(gymId, key);
   }
 
   async createUser(data: any, creatorRole: string, creatorGymId?: string) {

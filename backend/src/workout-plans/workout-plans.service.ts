@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { generateWorkoutPlan } from './ai-workout.generator';
@@ -10,6 +11,7 @@ export class WorkoutPlansService {
     private prisma: PrismaService,
     private paymentsService: PaymentsService,
     private notificationsService: NotificationsService,
+    private entitlements: EntitlementsService,
   ) {}
 
   // ── Member's assigned workout plans ──────────────────────────────────────
@@ -87,10 +89,7 @@ export class WorkoutPlansService {
   }
 
   async createPackage(data: any, gymId: string, trainerId?: string) {
-    const gym = await this.prisma.gym.findUnique({ where: { id: gymId }, select: { saasPlan: true } });
-    if (gym?.saasPlan === 'STARTER') {
-      throw new ForbiddenException('Upgrade to Professional or Enterprise to create premium workout plans');
-    }
+    await this.entitlements.assertFeature(gymId, 'PREMIUM_PACKAGES');
 
     return (this.prisma.workoutPlan as any).create({
       data: {

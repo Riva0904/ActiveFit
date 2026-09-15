@@ -4,6 +4,20 @@ import { UsersService } from '../../../src/users/users.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 import { EmailService } from '../../../src/email/email.service';
 import { AuditService } from '../../../src/common/services/audit.service';
+import { EntitlementsService } from '../../../src/entitlements/entitlements.service';
+
+// Plan limits and feature gates live in EntitlementsService now; these suites
+// exercise the surrounding logic, so it is stubbed permissive.
+const mockEntitlements = {
+  assertWithinLimit: jest.fn().mockResolvedValue(undefined),
+  assertFeature: jest.fn().mockResolvedValue(undefined),
+  hasFeature: jest.fn().mockResolvedValue(true),
+  assertActive: jest.fn().mockResolvedValue(undefined),
+  getEntitlement: jest.fn().mockResolvedValue({ plan: 'PROFESSIONAL', isActive: true, features: new Set(), limits: {} }),
+  getUsage: jest.fn().mockResolvedValue({ members: 0, trainers: 0, staff: 0, branches: 0 }),
+  invalidate: jest.fn(),
+};
+
 
 const mockUser = {
   id: 'user-001',
@@ -38,7 +52,7 @@ describe('UsersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
-        { provide: PrismaService, useValue: mockPrisma },
+        { provide: PrismaService, useValue: mockPrisma }, { provide: EntitlementsService, useValue: mockEntitlements },
         { provide: EmailService, useValue: {} },
         { provide: AuditService, useValue: { log: jest.fn() } },
       ],

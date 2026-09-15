@@ -14,6 +14,20 @@ import { PaymentsService } from '../../../src/payments/payments.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 import { EmailService } from '../../../src/email/email.service';
 import { AuditService } from '../../../src/common/services/audit.service';
+import { EntitlementsService } from '../../../src/entitlements/entitlements.service';
+
+// Plan limits and feature gates live in EntitlementsService now; these suites
+// exercise the surrounding logic, so it is stubbed permissive.
+const mockEntitlements = {
+  assertWithinLimit: jest.fn().mockResolvedValue(undefined),
+  assertFeature: jest.fn().mockResolvedValue(undefined),
+  hasFeature: jest.fn().mockResolvedValue(true),
+  assertActive: jest.fn().mockResolvedValue(undefined),
+  getEntitlement: jest.fn().mockResolvedValue({ plan: 'PROFESSIONAL', isActive: true, features: new Set(), limits: {} }),
+  getUsage: jest.fn().mockResolvedValue({ members: 0, trainers: 0, staff: 0, branches: 0 }),
+  invalidate: jest.fn(),
+};
+
 
 /**
  * Cross-tenant IDOR regression cover. Every /:id mutation in these five modules
@@ -64,7 +78,7 @@ describe('Users — tenant scoping', () => {
     const mod = await Test.createTestingModule({
       providers: [
         UsersService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: PrismaService, useValue: prisma }, { provide: EntitlementsService, useValue: mockEntitlements },
         { provide: EmailService, useValue: {} },
         { provide: AuditService, useValue: { log: jest.fn() } },
       ],
@@ -161,7 +175,7 @@ describe('Trainers — tenant scoping', () => {
   beforeEach(async () => {
     prisma = prismaStub();
     service = (await Test.createTestingModule({
-      providers: [TrainersService, { provide: PrismaService, useValue: prisma }],
+      providers: [TrainersService, { provide: PrismaService, useValue: prisma }, { provide: EntitlementsService, useValue: mockEntitlements }],
     }).compile()).get(TrainersService);
     controller = (await Test.createTestingModule({
       controllers: [TrainersController],
@@ -228,7 +242,7 @@ describe('Staffs — tenant scoping', () => {
   beforeEach(async () => {
     prisma = prismaStub();
     service = (await Test.createTestingModule({
-      providers: [StaffsService, { provide: PrismaService, useValue: prisma }],
+      providers: [StaffsService, { provide: PrismaService, useValue: prisma }, { provide: EntitlementsService, useValue: mockEntitlements }],
     }).compile()).get(StaffsService);
     controller = (await Test.createTestingModule({
       controllers: [StaffsController],
@@ -277,7 +291,7 @@ describe('Supplements — tenant scoping', () => {
     service = (await Test.createTestingModule({
       providers: [
         SupplementsService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: PrismaService, useValue: prisma }, { provide: EntitlementsService, useValue: mockEntitlements },
         { provide: PaymentsService, useValue: {} },
       ],
     }).compile()).get(SupplementsService);
@@ -341,7 +355,7 @@ describe('Memberships — tenant scoping', () => {
   beforeEach(async () => {
     prisma = prismaStub();
     service = (await Test.createTestingModule({
-      providers: [MembershipsService, { provide: PrismaService, useValue: prisma }],
+      providers: [MembershipsService, { provide: PrismaService, useValue: prisma }, { provide: EntitlementsService, useValue: mockEntitlements }],
     }).compile()).get(MembershipsService);
     controller = (await Test.createTestingModule({
       controllers: [MembershipsController],

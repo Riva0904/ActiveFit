@@ -35,6 +35,9 @@ import { EnquiriesModule } from './enquiries/enquiries.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { PromoCodesModule } from './promo-codes/promo-codes.module';
 import { SaasPlansModule } from './saas-plans/saas-plans.module';
+import { PlatformSettingsModule } from './platform-settings/platform-settings.module';
+import { EntitlementsModule } from './entitlements/entitlements.module';
+import { GymSubscriptionsModule } from './gym-subscriptions/gym-subscriptions.module';
 import { CommonModule } from './common/common.module';
 import { isPrimaryInstance } from './common/utils/cluster';
 import { AnalyticsModule } from './analytics/analytics.module';
@@ -101,6 +104,9 @@ import { ActivitiesModule } from './activities/activities.module';
     ReferralsModule,
     PromoCodesModule,
     SaasPlansModule,
+    PlatformSettingsModule,
+    EntitlementsModule,
+    GymSubscriptionsModule,
     CommonModule,
     AnalyticsModule,
     GamificationModule,

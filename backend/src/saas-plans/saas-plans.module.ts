@@ -5,5 +5,6 @@ import { SaasPlansController } from './saas-plans.controller';
 @Module({
   controllers: [SaasPlansController],
   providers: [SaasPlansService],
+  exports: [SaasPlansService],
 })
 export class SaasPlansModule {}

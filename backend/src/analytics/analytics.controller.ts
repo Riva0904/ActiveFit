@@ -5,12 +5,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { EntitlementGuard } from '../entitlements/guards/entitlement.guard';
+import { RequiresFeature } from '../entitlements/decorators/requires-feature.decorator';
 import { RetentionService } from './retention.service';
 import { RevenueService } from './revenue.service';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, EntitlementGuard)
 @Controller('analytics')
 export class AnalyticsController {
   constructor(
@@ -22,36 +24,42 @@ export class AnalyticsController {
 
   @Get('retention/at-risk')
   @Roles(Role.GYM_ADMIN)
+  @RequiresFeature('ADVANCED_REPORTS')
   getAtRiskMembers(@CurrentUser() user: any, @Query('days') days?: number) {
     return this.retentionService.getAtRiskMembers(user.gymId, days ? +days : 14);
   }
 
   @Get('retention/attendance-rates')
   @Roles(Role.GYM_ADMIN)
+  @RequiresFeature('ADVANCED_REPORTS')
   getAttendanceRates(@CurrentUser() user: any, @Query('days') days?: number) {
     return this.retentionService.getAttendanceRates(user.gymId, days ? +days : 30);
   }
 
   @Get('retention/churned')
   @Roles(Role.GYM_ADMIN)
+  @RequiresFeature('ADVANCED_REPORTS')
   getChurnedMembers(@CurrentUser() user: any, @Query('days') days?: number) {
     return this.retentionService.getChurnedMembers(user.gymId, days ? +days : 30);
   }
 
   @Get('growth')
   @Roles(Role.GYM_ADMIN)
+  @RequiresFeature('ADVANCED_REPORTS')
   getMemberGrowth(@CurrentUser() user: any, @Query('weeks') weeks?: number) {
     return this.retentionService.getMemberGrowth(user.gymId, weeks ? +weeks : 12);
   }
 
   @Get('revenue')
   @Roles(Role.GYM_ADMIN)
+  @RequiresFeature('ADVANCED_REPORTS')
   getRevenueStats(@CurrentUser() user: any) {
     return this.revenueService.getGymRevenueStats(user.gymId);
   }
 
   @Get('revenue/monthly')
   @Roles(Role.GYM_ADMIN)
+  @RequiresFeature('ADVANCED_REPORTS')
   getMonthlyBreakdown(@CurrentUser() user: any, @Query('months') months?: number) {
     return this.revenueService.getMonthlyBreakdown(user.gymId, months ? +months : 6);
   }

@@ -3,6 +3,20 @@ import { DietPlansService } from '../../../src/diet-plans/diet-plans.service';
 import { PaymentsService } from '../../../src/payments/payments.service';
 import { NotificationsService } from '../../../src/notifications/notifications.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
+import { EntitlementsService } from '../../../src/entitlements/entitlements.service';
+
+// Plan limits and feature gates live in EntitlementsService now; these suites
+// exercise the surrounding logic, so it is stubbed permissive.
+const mockEntitlements = {
+  assertWithinLimit: jest.fn().mockResolvedValue(undefined),
+  assertFeature: jest.fn().mockResolvedValue(undefined),
+  hasFeature: jest.fn().mockResolvedValue(true),
+  assertActive: jest.fn().mockResolvedValue(undefined),
+  getEntitlement: jest.fn().mockResolvedValue({ plan: 'PROFESSIONAL', isActive: true, features: new Set(), limits: {} }),
+  getUsage: jest.fn().mockResolvedValue({ members: 0, trainers: 0, staff: 0, branches: 0 }),
+  invalidate: jest.fn(),
+};
+
 
 const model = () => ({ findMany: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn() });
 const prisma = { member: model(), dietPlan: model(), dietAssignment: model() };
@@ -15,7 +29,7 @@ describe('DietPlansService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DietPlansService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: PrismaService, useValue: prisma }, { provide: EntitlementsService, useValue: mockEntitlements },
         { provide: PaymentsService, useValue: {} },
         { provide: NotificationsService, useValue: notifications },
       ],

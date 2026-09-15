@@ -37,6 +37,23 @@ enum SaaSStatus {
   CANCELLED
 }
 
+enum SaasBillingPeriod {
+  MONTHLY
+  YEARLY
+}
+
+/// Lifecycle of one manual-UPI subscription purchase attempt. Deliberately a new
+/// type rather than extra values on SaaSStatus: payment state and entitlement
+/// state are different things, and Postgres cannot add an enum value and use it
+/// in the same migration.
+enum SaasPaymentStatus {
+  AWAITING_PAYMENT
+  SUBMITTED
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
 enum MembershipType {
   MONTHLY
   QUARTERLY
@@ -200,71 +217,72 @@ enum ChatType {
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Gym {
-  id                 String     @id @default(uuid())
-  name               String
-  slug               String     @unique
-  email              String     @unique
-  phone              String
-  address            String
-  city               String
-  state              String
-  pincode            String
-  country            String     @default("India")
-  timezone           String     @default("Asia/Kolkata")
-  logo               String?
-  coverImage         String?
-  description        String?
-  website            String?
-  gstin              String?
-  amenities          String[]
-  openTime           String?
-  closeTime          String?
-  workingDays        String[]
-  maxMembers         Int        @default(100)
-  status             GymStatus  @default(PENDING)
-  saasPlan           SaaSPlan   @default(STARTER)
-  saasStatus         SaaSStatus @default(TRIAL)
-  saasExpiresAt      DateTime?
-  razorpayAccountId        String?
-  renewalRemindersEnabled  Boolean    @default(true)
+  id                      String     @id @default(uuid())
+  name                    String
+  slug                    String     @unique
+  email                   String     @unique
+  phone                   String
+  address                 String
+  city                    String
+  state                   String
+  pincode                 String
+  country                 String     @default("India")
+  timezone                String     @default("Asia/Kolkata")
+  logo                    String?
+  coverImage              String?
+  description             String?
+  website                 String?
+  gstin                   String?
+  amenities               String[]
+  openTime                String?
+  closeTime               String?
+  workingDays             String[]
+  maxMembers              Int        @default(100)
+  status                  GymStatus  @default(PENDING)
+  saasPlan                SaaSPlan   @default(STARTER)
+  saasStatus              SaaSStatus @default(TRIAL)
+  saasExpiresAt           DateTime?
+  razorpayAccountId       String?
+  renewalRemindersEnabled Boolean    @default(true)
   // Manual UPI payout details — member payments are collected as a plain UPI
   // QR/intent straight to this VPA (no gateway, no KYC), gym admin confirms
   // receipt manually after checking their own bank/UPI app.
-  payoutUpiVpa             String?
-  payoutAccountHolder      String?
-  payoutBankAccountNumber  String?
-  payoutBankIfsc           String?
-  payoutPhone              String?
-  createdAt                DateTime   @default(now())
-  updatedAt                DateTime   @updatedAt
-  deletedAt                DateTime?
+  payoutUpiVpa            String?
+  payoutAccountHolder     String?
+  payoutBankAccountNumber String?
+  payoutBankIfsc          String?
+  payoutPhone             String?
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+  deletedAt               DateTime?
 
-  users              User[]
-  members            Member[]
-  trainers           Trainer[]
-  staffs             Staff[]
-  membershipPlans    MembershipPlan[]
-  memberSubscriptions MemberSubscription[]
-  attendance         Attendance[]
-  occupancySnapshots OccupancySnapshot[]
-  payments           Payment[]
-  workoutPlans       WorkoutPlan[]
-  dietPlans          DietPlan[]
-  notifications      Notification[]
-  supportTickets     SupportTicket[]
-  enquiries          Enquiry[]
-  branches           Branch[]
-  auditLogs          AuditLog[]
-  expenses           Expense[]
-  gymSubscriptions   GymSubscription[]
-  ptSessions         PtSession[]
-  leaveRequests      LeaveRequest[]
-  chatConversations  ChatConversation[]
-  supplements        Supplement[]
-  supplementOrders   SupplementOrder[]
-  promoCodes         PromoCode[]
-  invoices           Invoice[]
-  salaryPayouts      SalaryPayout[]
+  users                User[]
+  members              Member[]
+  trainers             Trainer[]
+  staffs               Staff[]
+  membershipPlans      MembershipPlan[]
+  memberSubscriptions  MemberSubscription[]
+  attendance           Attendance[]
+  occupancySnapshots   OccupancySnapshot[]
+  payments             Payment[]
+  workoutPlans         WorkoutPlan[]
+  dietPlans            DietPlan[]
+  notifications        Notification[]
+  supportTickets       SupportTicket[]
+  enquiries            Enquiry[]
+  branches             Branch[]
+  auditLogs            AuditLog[]
+  expenses             Expense[]
+  gymSubscriptions     GymSubscription[]
+  subscriptionPayments GymSubscriptionPayment[]
+  ptSessions           PtSession[]
+  leaveRequests        LeaveRequest[]
+  chatConversations    ChatConversation[]
+  supplements          Supplement[]
+  supplementOrders     SupplementOrder[]
+  promoCodes           PromoCode[]
+  invoices             Invoice[]
+  salaryPayouts        SalaryPayout[]
 
   @@index([status])
   @@index([saasStatus])
@@ -272,94 +290,167 @@ model Gym {
 }
 
 model SaaSSubscriptionPlan {
-  id               String     @id @default(uuid())
-  name             String     @unique
-  plan             SaaSPlan   @unique
-  monthlyPrice     Float
-  yearlyPrice      Float
-  maxMembers       Int
-  maxTrainers      Int
-  maxStaff         Int
-  maxBranches      Int
-  features         String[]
-  razorpayPlanId   String?
-  isActive         Boolean    @default(true)
-  commissionPct    Float      @default(0)
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  id             String   @id @default(uuid())
+  name           String   @unique
+  plan           SaaSPlan @unique
+  monthlyPrice   Float
+  yearlyPrice    Float
+  maxMembers     Int
+  maxTrainers    Int
+  maxStaff       Int
+  maxBranches    Int
+  features       String[]
+  razorpayPlanId String?
+  isActive       Boolean  @default(true)
+  commissionPct  Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  gymSubscriptions GymSubscription[]
+  gymSubscriptions     GymSubscription[]
+  subscriptionPayments GymSubscriptionPayment[]
 
   @@map("saas_subscription_plans")
 }
 
+/// Authoritative record of what a gym is entitled to. Gym.saasPlan/saasStatus/
+/// saasExpiresAt are a denormalized read cache of this table and are written
+/// ONLY by GymSubscriptionsService.syncGymCache — never by a gym update route.
 model GymSubscription {
-  id                     String     @id @default(uuid())
+  id                     String            @id @default(uuid())
   gymId                  String
   planId                 String
-  status                 SaaSStatus @default(TRIAL)
+  status                 SaaSStatus        @default(TRIAL)
+  billingPeriod          SaasBillingPeriod @default(MONTHLY)
   startDate              DateTime
   endDate                DateTime
   amount                 Float
+  activatedAt            DateTime?
+  cancelledAt            DateTime?
+  cancelReason           String?
+  /// Set when an upgrade replaces this term early.
+  supersededById         String?
+  /// UPI_MANUAL | TRIAL | SUPER_ADMIN_GRANT | MIGRATION
+  source                 String            @default("UPI_MANUAL")
+  grantedByUserId        String?
   razorpayOrderId        String?
   razorpayPaymentId      String?
   razorpaySubscriptionId String?
-  createdAt              DateTime   @default(now())
-  updatedAt              DateTime   @updatedAt
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
-  gym                    Gym                  @relation(fields: [gymId], references: [id])
-  plan                   SaaSSubscriptionPlan @relation(fields: [planId], references: [id])
+  gym      Gym                      @relation(fields: [gymId], references: [id])
+  plan     SaaSSubscriptionPlan     @relation(fields: [planId], references: [id])
+  payments GymSubscriptionPayment[]
 
   @@index([gymId])
+  @@index([gymId, status])
+  @@index([status, endDate])
   @@map("gym_subscriptions")
 }
 
+/// One row per purchase attempt: the gym admin's subscription request AND the
+/// manual-UPI payment record for it. Mirrors how Payment doubles as both for
+/// member payments. Kept out of the Payment table on purpose — Payment.memberId
+/// is required and Payment.gymId means "money this gym collected", which SaaS
+/// revenue is not.
+model GymSubscriptionPayment {
+  id                String            @id @default(uuid())
+  gymId             String
+  planId            String
+  billingPeriod     SaasBillingPeriod
+  amount            Float
+  /// Human-readable code the gym admin puts in the UPI note, e.g. AB-SUB-7F3K2.
+  referenceCode     String            @unique
+  status            SaasPaymentStatus @default(AWAITING_PAYMENT)
+  /// Snapshot of the platform VPA at request time, so old rows stay explainable.
+  payeeVpa          String
+  upiReference      String?
+  requestedByUserId String
+  submittedAt       DateTime?
+  confirmedAt       DateTime?
+  confirmedByUserId String?
+  bankReference     String?
+  rejectedAt        DateTime?
+  rejectedByUserId  String?
+  rejectionReason   String?
+  subscriptionId    String?
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  gym          Gym                  @relation(fields: [gymId], references: [id])
+  plan         SaaSSubscriptionPlan @relation(fields: [planId], references: [id])
+  subscription GymSubscription?     @relation(fields: [subscriptionId], references: [id])
+
+  @@index([status, submittedAt])
+  @@index([gymId, createdAt])
+  @@map("gym_subscription_payments")
+}
+
+/// Single-row platform configuration. The platform's own UPI VPA lives here:
+/// Gym.payoutUpiVpa is where a gym COLLECTS from its members, which is the
+/// wrong payee when the gym is the one paying us.
+model PlatformSettings {
+  id              String   @id @default("singleton")
+  upiVpa          String?
+  upiPayeeName    String?
+  trialDays       Int      @default(14)
+  graceDays       Int      @default(7)
+  supportEmail    String?
+  gstPct          Float    @default(0)
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
 model User {
-  id                  String    @id @default(uuid())
-  gymId               String?
-  email               String    @unique
-  phone               String?   @unique
-  password            String
-  firstName           String
-  lastName            String
-  role                Role
-  avatar              String?
-  dateOfBirth         DateTime?
-  gender              String?
-  address             String?
-  city                String?
-  state               String?
-  pincode             String?
-  country             String?   @default("India")
-  timezone            String?
-  emergencyContact    String?
-  isActive            Boolean   @default(true)
-  isEmailVerified     Boolean   @default(false)
-  isPhoneVerified     Boolean   @default(false)
-  lastLoginAt         DateTime?
-  refreshToken        String?
+  id               String    @id @default(uuid())
+  gymId            String?
+  email            String    @unique
+  phone            String?   @unique
+  password         String
+  firstName        String
+  lastName         String
+  role             Role
+  avatar           String?
+  dateOfBirth      DateTime?
+  gender           String?
+  address          String?
+  city             String?
+  state            String?
+  pincode          String?
+  country          String?   @default("India")
+  timezone         String?
+  emergencyContact String?
+  isActive         Boolean   @default(true)
+  isEmailVerified  Boolean   @default(false)
+  isPhoneVerified  Boolean   @default(false)
+  lastLoginAt      DateTime?
+  refreshToken     String?
   // Manual UPI payout — same record-only model as Gym's: gym admin pays salary
   // straight to this VPA via their own banking, then marks the payout Paid.
-  payoutUpiVpa        String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  deletedAt           DateTime?
+  payoutUpiVpa     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
 
-  gym                 Gym?      @relation(fields: [gymId], references: [id])
-  member              Member?
-  trainer             Trainer?
-  staff               Staff?
-  salaryPayouts       SalaryPayout[]
-  otpCodes            OtpCode[]
-  auditLogs           AuditLog[]
-  notifications       Notification[]
-  leaveRequests       LeaveRequest[]
-  conversations       ChatConversation[] @relation("UserConversations")
-  chatMessages        ChatMessage[]      @relation("SentChatMessages")
-  attendanceRecords   Attendance[]       @relation("AttendanceUser")
-  supplementOrders    SupplementOrder[]
-  invoices            Invoice[]          @relation("UserInvoices")
-  pushTokens          PushToken[]
+  gym               Gym?               @relation(fields: [gymId], references: [id])
+  member            Member?
+  trainer           Trainer?
+  staff             Staff?
+  salaryPayouts     SalaryPayout[]
+  otpCodes          OtpCode[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  leaveRequests     LeaveRequest[]
+  conversations     ChatConversation[] @relation("UserConversations")
+  chatMessages      ChatMessage[]      @relation("SentChatMessages")
+  attendanceRecords Attendance[]       @relation("AttendanceUser")
+  supplementOrders  SupplementOrder[]
+  invoices          Invoice[]          @relation("UserInvoices")
+  pushTokens        PushToken[]
 
   @@index([gymId])
   @@index([role])
@@ -368,30 +459,30 @@ model User {
 }
 
 model Member {
-  id                  String   @id @default(uuid())
-  userId              String   @unique
-  gymId               String
-  memberCode          String   @unique
-  qrToken             String   @unique @default(uuid())
-  bloodGroup          String?
-  medicalConditions   String?
-  fitnessGoals        String?
-  profilePhoto        String?
-  referralCode        String?  @unique
-  referralCredit      Float    @default(0)
-  referredById        String?
-  joinDate            DateTime @default(now())
-  attendanceStreak     Int      @default(0)
-  bestAttendanceStreak Int      @default(0)
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  gymId                String
+  memberCode           String    @unique
+  qrToken              String    @unique @default(uuid())
+  bloodGroup           String?
+  medicalConditions    String?
+  fitnessGoals         String?
+  profilePhoto         String?
+  referralCode         String?   @unique
+  referralCredit       Float     @default(0)
+  referredById         String?
+  joinDate             DateTime  @default(now())
+  attendanceStreak     Int       @default(0)
+  bestAttendanceStreak Int       @default(0)
   lastAttendanceDate   DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  deletedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
 
-  user                User     @relation(fields: [userId], references: [id])
-  gym                 Gym      @relation(fields: [gymId], references: [id])
-  referredBy          Member?  @relation("MemberReferrals", fields: [referredById], references: [id])
-  referrals           Member[] @relation("MemberReferrals")
+  user                User                 @relation(fields: [userId], references: [id])
+  gym                 Gym                  @relation(fields: [gymId], references: [id])
+  referredBy          Member?              @relation("MemberReferrals", fields: [referredById], references: [id])
+  referrals           Member[]             @relation("MemberReferrals")
   memberSubscriptions MemberSubscription[]
   attendance          Attendance[]
   payments            Payment[]
@@ -410,48 +501,48 @@ model Member {
 }
 
 model Trainer {
-  id               String   @id @default(uuid())
-  userId           String   @unique
-  gymId            String
-  employeeId       String?
-  specializations  String[]
-  certifications   String[]
-  experience       Int      @default(0)
-  bio              String?
-  rating           Float    @default(0)
-  hourlyRate       Float?
-  isAvailable      Boolean  @default(true)
-  joiningDate      DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  deletedAt        DateTime?
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  gymId           String
+  employeeId      String?
+  specializations String[]
+  certifications  String[]
+  experience      Int       @default(0)
+  bio             String?
+  rating          Float     @default(0)
+  hourlyRate      Float?
+  isAvailable     Boolean   @default(true)
+  joiningDate     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
-  user             User     @relation(fields: [userId], references: [id])
-  gym              Gym      @relation(fields: [gymId], references: [id])
+  user              User                @relation(fields: [userId], references: [id])
+  gym               Gym                 @relation(fields: [gymId], references: [id])
   memberAssignments TrainerAssignment[]
-  workoutPlans     WorkoutPlan[]
-  dietPlans        DietPlan[]
-  ptSessions       PtSession[]
+  workoutPlans      WorkoutPlan[]
+  dietPlans         DietPlan[]
+  ptSessions        PtSession[]
 
   @@index([gymId])
   @@map("trainers")
 }
 
 model Staff {
-  id          String   @id @default(uuid())
-  userId      String   @unique
+  id          String    @id @default(uuid())
+  userId      String    @unique
   gymId       String
   employeeId  String?
   designation String?
   department  String?
-  joiningDate DateTime @default(now())
+  joiningDate DateTime  @default(now())
   salary      Float?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  user        User     @relation(fields: [userId], references: [id])
-  gym         Gym      @relation(fields: [gymId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  gym  Gym  @relation(fields: [gymId], references: [id])
 
   @@index([gymId])
   @@map("staffs")
@@ -466,8 +557,8 @@ model TrainerAssignment {
   isActive   Boolean  @default(true)
   notes      String?
 
-  trainer    Trainer  @relation(fields: [trainerId], references: [id])
-  member     Member   @relation(fields: [memberId], references: [id])
+  trainer Trainer @relation(fields: [trainerId], references: [id])
+  member  Member  @relation(fields: [memberId], references: [id])
 
   @@unique([trainerId, memberId])
   @@index([gymId])
@@ -488,36 +579,36 @@ model MembershipPlan {
   updatedAt      DateTime       @updatedAt
   deletedAt      DateTime?
 
-  gym            Gym            @relation(fields: [gymId], references: [id])
-  subscriptions  MemberSubscription[]
+  gym           Gym                  @relation(fields: [gymId], references: [id])
+  subscriptions MemberSubscription[]
 
   @@index([gymId])
   @@map("membership_plans")
 }
 
 model MemberSubscription {
-  id                 String           @id @default(uuid())
-  memberId           String
-  gymId              String
-  planId             String
-  status             MembershipStatus @default(PENDING)
-  startDate          DateTime
-  endDate            DateTime
-  amount             Float
-  autoRenew          Boolean          @default(false)
-  remindersSent      Int[]            @default([])
-  freezeStart        DateTime?
-  freezeEnd          DateTime?
-  notes              String?
-  deletedAt          DateTime?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  id            String           @id @default(uuid())
+  memberId      String
+  gymId         String
+  planId        String
+  status        MembershipStatus @default(PENDING)
+  startDate     DateTime
+  endDate       DateTime
+  amount        Float
+  autoRenew     Boolean          @default(false)
+  remindersSent Int[]            @default([])
+  freezeStart   DateTime?
+  freezeEnd     DateTime?
+  notes         String?
+  deletedAt     DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
-  member             Member           @relation(fields: [memberId], references: [id])
-  gym                Gym              @relation(fields: [gymId], references: [id])
-  plan               MembershipPlan   @relation(fields: [planId], references: [id])
-  payments           Payment[]
-  invoices           Invoice[]
+  member   Member         @relation(fields: [memberId], references: [id])
+  gym      Gym            @relation(fields: [gymId], references: [id])
+  plan     MembershipPlan @relation(fields: [planId], references: [id])
+  payments Payment[]
+  invoices Invoice[]
 
   @@index([memberId])
   @@index([gymId])
@@ -529,26 +620,26 @@ model MemberSubscription {
 }
 
 model Attendance {
-  id           String           @id @default(uuid())
-  userId       String?
-  memberId     String?
-  gymId        String
-  checkInTime  DateTime         @default(now())
-  checkOutTime DateTime?
+  id              String                @id @default(uuid())
+  userId          String?
+  memberId        String?
+  gymId           String
+  checkInTime     DateTime              @default(now())
+  checkOutTime    DateTime?
   durationMinutes Int?
-  date         DateTime         @default(now()) @db.Date
-  status       AttendanceStatus @default(PRESENT)
-  method       CheckInMethod    @default(MANUAL)
-  closeReason  AttendanceCloseReason @default(NORMAL)
-  notes        String?
-  markedBy     String?
-  deletedAt    DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  date            DateTime              @default(now()) @db.Date
+  status          AttendanceStatus      @default(PRESENT)
+  method          CheckInMethod         @default(MANUAL)
+  closeReason     AttendanceCloseReason @default(NORMAL)
+  notes           String?
+  markedBy        String?
+  deletedAt       DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
-  user         User?            @relation("AttendanceUser", fields: [userId], references: [id])
-  member       Member?          @relation(fields: [memberId], references: [id])
-  gym          Gym              @relation(fields: [gymId], references: [id])
+  user   User?   @relation("AttendanceUser", fields: [userId], references: [id])
+  member Member? @relation(fields: [memberId], references: [id])
+  gym    Gym     @relation(fields: [gymId], references: [id])
 
   @@index([userId])
   @@index([memberId])
@@ -565,7 +656,7 @@ model OccupancySnapshot {
   occupancyCount Int
   createdAt      DateTime @default(now())
 
-  gym            Gym      @relation(fields: [gymId], references: [id])
+  gym Gym @relation(fields: [gymId], references: [id])
 
   @@index([gymId])
   @@index([gymId, createdAt])
@@ -573,37 +664,37 @@ model OccupancySnapshot {
 }
 
 model Payment {
-  id                 String            @id @default(uuid())
+  id                 String        @id @default(uuid())
   memberId           String
   gymId              String
   subscriptionId     String?
   type               PaymentType
   amount             Float
-  status             PaymentStatus     @default(PENDING)
-  method             PaymentMethod     @default(CASH)
+  status             PaymentStatus @default(PENDING)
+  method             PaymentMethod @default(CASH)
   razorpayOrderId    String?
   razorpayPaymentId  String?
   memberConfirmedAt  DateTime?
   invoiceUrl         String?
   notes              String?
   promoCodeId        String?
-  discountAmount     Float             @default(0)
-  platformCommission Float             @default(0)
+  discountAmount     Float         @default(0)
+  platformCommission Float         @default(0)
   dietPlanId         String?
   workoutPlanId      String?
   membershipPlanId   String?
   paidAt             DateTime?
   deletedAt          DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  member             Member            @relation(fields: [memberId], references: [id])
-  gym                Gym               @relation(fields: [gymId], references: [id])
-  subscription       MemberSubscription? @relation(fields: [subscriptionId], references: [id])
-  promoCode          PromoCode?        @relation(fields: [promoCodeId], references: [id])
-  workoutPlan        WorkoutPlan?      @relation(fields: [workoutPlanId], references: [id])
-  invoice            Invoice?
-  supplementOrder    SupplementOrder?
+  member          Member              @relation(fields: [memberId], references: [id])
+  gym             Gym                 @relation(fields: [gymId], references: [id])
+  subscription    MemberSubscription? @relation(fields: [subscriptionId], references: [id])
+  promoCode       PromoCode?          @relation(fields: [promoCodeId], references: [id])
+  workoutPlan     WorkoutPlan?        @relation(fields: [workoutPlanId], references: [id])
+  invoice         Invoice?
+  supplementOrder SupplementOrder?
 
   @@index([memberId])
   @@index([gymId])
@@ -617,47 +708,47 @@ model Payment {
 }
 
 model WorkoutPlan {
-  id             String   @id @default(uuid())
-  gymId          String
-  trainerId      String?
-  name           String
-  goal           String
-  difficulty     String   @default("BEGINNER")
-  durationWeeks  Int      @default(4)
-  exercises      Json
-  isAiGenerated  Boolean  @default(false)
-  isTemplate     Boolean  @default(false)
-  isPremium      Boolean  @default(false)
-  price          Float?
-  durationDays   Int?
-  description    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime?
+  id            String    @id @default(uuid())
+  gymId         String
+  trainerId     String?
+  name          String
+  goal          String
+  difficulty    String    @default("BEGINNER")
+  durationWeeks Int       @default(4)
+  exercises     Json
+  isAiGenerated Boolean   @default(false)
+  isTemplate    Boolean   @default(false)
+  isPremium     Boolean   @default(false)
+  price         Float?
+  durationDays  Int?
+  description   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
-  gym            Gym      @relation(fields: [gymId], references: [id])
-  trainer        Trainer? @relation(fields: [trainerId], references: [id])
-  assignments    WorkoutAssignment[]
-  payments       Payment[]
+  gym         Gym                 @relation(fields: [gymId], references: [id])
+  trainer     Trainer?            @relation(fields: [trainerId], references: [id])
+  assignments WorkoutAssignment[]
+  payments    Payment[]
 
   @@index([gymId])
   @@map("workout_plans")
 }
 
 model WorkoutAssignment {
-  id            String      @id @default(uuid())
+  id            String    @id @default(uuid())
   workoutPlanId String
   memberId      String
   gymId         String
   startDate     DateTime
   endDate       DateTime?
-  isActive      Boolean     @default(true)
+  isActive      Boolean   @default(true)
   notes         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id])
-  member        Member      @relation(fields: [memberId], references: [id])
+  workoutPlan WorkoutPlan @relation(fields: [workoutPlanId], references: [id])
+  member      Member      @relation(fields: [memberId], references: [id])
 
   @@index([gymId])
   @@index([memberId])
@@ -665,7 +756,7 @@ model WorkoutAssignment {
 }
 
 model DietPlan {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   gymId         String
   trainerId     String?
   name          String
@@ -673,38 +764,38 @@ model DietPlan {
   totalCalories Int?
   meals         Json
   restrictions  String[]
-  isAiGenerated Boolean  @default(false)
-  isTemplate    Boolean  @default(false)
-  isPremium     Boolean  @default(false)
+  isAiGenerated Boolean   @default(false)
+  isTemplate    Boolean   @default(false)
+  isPremium     Boolean   @default(false)
   price         Float?
   durationDays  Int?
   description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  gym           Gym      @relation(fields: [gymId], references: [id])
-  trainer       Trainer? @relation(fields: [trainerId], references: [id])
-  assignments   DietAssignment[]
+  gym         Gym              @relation(fields: [gymId], references: [id])
+  trainer     Trainer?         @relation(fields: [trainerId], references: [id])
+  assignments DietAssignment[]
 
   @@index([gymId])
   @@map("diet_plans")
 }
 
 model DietAssignment {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   dietPlanId String
   memberId   String
   gymId      String
   startDate  DateTime
   endDate    DateTime?
-  isActive   Boolean  @default(true)
+  isActive   Boolean   @default(true)
   notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  dietPlan   DietPlan @relation(fields: [dietPlanId], references: [id])
-  member     Member   @relation(fields: [memberId], references: [id])
+  dietPlan DietPlan @relation(fields: [dietPlanId], references: [id])
+  member   Member   @relation(fields: [memberId], references: [id])
 
   @@index([gymId])
   @@index([memberId])
@@ -731,7 +822,7 @@ model ProgressLog {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  member     Member   @relation(fields: [memberId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
 
   @@index([memberId])
   @@map("progress_logs")
@@ -752,7 +843,7 @@ model ActivityRun {
   route           Json
   createdAt       DateTime @default(now())
 
-  member          Member   @relation(fields: [memberId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
 
   @@index([memberId, startedAt])
   @@index([gymId])
@@ -776,8 +867,8 @@ model Notification {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
-  user        User                @relation(fields: [userId], references: [id])
-  gym         Gym?                @relation(fields: [gymId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  gym  Gym? @relation(fields: [gymId], references: [id])
 
   @@index([userId])
   @@index([gymId])
@@ -802,7 +893,7 @@ model SupportTicket {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  gym         Gym            @relation(fields: [gymId], references: [id])
+  gym Gym @relation(fields: [gymId], references: [id])
 
   @@index([gymId])
   @@index([status])
@@ -810,23 +901,23 @@ model SupportTicket {
 }
 
 model Enquiry {
-  id                  String        @id @default(uuid())
-  gymId               String
-  name                String
-  phone               String
-  email               String?
-  source              EnquirySource?
-  interest            String?
-  status              EnquiryStatus @default(NEW)
-  followUpDate        DateTime?
-  notes               String?
-  assignedTo          String?
-  convertedMemberId   String?
-  deletedAt           DateTime?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id                String         @id @default(uuid())
+  gymId             String
+  name              String
+  phone             String
+  email             String?
+  source            EnquirySource?
+  interest          String?
+  status            EnquiryStatus  @default(NEW)
+  followUpDate      DateTime?
+  notes             String?
+  assignedTo        String?
+  convertedMemberId String?
+  deletedAt         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
-  gym                 Gym           @relation(fields: [gymId], references: [id])
+  gym Gym @relation(fields: [gymId], references: [id])
 
   @@index([gymId])
   @@index([status])
@@ -849,8 +940,8 @@ model PromoCode {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  gym           Gym          @relation(fields: [gymId], references: [id])
-  payments      Payment[]
+  gym      Gym       @relation(fields: [gymId], references: [id])
+  payments Payment[]
 
   @@unique([gymId, code])
   @@index([gymId])
@@ -859,7 +950,7 @@ model PromoCode {
 }
 
 model Branch {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   gymId       String
   name        String
   address     String
@@ -868,12 +959,12 @@ model Branch {
   pincode     String
   phone       String?
   managerName String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  gym         Gym      @relation(fields: [gymId], references: [id])
+  gym Gym @relation(fields: [gymId], references: [id])
 
   @@index([gymId])
   @@map("branches")
@@ -893,27 +984,27 @@ model Expense {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  gym         Gym             @relation(fields: [gymId], references: [id])
+  gym Gym @relation(fields: [gymId], references: [id])
 
   @@index([gymId])
   @@map("expenses")
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  gymId      String?
-  userId     String?
-  action     String
-  entity     String
-  entityId   String?
-  oldValues  Json?
-  newValues  Json?
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  gymId     String?
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
-  gym        Gym?     @relation(fields: [gymId], references: [id])
-  user       User?    @relation(fields: [userId], references: [id])
+  gym  Gym?  @relation(fields: [gymId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
   @@index([gymId])
   @@index([userId])
@@ -935,7 +1026,7 @@ model OtpCode {
   deletedAt DateTime?
   createdAt DateTime   @default(now())
 
-  user      User?      @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
   @@index([email, purpose])
   @@index([phone, purpose])
@@ -962,9 +1053,9 @@ model PtSession {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  gym         Gym             @relation(fields: [gymId], references: [id])
-  trainer     Trainer         @relation(fields: [trainerId], references: [id])
-  member      Member          @relation(fields: [memberId], references: [id])
+  gym     Gym     @relation(fields: [gymId], references: [id])
+  trainer Trainer @relation(fields: [trainerId], references: [id])
+  member  Member  @relation(fields: [memberId], references: [id])
 
   @@index([gymId])
   @@index([trainerId])
@@ -974,21 +1065,21 @@ model PtSession {
 }
 
 model ChatConversation {
-  id            String        @id @default(uuid())
+  id            String    @id @default(uuid())
   gymId         String
   userId        String
-  type          ChatType      @default(GYM)
+  type          ChatType  @default(GYM)
   lastMessage   String?
-  lastMessageAt DateTime      @default(now())
-  unreadAdmin   Int           @default(0)
-  unreadUser    Int           @default(0)
+  lastMessageAt DateTime  @default(now())
+  unreadAdmin   Int       @default(0)
+  unreadUser    Int       @default(0)
   deletedAt     DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  gym           Gym           @relation(fields: [gymId], references: [id])
-  user          User          @relation("UserConversations", fields: [userId], references: [id])
-  messages      ChatMessage[]
+  gym      Gym           @relation(fields: [gymId], references: [id])
+  user     User          @relation("UserConversations", fields: [userId], references: [id])
+  messages ChatMessage[]
 
   @@unique([gymId, userId, type])
   @@index([gymId])
@@ -997,21 +1088,21 @@ model ChatConversation {
 }
 
 model ChatMessage {
-  id             String           @id @default(uuid())
+  id             String    @id @default(uuid())
   conversationId String
   senderId       String
-  content        String           @default("")
+  content        String    @default("")
   attachmentUrl  String?
   attachmentName String?
   attachmentType String?
-  isRead         Boolean          @default(false)
-  isDeleted      Boolean          @default(false)
-  reactions      Json             @default("[]")
+  isRead         Boolean   @default(false)
+  isDeleted      Boolean   @default(false)
+  reactions      Json      @default("[]")
   deletedAt      DateTime?
-  createdAt      DateTime         @default(now())
+  createdAt      DateTime  @default(now())
 
-  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User             @relation("SentChatMessages", fields: [senderId], references: [id])
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User             @relation("SentChatMessages", fields: [senderId], references: [id])
 
   @@index([conversationId])
   @@index([senderId])
@@ -1030,23 +1121,23 @@ model ChatAttachment {
 }
 
 model LeaveRequest {
-  id          String      @id @default(uuid())
-  gymId       String
-  userId      String
-  leaveType   LeaveType
-  startDate   DateTime
-  endDate     DateTime
-  reason      String
-  status      LeaveStatus @default(PENDING)
-  adminNote   String?
-  reviewedBy  String?
-  reviewedAt  DateTime?
-  deletedAt   DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id         String      @id @default(uuid())
+  gymId      String
+  userId     String
+  leaveType  LeaveType
+  startDate  DateTime
+  endDate    DateTime
+  reason     String
+  status     LeaveStatus @default(PENDING)
+  adminNote  String?
+  reviewedBy String?
+  reviewedAt DateTime?
+  deletedAt  DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
-  user        User        @relation(fields: [userId], references: [id])
-  gym         Gym         @relation(fields: [gymId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  gym  Gym  @relation(fields: [gymId], references: [id])
 
   @@index([gymId])
   @@index([userId])
@@ -1072,8 +1163,8 @@ model Supplement {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  gym           Gym                   @relation(fields: [gymId], references: [id])
-  orderItems    SupplementOrderItem[]
+  gym        Gym                   @relation(fields: [gymId], references: [id])
+  orderItems SupplementOrderItem[]
 
   @@index([gymId])
   @@index([category])
@@ -1092,10 +1183,10 @@ model SupplementOrder {
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
 
-  gym         Gym                   @relation(fields: [gymId], references: [id])
-  user        User                  @relation(fields: [userId], references: [id])
-  payment     Payment?              @relation(fields: [paymentId], references: [id])
-  items       SupplementOrderItem[]
+  gym     Gym                   @relation(fields: [gymId], references: [id])
+  user    User                  @relation(fields: [userId], references: [id])
+  payment Payment?              @relation(fields: [paymentId], references: [id])
+  items   SupplementOrderItem[]
 
   @@index([gymId])
   @@index([userId])
@@ -1104,16 +1195,16 @@ model SupplementOrder {
 }
 
 model SupplementOrderItem {
-  id           String     @id @default(uuid())
+  id           String   @id @default(uuid())
   orderId      String
   supplementId String
   quantity     Int
   unitPrice    Float
   totalPrice   Float
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime @default(now())
 
-  order        SupplementOrder @relation(fields: [orderId], references: [id])
-  supplement   Supplement      @relation(fields: [supplementId], references: [id])
+  order      SupplementOrder @relation(fields: [orderId], references: [id])
+  supplement Supplement      @relation(fields: [supplementId], references: [id])
 
   @@index([orderId])
   @@index([supplementId])
@@ -1139,10 +1230,10 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  gym           Gym                 @relation(fields: [gymId], references: [id])
-  user          User                @relation("UserInvoices", fields: [userId], references: [id])
-  membership    MemberSubscription? @relation(fields: [membershipId], references: [id])
-  payment       Payment?            @relation(fields: [paymentId], references: [id])
+  gym        Gym                 @relation(fields: [gymId], references: [id])
+  user       User                @relation("UserInvoices", fields: [userId], references: [id])
+  membership MemberSubscription? @relation(fields: [membershipId], references: [id])
+  payment    Payment?            @relation(fields: [paymentId], references: [id])
 
   @@index([gymId])
   @@index([userId])
@@ -1151,9 +1242,9 @@ model Invoice {
 }
 
 model RevokedToken {
-  jti        String   @id
-  expiresAt  DateTime
-  revokedAt  DateTime @default(now())
+  jti       String   @id
+  expiresAt DateTime
+  revokedAt DateTime @default(now())
 
   @@index([expiresAt])
   @@map("revoked_tokens")
@@ -1179,8 +1270,8 @@ model SalaryPayout {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  gym         Gym          @relation(fields: [gymId], references: [id])
-  user        User         @relation(fields: [userId], references: [id])
+  gym  Gym  @relation(fields: [gymId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([gymId])
   @@index([userId])
@@ -1198,7 +1289,7 @@ model PushToken {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("push_tokens")
