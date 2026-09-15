@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Image } from 'react-native';
+import { View, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
@@ -78,7 +78,6 @@ export default function ChatScreen({ navigation }: any) {
     return msg.senderId === user?.id || msg.sender?.id === user?.id;
   }
 
-  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
 
   return (
     <KeyboardAvoidingView
@@ -119,45 +118,23 @@ export default function ChatScreen({ navigation }: any) {
             const ts = new Date(item.createdAt).toLocaleTimeString('en-IN', {
               hour: '2-digit', minute: '2-digit',
             });
-            const senderInit = own
-              ? initials
-              : `${item.sender?.firstName?.[0] ?? 'A'}${item.sender?.lastName?.[0] ?? ''}`.toUpperCase();
-
+            // WhatsApp-style: compact bubble, no per-message avatars, timestamp
+            // sits inline at the bottom-right of the text.
             return (
               <View style={[styles.msgRow, own && styles.msgRowOwn]}>
-                {!own && (
-                  <View style={styles.msgAvatar}>
-                    {item.sender?.avatar ? (
-                      <Image source={{ uri: item.sender.avatar }} style={styles.msgAvatarImg} />
-                    ) : (
-                      <View style={styles.msgAvatarPlaceholder}>
-                        <Text style={styles.msgAvatarText}>{senderInit}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
                 <View style={[styles.bubble, own ? styles.bubbleOwn : styles.bubbleOther]}>
                   {!own && (
                     <Text style={styles.senderName}>
                       {item.sender?.firstName ?? 'Admin'} {item.sender?.lastName ?? ''}
                     </Text>
                   )}
-                  <Text style={[styles.msgText, own && styles.msgTextOwn]}>
-                    {item.content ?? item.message}
-                  </Text>
-                  <Text style={[styles.ts, own && styles.tsOwn]}>{ts}</Text>
-                </View>
-                {own && (
-                  <View style={styles.msgAvatar}>
-                    {user?.avatar ? (
-                      <Image source={{ uri: user.avatar }} style={styles.msgAvatarImg} />
-                    ) : (
-                      <View style={[styles.msgAvatarPlaceholder, { backgroundColor: colors.primary }]}>
-                        <Text style={styles.msgAvatarText}>{initials}</Text>
-                      </View>
-                    )}
+                  <View style={styles.msgLine}>
+                    <Text style={[styles.msgText, own && styles.msgTextOwn]}>
+                      {item.content ?? item.message}
+                    </Text>
+                    <Text style={[styles.ts, own && styles.tsOwn]}>{ts}</Text>
                   </View>
-                )}
+                </View>
               </View>
             );
           }}
@@ -216,31 +193,26 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   sub: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
 
-  msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 12, gap: 8 },
+  msgRow: { flexDirection: 'row', marginBottom: 3 },
   msgRowOwn: { justifyContent: 'flex-end' },
-  msgAvatar: { width: 28 },
-  msgAvatarImg: { width: 28, height: 28, borderRadius: 14 },
-  msgAvatarPlaceholder: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center',
-  },
-  msgAvatarText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
   bubble: {
-    maxWidth: '72%', padding: 12, borderRadius: 18,
+    maxWidth: '80%', paddingVertical: 5, paddingHorizontal: 9, borderRadius: 10,
   },
   bubbleOwn: {
-    backgroundColor: colors.primary, borderBottomRightRadius: 4,
+    backgroundColor: colors.primary, borderTopRightRadius: 2,
   },
   bubbleOther: {
-    backgroundColor: colors.surface, borderBottomLeftRadius: 4,
+    backgroundColor: colors.surface, borderTopLeftRadius: 2,
     borderWidth: 1, borderColor: colors.surfaceRaised,
   },
-  senderName: { color: colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 3 },
-  msgText: { color: colors.text, fontSize: 14, lineHeight: 20 },
+  senderName: { color: colors.primary, fontSize: 12, fontWeight: '700', marginBottom: 1 },
+  // Text and time flow on one line; when the text wraps, the time drops to the end of the last line.
+  msgLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', columnGap: 8 },
+  msgText: { color: colors.text, fontSize: 15, lineHeight: 20, flexShrink: 1 },
   msgTextOwn: { color: '#fff' },
-  ts: { color: colors.textMuted, fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
-  tsOwn: { color: 'rgba(255,255,255,0.6)' },
+  ts: { color: colors.textMuted, fontSize: 10, lineHeight: 14, marginLeft: 'auto', paddingTop: 4 },
+  tsOwn: { color: 'rgba(255,255,255,0.65)' },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
   emptyTitle: { color: colors.textSecondary, fontSize: 16, fontWeight: '600', marginBottom: 6 },

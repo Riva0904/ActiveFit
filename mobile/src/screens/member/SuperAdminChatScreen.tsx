@@ -341,18 +341,18 @@ const styles = StyleSheet.create({
   unreadText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   convPreview: { color: colors.textFaint, fontSize: 12 },
 
-  msgRow: { flexDirection: 'row', marginBottom: 10 },
+  msgRow: { flexDirection: 'row', marginBottom: 3 },
   msgRowOwn: { justifyContent: 'flex-end' },
-  bubble: { maxWidth: '78%', padding: 12, borderRadius: 18 },
+  bubble: { maxWidth: '78%', paddingVertical: 5, paddingHorizontal: 9, borderRadius: 10 },
   bubbleOwn: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
   bubbleOther: {
     backgroundColor: colors.surface, borderBottomLeftRadius: 4,
     borderWidth: 1, borderColor: colors.surfaceRaised,
   },
   senderName: { color: colors.purple, fontSize: 11, fontWeight: '700', marginBottom: 3 },
-  msgText: { color: colors.text, fontSize: 14, lineHeight: 20 },
+  msgText: { color: colors.text, fontSize: 15, lineHeight: 20 },
   msgTextOwn: { color: '#fff' },
-  ts: { color: colors.textMuted, fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  ts: { color: colors.textMuted, fontSize: 10, marginTop: 2, alignSelf: 'flex-end' },
   tsOwn: { color: 'rgba(255,255,255,0.6)' },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
