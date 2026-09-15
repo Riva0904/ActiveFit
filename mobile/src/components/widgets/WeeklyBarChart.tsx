@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { Text } from '../Text';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import { colors, spacing, typography } from '../../theme';
 import { DAY_LETTERS, scaleBars } from '../../lib/weekly';

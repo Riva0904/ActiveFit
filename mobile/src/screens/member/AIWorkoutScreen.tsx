@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { Button, Card, Chip, ChipRow, Field, Header, Screen, TextField } from '../../components';

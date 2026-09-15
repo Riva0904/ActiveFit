@@ -1,11 +1,12 @@
 import React from 'react';
-import { Alert, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '../../components/Text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { MobileHomeData } from '../../types';
 import { usePushToken } from '../../hooks/usePushToken';
-import { Avatar, Card, Icon, Loading, Screen, SectionTitle, StatPill, StatRow, type IconName } from '../../components';
+import { AnimatedBar, Avatar, Card, Enter, GlowOrb, Icon, Loading, PressScale, PulseRing, Screen, SectionTitle, StatPill, StatRow, type IconName } from '../../components';
 import { ActivityChecklist, RunSummaryCard, type ChecklistItem } from '../../components/widgets';
 import type { ActivityRun } from '../../types';
 import { useDailyChecklistStore } from '../../store/dailyChecklistStore';
@@ -104,19 +105,22 @@ export default function HomeScreen({ navigation }: any) {
       ]
     : [];
 
-  const quickActions: { label: string; icon: IconName; tab: string }[] = isMember
+  // Each action targets a tab and optionally a screen inside that tab's stack.
+  const quickActions: { label: string; icon: IconName; tab: string; screen?: string }[] = isMember
     ? [
-        { label: 'QR Code', icon: 'qrcode', tab: 'Attendance' },
-        { label: 'Workout', icon: 'dumbbell', tab: 'Plans' },
-        { label: 'Diet', icon: 'food-apple-outline', tab: 'Plans' },
-        { label: 'Progress', icon: 'trending-up', tab: 'Plans' },
-        { label: 'Store', icon: 'shopping-cart', tab: 'Store' },
-        { label: 'Profile', icon: 'user', tab: 'Profile' },
+        { label: 'QR Code', icon: 'qrcode', tab: 'Attendance', screen: 'AttendanceMain' },
+        { label: 'Workout', icon: 'dumbbell', tab: 'Plans', screen: 'PlansMain' },
+        { label: 'Run', icon: 'run', tab: 'Home', screen: 'Run' },
+        { label: 'Progress', icon: 'trending-up', tab: 'Profile', screen: 'ProgressLog' },
+        { label: 'Store', icon: 'shopping-cart', tab: 'Store', screen: 'StoreMain' },
+        { label: 'Trainer', icon: 'account-heart-outline', tab: 'Profile', screen: 'MyTrainer' },
       ]
     : [
         ...(canCheckIn ? [{ label: 'Attendance', icon: 'calendar' as IconName, tab: 'Attendance' }] : []),
         { label: 'Profile', icon: 'user', tab: 'Profile' },
       ];
+  const go = (a: { tab: string; screen?: string }) =>
+    a.screen ? navigation.navigate(a.tab, { screen: a.screen }) : navigation.navigate(a.tab);
 
   const expiring = daysLeft !== null && daysLeft < 7;
 
@@ -124,7 +128,8 @@ export default function HomeScreen({ navigation }: any) {
     <Screen scroll refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View style={styles.headerGlow} pointerEvents="none" />
+        <GlowOrb size={320} intensity={0.45} breathe style={styles.headerGlow} />
+        <GlowOrb size={200} intensity={0.25} color={colors.purple} style={styles.headerGlow2} />
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>Good {getGreeting()} 👋</Text>
@@ -135,7 +140,7 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
         {isMember ? (
-          <Card style={styles.statCard} padding="md">
+          <Card style={styles.statCard} padding="md" enter={0}>
             <StatRow items={[
               { label: 'Visits · month', value: monthVisits },
               { label: 'Streak', value: currentStreak, unit: currentStreak === 1 ? 'day' : 'days', color: currentStreak > 0 ? colors.primary : undefined },
@@ -151,12 +156,14 @@ export default function HomeScreen({ navigation }: any) {
 
       {/* ── Check-in ── */}
       {canCheckIn && (
-        <TouchableOpacity
+        <Enter index={1}>
+        <PressScale
           style={[styles.checkBtn, isCheckedIn ? styles.checkBtnOut : shadow.glow]}
           onPress={() => (isCheckedIn ? checkOutMutation.mutate() : checkInMutation.mutate())}
           disabled={busy}
-          activeOpacity={0.9}
+          scaleTo={0.97}
         >
+          {!isCheckedIn && !busy ? <PulseRing borderRadius={radius.xl} /> : null}
           {busy ? (
             <Loading />
           ) : (
@@ -176,17 +183,19 @@ export default function HomeScreen({ navigation }: any) {
               </View>
             </View>
           )}
-        </TouchableOpacity>
+        </PressScale>
+        </Enter>
       )}
 
       {/* ── Membership ── */}
       {!isMember ? (
-        <Card accent="muted">
+        <Card accent="muted" enter={2}>
           <Text style={styles.planName}>{role.replace(/_/g, ' ')} account</Text>
           <Text style={styles.expiry}>Chat and notifications are under Profile</Text>
         </Card>
       ) : data?.membership ? (
-        <Card accent={expiring ? 'danger' : 'primary'}>
+        <Card accent={expiring ? 'danger' : 'primary'} glow={!expiring} enter={2}>
+          <GlowOrb size={180} intensity={0.3} color={expiring ? colors.danger : colors.primary} style={styles.cardGlow} />
           <View style={styles.memberCardTop}>
             <View>
               <Text style={styles.planName}>{data.membership.plan.name}</Text>
@@ -196,18 +205,17 @@ export default function HomeScreen({ navigation }: any) {
               <Text style={styles.daysBadgeText}>{daysLeft}d</Text>
             </View>
           </View>
-          <View style={styles.bar}>
-            <View style={[styles.barFill, {
-              width: `${Math.min(100, Math.max(0, ((daysLeft ?? 0) / (data.membership.plan.durationMonths * 30)) * 100))}%`,
-              backgroundColor: expiring ? colors.danger : colors.primary,
-            }]} />
-          </View>
+          <AnimatedBar
+            progress={(daysLeft ?? 0) / Math.max(1, data.membership.plan.durationMonths * 30)}
+            color={expiring ? colors.danger : colors.primary}
+            style={styles.bar}
+          />
           <Text style={styles.expiry}>
             Expires {end?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </Text>
         </Card>
       ) : (
-        <Card accent="muted" onPress={() => navigation.navigate('Profile', { screen: 'MembershipRenewal' })}>
+        <Card accent="muted" enter={2} onPress={() => navigation.navigate('Profile', { screen: 'MembershipRenewal' })}>
           <Text style={styles.planName}>No Active Membership</Text>
           <Text style={styles.expiry}>Tap to choose a plan</Text>
         </Card>
@@ -215,34 +223,38 @@ export default function HomeScreen({ navigation }: any) {
 
       {/* ── Today's checklist ── */}
       {checklist.length > 0 && (
-        <>
+        <Enter index={3}>
           <SectionTitle title="Today" action={{ label: `${checklist.filter((c) => c.done).length}/${checklist.length} done`, onPress: () => {} }} />
           <ActivityChecklist items={checklist} />
-        </>
+        </Enter>
       )}
 
       {/* ── Last run ── */}
       {isMember && (
-        <>
+        <Enter index={4}>
           <SectionTitle title="Activity" />
           <RunSummaryCard
             run={latestRun}
             onStart={() => navigation.navigate('Run')}
             onPress={latestRun ? () => navigation.navigate('RunDetail', { id: latestRun.id }) : undefined}
           />
-        </>
+        </Enter>
       )}
 
       {/* ── Quick Actions ── */}
-      <SectionTitle title="Quick Actions" />
-      <View style={styles.quickGrid}>
-        {quickActions.map((a) => (
-          <TouchableOpacity key={a.label} style={styles.quickCard} onPress={() => navigation.navigate(a.tab)} activeOpacity={0.7}>
-            <View style={styles.quickIcon}><Icon name={a.icon} size={22} color={colors.primary} /></View>
-            <Text style={styles.quickLabel}>{a.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Enter index={5}>
+        <SectionTitle title="Quick Actions" />
+        <View style={styles.quickGrid}>
+          {quickActions.map((a, i) => (
+            <Enter key={a.label} index={5 + i} style={styles.quickCell}>
+              <PressScale style={styles.quickCard} onPress={() => go(a)} scaleTo={0.93}>
+                <View style={styles.quickIcon}><Icon name={a.icon} size={22} color={colors.primary} /></View>
+                <Text style={styles.quickLabel}>{a.label}</Text>
+              </PressScale>
+            </Enter>
+          ))}
+        </View>
+      </Enter>
     </Screen>
   );
 }
@@ -256,10 +268,9 @@ function getGreeting() {
 
 const styles = StyleSheet.create({
   header: { paddingBottom: spacing.xl, marginHorizontal: -spacing.screen, paddingHorizontal: spacing.screen, overflow: 'hidden' },
-  headerGlow: {
-    position: 'absolute', top: -80, right: -40, width: 220, height: 220,
-    borderRadius: 110, backgroundColor: colors.primary, opacity: 0.07,
-  },
+  headerGlow: { top: -150, right: -110 },
+  headerGlow2: { top: 30, left: -120 },
+  cardGlow: { top: -90, right: -70 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
   greeting: { color: colors.textMuted, ...typography.label },
   name: { color: colors.text, fontSize: 24, fontWeight: '800', marginTop: 2 },
@@ -281,13 +292,13 @@ const styles = StyleSheet.create({
   planType: { color: colors.textSecondary, ...typography.caption, marginTop: 3 },
   daysBadge: { borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
   daysBadgeText: { color: colors.white, ...typography.label, ...typography.number },
-  bar: { height: 4, backgroundColor: colors.border, borderRadius: 2, marginBottom: 10, overflow: 'hidden' },
-  barFill: { height: 4, borderRadius: 2 },
+  bar: { marginBottom: 10 },
   expiry: { color: colors.textMuted, ...typography.caption, marginTop: spacing.xs },
 
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  quickCell: { width: '31%' },
   quickCard: {
-    width: '31%', backgroundColor: colors.surface, borderRadius: radius.lg,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
     paddingVertical: spacing.lg, alignItems: 'center', gap: spacing.sm,
     borderWidth: 1, borderColor: colors.surfaceRaised, ...shadow.card,
   },

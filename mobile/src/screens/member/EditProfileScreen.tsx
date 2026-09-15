@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '../../components/Text';
 import * as ImagePicker from 'expo-image-picker';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
@@ -38,7 +39,9 @@ export default function EditProfileScreen({ navigation }: any) {
       const asset = result.assets[0];
       const formData = new FormData();
       formData.append('file', { uri: asset.uri, type: 'image/jpeg', name: 'profile.jpg' } as any);
-      const res: any = await api.post('/chat/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // Do NOT set Content-Type by hand: axios must generate the multipart boundary
+      // itself, otherwise the server sees a boundary-less header and fails to parse (500).
+      const res: any = await api.post('/chat/upload', formData);
       setAvatar(res.url);
     } catch (e: any) {
       Alert.alert('Upload failed', e?.message ?? 'Try again');

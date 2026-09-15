@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, radius, shadow, spacing, tint } from '../theme';
+import { Enter, PressScale } from './Motion';
 
 type Accent = 'primary' | 'danger' | 'success' | 'warning' | 'muted';
 const ACCENT_BORDER: Record<Accent, string> = {
@@ -13,32 +14,41 @@ const ACCENT_BORDER: Record<Accent, string> = {
 
 interface CardProps {
   children: React.ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   padding?: keyof typeof spacing | 'none';
   accent?: Accent;
   onPress?: () => void;
   /** Soft drop shadow (default on). Off for cards inside other cards. */
   elevated?: boolean;
+  /** Orange halo + tinted border — for the one card that should draw the eye. */
+  glow?: boolean;
+  /** Staggered fade/slide-in on mount; pass the card's position in its list. */
+  enter?: number;
 }
 
 /** Surface card: dark surface, large radius, 1px raised border, one soft shadow. */
-export function Card({ children, style, padding = 'lg', accent, onPress, elevated = true }: CardProps) {
-  const base: ViewStyle[] = [
+export function Card({ children, style, padding = 'lg', accent, onPress, elevated = true, glow, enter }: CardProps) {
+  const base: StyleProp<ViewStyle> = [
     styles.card,
     elevated ? shadow.card : shadow.none,
+    glow && styles.glow,
     { padding: padding === 'none' ? 0 : spacing[padding] },
     accent ? { borderColor: ACCENT_BORDER[accent] } : null,
-    ...(Array.isArray(style) ? style : [style]),
-  ].filter(Boolean) as ViewStyle[];
+    style,
+  ];
 
-  if (onPress) {
-    return (
-      <TouchableOpacity style={base} onPress={onPress} activeOpacity={0.8}>
-        {children}
-      </TouchableOpacity>
-    );
-  }
-  return <View style={base}>{children}</View>;
+  const body = onPress ? (
+    <PressScale style={base} onPress={onPress} scaleTo={0.975}>
+      {children}
+    </PressScale>
+  ) : (
+    <View style={base}>{children}</View>
+  );
+
+  if (enter === undefined) return body;
+  // The animated wrapper must inherit flex sizing so cards in a row still share width.
+  const flex = (StyleSheet.flatten(style) as ViewStyle | undefined)?.flex;
+  return <Enter index={enter} style={flex !== undefined ? { flex } : undefined}>{body}</Enter>;
 }
 
 const styles = StyleSheet.create({
@@ -49,4 +59,5 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceRaised,
     marginBottom: spacing.md,
   },
+  glow: { ...shadow.glow, borderColor: tint(colors.primary, '55') },
 });

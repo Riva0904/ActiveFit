@@ -32,6 +32,27 @@ export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, screen: 
 
 export const radius = { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 } as const;
 
+/** Inter static faces, loaded in App.tsx via @expo-google-fonts/inter. */
+export const fonts = {
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+  extrabold: 'Inter_800ExtraBold',
+} as const;
+
+/** Maps an RN fontWeight to the Inter face that carries it (undefined → regular). */
+export function fontFor(weight?: TextStyle['fontWeight']): string | undefined {
+  if (weight === undefined || weight === null) return undefined;
+  const w = typeof weight === 'number' ? weight : weight === 'bold' ? 700 : weight === 'normal' ? 400 : Number(weight);
+  if (Number.isNaN(w)) return undefined;
+  if (w >= 800) return fonts.extrabold;
+  if (w >= 700) return fonts.bold;
+  if (w >= 600) return fonts.semibold;
+  if (w >= 500) return fonts.medium;
+  return fonts.regular;
+}
+
 const tabular: TextStyle = { fontVariant: ['tabular-nums'] };
 
 export const typography = {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
@@ -29,15 +30,15 @@ export default function PlansScreen({ navigation }: any) {
       <Header title="My Plans" subtitle="Workouts and nutrition assigned to you" />
 
       <View style={styles.aiRow}>
-        <AiCard icon="dumbbell" label="AI Workout" onPress={() => navigation.navigate('AIWorkout')} />
-        <AiCard icon="food-apple-outline" label="AI Diet" onPress={() => navigation.navigate('AIDiet')} />
+        <AiCard index={0} icon="dumbbell" label="AI Workout" onPress={() => navigation.navigate('AIWorkout')} />
+        <AiCard index={1} icon="food-apple-outline" label="AI Diet" onPress={() => navigation.navigate('AIDiet')} />
       </View>
 
       <SectionTitle title="Workout plans" />
       {wLoading ? (
         <Loading />
       ) : workoutList.length > 0 ? (
-        <Card padding="none">
+        <Card padding="none" enter={2}>
           {workoutList.map((w: any, i: number) => {
             const plan = w.workoutPlan ?? w;
             return (
@@ -62,7 +63,7 @@ export default function PlansScreen({ navigation }: any) {
       {dLoading ? (
         <Loading />
       ) : dietList.length > 0 ? (
-        <Card padding="none">
+        <Card padding="none" enter={3}>
           {dietList.map((d: any, i: number) => {
             const plan = d.dietPlan ?? d;
             return (
@@ -86,9 +87,9 @@ export default function PlansScreen({ navigation }: any) {
   );
 }
 
-function AiCard({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+function AiCard({ icon, label, onPress, index }: { icon: IconName; label: string; onPress: () => void; index: number }) {
   return (
-    <Card style={styles.aiCard} accent="primary" onPress={onPress}>
+    <Card style={styles.aiCard} glow onPress={onPress} enter={index}>
       <View style={styles.aiIcon}><Icon name={icon} size={20} color={colors.primary} /></View>
       <View style={{ flex: 1 }}>
         <Text style={styles.aiLabel}>{label}</Text>

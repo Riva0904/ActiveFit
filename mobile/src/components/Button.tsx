@@ -1,6 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
+import { PressScale } from './Motion';
 import { colors, radius, shadow, spacing, tint } from '../theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -32,15 +34,16 @@ const FG: Record<Variant, string> = {
 export function Button({ title, onPress, variant = 'primary', size = 'md', loading, disabled, icon, style }: ButtonProps) {
   const off = disabled || loading;
   return (
-    <TouchableOpacity
+    <PressScale
       onPress={onPress}
       disabled={off}
-      activeOpacity={0.85}
+      scaleTo={0.95}
+      accessibilityRole="button"
       style={[
         styles.base,
         size === 'lg' && styles.lg,
         { backgroundColor: BG[variant] },
-        variant === 'primary' && shadow.glow,
+        variant === 'primary' && !off && shadow.glow,
         variant === 'secondary' && styles.outlined,
         off && styles.off,
         style,
@@ -54,7 +57,7 @@ export function Button({ title, onPress, variant = 'primary', size = 'md', loadi
           <Text style={[styles.text, size === 'lg' && styles.textLg, { color: FG[variant] }]}>{title}</Text>
         </View>
       )}
-    </TouchableOpacity>
+    </PressScale>
   );
 }
 

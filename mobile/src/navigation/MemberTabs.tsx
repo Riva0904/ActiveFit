@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Text } from '../components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCartStore } from '../store/cartStore';
 import { Icon, type IconName } from '../components';
-import { colors, radius, spacing } from '../theme';
+import { colors, radius, spacing, tint } from '../theme';
 
 import MemberHomeScreen from '../screens/member/HomeScreen';
 import RunScreen from '../screens/member/RunScreen';
@@ -57,19 +59,27 @@ const TAB_ICONS: Record<string, IconName> = {
   Profile: 'user',
 };
 
-/** Icon-only tab: line icon + a small orange dot under the focused one. */
+/** Icon-only tab: line icon that lifts + glows when focused, orange dot slides in under it. */
 function TabIcon({ route, focused, color }: { route: string; focused: boolean; color: string }) {
   const count = useCartStore((s) => s.count());
   const showBadge = route === 'Store' && count > 0;
+  const f = useSharedValue(focused ? 1 : 0);
+  useEffect(() => { f.value = withSpring(focused ? 1 : 0, { damping: 14, stiffness: 220 }); }, [focused, f]);
+  const iconAnim = useAnimatedStyle(() => ({ transform: [{ translateY: -3 * f.value }, { scale: 1 + 0.1 * f.value }] }));
+  const haloAnim = useAnimatedStyle(() => ({ opacity: f.value, transform: [{ scale: 0.6 + 0.4 * f.value }] }));
+  const dotAnim = useAnimatedStyle(() => ({ opacity: f.value, transform: [{ scaleX: f.value }] }));
   return (
     <View style={styles.tab}>
-      <Icon name={TAB_ICONS[route] ?? 'home'} size={24} color={color} />
+      <Animated.View style={[styles.halo, haloAnim]} pointerEvents="none" />
+      <Animated.View style={iconAnim}>
+        <Icon name={TAB_ICONS[route] ?? 'home'} size={24} color={color} />
+      </Animated.View>
       {showBadge && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
         </View>
       )}
-      <View style={[styles.dot, { opacity: focused ? 1 : 0 }]} />
+      <Animated.View style={[styles.dot, dotAnim]} />
     </View>
   );
 }
@@ -151,12 +161,14 @@ export default function MemberTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.bg,
-          borderTopColor: colors.border,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.surfaceRaised,
           borderTopWidth: 1,
-          height: 60 + insets.bottom,
+          height: 64 + insets.bottom,
           paddingBottom: insets.bottom,
           paddingTop: spacing.sm,
+          // Lift the bar off the page a touch (Android: elevation, iOS: shadow).
+          shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 12,
         },
         tabBarIcon: ({ focused, color }) => <TabIcon route={route.name} focused={focused} color={color} />,
       })}
@@ -171,8 +183,9 @@ export default function MemberTabs() {
 }
 
 const styles = StyleSheet.create({
-  tab: { alignItems: 'center', justifyContent: 'center', width: 44, height: 40 },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primary, marginTop: 4 },
+  tab: { alignItems: 'center', justifyContent: 'center', width: 48, height: 44 },
+  halo: { position: 'absolute', top: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: tint(colors.primary, '1F') },
+  dot: { width: 14, height: 3, borderRadius: 2, backgroundColor: colors.primary, marginTop: 6 },
   badge: {
     position: 'absolute', top: -2, right: 2,
     backgroundColor: colors.primary, borderRadius: radius.pill,

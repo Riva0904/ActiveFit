@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useKeepAwake } from 'expo-keep-awake';
 import { api } from '../../lib/api';
@@ -54,7 +55,15 @@ export default function RunScreen({ navigation }: any) {
   return (
     <Screen padded={false}>
       <View style={styles.headerPad}>
-        <Header title="Run" subtitle={run.status === 'running' ? 'Tracking…' : run.status === 'paused' ? 'Paused' : 'Foreground GPS · keep the app open'} onBack={leave} />
+        <Header
+          title="Run"
+          subtitle={
+            run.status === 'running' ? (run.hasFix ? 'Tracking…' : 'Waiting for GPS — head outdoors')
+            : run.status === 'paused' ? 'Paused'
+            : 'Foreground GPS · keep the app open'
+          }
+          onBack={leave}
+        />
       </View>
 
       <RunMap route={run.points} live={run.status === 'running'} style={styles.map} />

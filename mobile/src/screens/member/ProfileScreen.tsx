@@ -1,8 +1,9 @@
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text';
 import { useAuthStore } from '../../store/authStore';
-import { Avatar, Card, Icon, ListRow, Screen, SectionTitle, type IconName } from '../../components';
-import { colors, radius, spacing, typography } from '../../theme';
+import { Avatar, Card, Enter, GlowOrb, Icon, ListRow, PressScale, Screen, SectionTitle, type IconName } from '../../components';
+import { colors, radius, shadow, spacing, typography } from '../../theme';
 
 interface MenuItem {
   label: string;
@@ -81,11 +82,11 @@ export default function ProfileScreen({ navigation }: any) {
     <Screen scroll>
       {/* Hero */}
       <View style={styles.hero}>
-        <View style={styles.heroGlow} pointerEvents="none" />
-        <TouchableOpacity style={styles.avatarWrap} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.85}>
+        <GlowOrb size={340} intensity={0.5} breathe style={styles.heroGlow} />
+        <PressScale style={styles.avatarWrap} onPress={() => navigation.navigate('EditProfile')} scaleTo={0.94}>
           <Avatar uri={user?.avatar} firstName={user?.firstName} lastName={user?.lastName} size={90} ring />
           <View style={styles.editBadge}><Icon name="edit-2" size={11} color={colors.text} /></View>
-        </TouchableOpacity>
+        </PressScale>
         <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
         <Text style={styles.email}>{user?.email}</Text>
         <View style={styles.rolePill}><Text style={styles.roleText}>{role.replace(/_/g, ' ')}</Text></View>
@@ -99,7 +100,7 @@ export default function ProfileScreen({ navigation }: any) {
 
       {/* Menu */}
       {sections.map((section, si) => (
-        <View key={si}>
+        <Enter key={si} index={si + 1}>
           {section.title ? <SectionTitle title={section.title} /> : <View style={{ height: spacing.md }} />}
           <Card padding="none">
             {section.items.map((item, ii) => (
@@ -115,7 +116,7 @@ export default function ProfileScreen({ navigation }: any) {
               />
             ))}
           </Card>
-        </View>
+        </Enter>
       ))}
     </Screen>
   );
@@ -123,8 +124,8 @@ export default function ProfileScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', paddingBottom: spacing.xxl, marginHorizontal: -spacing.screen, paddingHorizontal: spacing.screen, overflow: 'hidden' },
-  heroGlow: { position: 'absolute', top: -40, width: 260, height: 260, borderRadius: 130, backgroundColor: colors.primary, opacity: 0.07 },
-  avatarWrap: { position: 'relative', marginBottom: spacing.lg },
+  heroGlow: { top: -130, alignSelf: 'center' },
+  avatarWrap: { position: 'relative', marginBottom: spacing.lg, ...shadow.glow },
   editBadge: {
     position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13,
     backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.bg, alignItems: 'center', justifyContent: 'center',

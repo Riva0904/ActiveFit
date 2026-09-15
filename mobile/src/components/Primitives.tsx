@@ -1,7 +1,9 @@
-import React from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View, type ViewStyle } from 'react-native';
+import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Text } from './Text';
 import { Icon, type IconName } from './Icon';
-import { colors, radius, spacing, tint, typography } from '../theme';
+import { colors, radius, shadow, spacing, tint, typography } from '../theme';
 
 // ─── SectionTitle ───────────────────────────────────────────────────────────
 
@@ -97,6 +99,14 @@ export function Loading({ fullScreen, text }: { fullScreen?: boolean; text?: str
 // ─── Checkbox ───────────────────────────────────────────────────────────────
 
 export function Checkbox({ checked, onToggle, disabled }: { checked: boolean; onToggle?: () => void; disabled?: boolean }) {
+  const v = useSharedValue(checked ? 1 : 0);
+  useEffect(() => { v.value = withSpring(checked ? 1 : 0, { damping: 12, stiffness: 260 }); }, [checked, v]);
+  const boxAnim = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(v.value, [0, 1], ['transparent', colors.primary]),
+    borderColor: interpolateColor(v.value, [0, 1], [colors.textFaint, colors.primary]),
+    transform: [{ scale: 1 + 0.08 * Math.sin(v.value * Math.PI) }],
+  }));
+  const tickAnim = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ scale: v.value }] }));
   return (
     <TouchableOpacity
       onPress={onToggle}
@@ -104,9 +114,12 @@ export function Checkbox({ checked, onToggle, disabled }: { checked: boolean; on
       hitSlop={8}
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled }}
-      style={[styles.checkbox, checked && styles.checkboxOn, disabled && { opacity: 0.5 }]}
+      activeOpacity={0.8}
+      style={disabled && { opacity: 0.5 }}
     >
-      {checked ? <Icon name="check" size={15} color={colors.white} /> : null}
+      <Animated.View style={[styles.checkbox, checked && shadow.glow, boxAnim]}>
+        <Animated.View style={tickAnim}><Icon name="check" size={15} color={colors.white} /></Animated.View>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -138,5 +151,4 @@ const styles = StyleSheet.create({
   loadingText: { color: colors.textFaint, ...typography.label, textAlign: 'center', lineHeight: 20 },
 
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: colors.textFaint, alignItems: 'center', justifyContent: 'center' },
-  checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
 });

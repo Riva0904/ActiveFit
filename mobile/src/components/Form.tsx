@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, type TextInputProps, type ViewStyle } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View, type TextInputProps, type ViewStyle } from 'react-native';
+import { Text } from './Text';
 import { colors, radius, spacing, typography } from '../theme';
 
 // ─── Chip: selectable pill (goal / level / day pickers) ──────────────────────

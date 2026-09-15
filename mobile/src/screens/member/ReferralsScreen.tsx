@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Share, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { Button, Card, EmptyState, Header, Loading, Screen, SectionTitle } from '../../components';
