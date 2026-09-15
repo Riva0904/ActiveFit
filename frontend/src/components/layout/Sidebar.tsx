@@ -15,7 +15,7 @@ import {
   QrCode, UserCheck, Package, ShoppingBag, BarChart3, Bell, FileText,
   Settings, LogOut, Zap, Star, TrendingUp, Utensils, Activity, X,
   ChevronRight, Award, ShieldCheck, Receipt, Crown, Lock, CalendarOff,
-  ClipboardList, MessageSquare,
+  ClipboardList, MessageSquare, Wallet,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -45,6 +45,7 @@ const adminNav: NavItem[] = [
   { label: 'PT Sessions', href: '/admin/pt-sessions',   icon: Calendar,        color: 'text-sky-500',    pro: true },
   { label: 'Payments',    href: '/admin/payments',      icon: TrendingUp,      color: 'text-emerald-500', pro: true },
   { label: 'Expenses',    href: '/admin/expenses',      icon: Receipt,         color: 'text-amber-500',  pro: true },
+  { label: 'Payroll',     href: '/admin/payroll',       icon: Wallet,          color: 'text-emerald-500', pro: true },
   { label: 'Supplements', href: '/admin/supplements',   icon: Package,         color: 'text-lime-500',   pro: true },
   { label: 'Diet Packages', href: '/admin/diet',        icon: Utensils,        color: 'text-teal-500',   pro: true },
   { label: 'Workout Packages', href: '/admin/workouts', icon: Dumbbell,        color: 'text-purple-500', pro: true },
@@ -52,6 +53,7 @@ const adminNav: NavItem[] = [
   { label: 'Notifications', href: '/admin/notifications', icon: Bell,           color: 'text-indigo-500', pro: true },
   { label: 'Leave Requests', href: '/admin/leaves',      icon: CalendarOff,    color: 'text-rose-500',   pro: true },
   { label: 'Chat',           href: '/admin/chat',         icon: MessageSquare,  color: 'text-cyan-500' },
+  { label: 'Subscription',   href: '/admin/subscription', icon: Crown,          color: 'text-purple-500' },
 ];
 
 const staffNav: NavItem[] = [

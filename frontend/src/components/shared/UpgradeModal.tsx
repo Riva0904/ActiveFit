@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Crown, X, Check, Zap, Star } from 'lucide-react';
 
 interface UpgradeModalProps {
@@ -83,16 +84,18 @@ export function UpgradeModal({ open, onClose, featureName }: UpgradeModalProps) 
             >
               Maybe later
             </button>
-            <button
+            <Link
+              href="/admin/subscription"
+              onClick={onClose}
               className="flex-1 py-2.5 rounded-xl gradient-brand text-white text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-brand"
             >
               <Zap className="w-4 h-4" />
-              Upgrade Now
-            </button>
+              See plans
+            </Link>
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-3">
-            Contact your super admin to upgrade the plan
+            Pay by UPI — your plan activates as soon as the transfer is verified
           </p>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { CreditCard, Search, Users, Pencil, X, Plus, Trash2, TrendingUp, DollarSign, BarChart2, Percent } from 'lucide-react';
 import { gymsApi, saasPlansApi } from '@/lib/api';
+import { SubscriptionApprovals } from '@/components/shared/SubscriptionApprovals';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
@@ -178,6 +179,9 @@ export default function SubscriptionsPage() {
         <h1 className="text-2xl font-extrabold tracking-tight">Subscriptions</h1>
         <p className="text-muted-foreground text-sm mt-0.5">Manage gym subscription plans across the platform</p>
       </div>
+
+      {/* Gyms that have declared a UPI transfer — confirming activates their plan */}
+      <SubscriptionApprovals onChange={fetchGyms} />
 
       {/* 3 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

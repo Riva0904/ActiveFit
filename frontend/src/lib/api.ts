@@ -186,6 +186,38 @@ export const paymentsApi = {
   confirmManualUpi: (paymentId: string) => api.post(`/payments/${paymentId}/confirm-upi`),
 };
 
+// Gym SaaS subscription (gym admin buys a pack; super admin confirms the UPI transfer)
+export const gymSubscriptionsApi = {
+  plans: () => api.get('/gym-subscriptions/plans'),
+  me: () => api.get('/gym-subscriptions/me'),
+  history: () => api.get('/gym-subscriptions/history'),
+  requests: () => api.get('/gym-subscriptions/requests'),
+  request: (planId: string, billingPeriod: 'MONTHLY' | 'YEARLY') =>
+    api.post('/gym-subscriptions/request', { planId, billingPeriod }),
+  markPaid: (id: string, data: { upiReference?: string; notes?: string }) =>
+    api.post(`/gym-subscriptions/requests/${id}/mark-paid`, data),
+  cancelRequest: (id: string) => api.post(`/gym-subscriptions/requests/${id}/cancel`),
+};
+
+export const adminGymSubscriptionsApi = {
+  pending: () => api.get('/admin/gym-subscriptions/pending'),
+  requests: (params?: any) => api.get('/admin/gym-subscriptions/requests', { params }),
+  list: (params?: any) => api.get('/admin/gym-subscriptions', { params }),
+  confirm: (id: string, data?: { bankReference?: string; notes?: string }) =>
+    api.post(`/admin/gym-subscriptions/requests/${id}/confirm`, data ?? {}),
+  reject: (id: string, reason: string) => api.post(`/admin/gym-subscriptions/requests/${id}/reject`, { reason }),
+  grant: (gymId: string, data: { planId: string; billingPeriod: string; months?: number; reason: string }) =>
+    api.post(`/admin/gym-subscriptions/gyms/${gymId}/grant`, data),
+  cancel: (id: string, data: { reason: string; immediate?: boolean }) =>
+    api.post(`/admin/gym-subscriptions/${id}/cancel`, data),
+  runExpiry: () => api.post('/admin/gym-subscriptions/run-expiry'),
+};
+
+export const platformSettingsApi = {
+  get: () => api.get('/platform-settings'),
+  update: (data: any) => api.patch('/platform-settings', data),
+};
+
 // Salary Payouts (gym admin -> trainer/staff, manual transfer + record only)
 export const salaryPayoutsApi = {
   create: (data: { userId: string; amount: number; periodLabel: string; notes?: string }) => api.post('/salary-payouts', data),
@@ -218,6 +250,13 @@ export const workoutPlansApi = {
   createPackage: (data: any) => api.post('/workout-plans/packages', data),
   updatePackage: (id: string, data: any) => api.patch(`/workout-plans/packages/${id}`, data),
   buyPackage: (id: string, useUpi = false) => api.post(`/workout-plans/packages/${id}/buy`, { useUpi }),
+  // Builder + assignment (gym admin / trainer)
+  listAll: (params?: any) => api.get('/workout-plans/manage/all', { params }),
+  updatePlan: (id: string, data: any) => api.patch(`/workout-plans/manage/${id}`, data),
+  remove: (id: string) => api.delete(`/workout-plans/manage/${id}`),
+  assign: (id: string, memberIds: string[]) => api.post(`/workout-plans/${id}/assign`, { memberIds }),
+  assignments: (id: string) => api.get(`/workout-plans/${id}/assignments`),
+  unassign: (assignmentId: string) => api.delete(`/workout-plans/assignments/${assignmentId}`),
 };
 
 // Diet Plans
@@ -228,6 +267,13 @@ export const dietPlansApi = {
   createPackage: (data: any) => api.post('/diet-plans/packages', data),
   updatePackage: (id: string, data: any) => api.patch(`/diet-plans/packages/${id}`, data),
   buyPackage: (id: string, useUpi = false) => api.post(`/diet-plans/packages/${id}/buy`, { useUpi }),
+  // Builder + assignment (gym admin / trainer)
+  listAll: (params?: any) => api.get('/diet-plans/manage/all', { params }),
+  updatePlan: (id: string, data: any) => api.patch(`/diet-plans/manage/${id}`, data),
+  remove: (id: string) => api.delete(`/diet-plans/manage/${id}`),
+  assign: (id: string, memberIds: string[]) => api.post(`/diet-plans/${id}/assign`, { memberIds }),
+  assignments: (id: string) => api.get(`/diet-plans/${id}/assignments`),
+  unassign: (assignmentId: string) => api.delete(`/diet-plans/assignments/${assignmentId}`),
 };
 
 // Notifications
