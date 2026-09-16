@@ -83,18 +83,21 @@ export class AttendanceController {
 
   @Post('self-check-in')
   @ApiOperation({ summary: 'Member/Trainer/Staff: self check-in via gym QR scan' })
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF)
   selfCheckIn(@CurrentUser() user: any) {
     return this.attendanceService.selfCheckIn(user.id, user.gymId);
   }
 
   @Get('my-status')
   @ApiOperation({ summary: 'Check if currently checked in today' })
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
   getMyStatus(@CurrentUser() user: any) {
     return this.attendanceService.getMyStatus(user.id, user.gymId);
   }
 
   @Get('my')
   @ApiOperation({ summary: 'Get own attendance history' })
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
   getMyAttendance(@CurrentUser() user: any, @Query() query: any) {
     return this.attendanceService.getMyAttendance(user.id, user.gymId, query);
   }

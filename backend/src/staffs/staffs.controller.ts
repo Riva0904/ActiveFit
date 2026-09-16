@@ -36,6 +36,7 @@ export class StaffsController {
   }
 
   @Get('me')
+  @Roles(Role.STAFF)
   getMyProfile(@CurrentUser() user: any) {
     return this.staffsService.getMyProfile(user.id);
   }

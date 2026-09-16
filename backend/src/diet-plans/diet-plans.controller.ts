@@ -16,11 +16,13 @@ export class DietPlansController {
   constructor(private readonly dietPlansService: DietPlansService) {}
 
   @Get('my')
+  @Roles(Role.MEMBER)
   getMyPlans(@CurrentUser() user: any) {
     return this.dietPlansService.findByUser(user.id, user.gymId);
   }
 
   @Post('ai-generate')
+  @Roles(Role.MEMBER, Role.TRAINER)
   generateAi(
     @Body() body: { goal: string; calories?: number; dietaryPreference?: string; mealsPerDay?: number; allergies?: string },
     @CurrentUser() user: any,
@@ -41,6 +43,7 @@ export class DietPlansController {
   }
 
   @Get(':id')
+  @Roles(Role.MEMBER, Role.TRAINER, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findById(@Param('id') id: string, @CurrentUser() user: any) {
     return this.dietPlansService.findById(id, user.gymId);
   }

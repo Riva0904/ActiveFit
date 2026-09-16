@@ -17,18 +17,24 @@ export class SupplementsController {
   constructor(private readonly supplementsService: SupplementsService) {}
 
   @Get()
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findAll(@Query() query: any, @CurrentUser() user: any) {
     return this.supplementsService.findAll(query, user.gymId);
   }
 
+  // Only gym admins see the gym's whole order book; everyone else sees their own.
   @Get('orders')
+  @Roles(Role.MEMBER, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   getOrders(@Query() query: any, @CurrentUser() user: any) {
-    const gymId = user.role !== Role.MEMBER ? user.gymId : undefined;
-    const userId = user.role === Role.MEMBER ? user.id : query.userId;
-    return this.supplementsService.getOrders(query, gymId, userId);
+    const isAdmin = user.role === Role.GYM_ADMIN || user.role === Role.SUPER_ADMIN;
+    if (isAdmin) {
+      return this.supplementsService.getOrders(query, user.gymId ?? query.gymId, query.userId);
+    }
+    return this.supplementsService.getOrders(query, user.gymId, user.id, true);
   }
 
   @Get(':id')
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.supplementsService.findOne(id, gymScopeOf(user));
   }
@@ -45,6 +51,7 @@ export class SupplementsController {
   }
 
   @Post('checkout')
+  @Roles(Role.MEMBER)
   createCheckout(@Body() body: { items: any[]; useUpi?: boolean }, @CurrentUser() user: any) {
     return this.supplementsService.createCheckout(user.id, user.gymId, body.items, !!body.useUpi);
   }

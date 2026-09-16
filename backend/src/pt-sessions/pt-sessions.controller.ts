@@ -15,6 +15,7 @@ export class PtSessionsController {
   constructor(private readonly ptSessionsService: PtSessionsService) {}
 
   @Get()
+  @Roles(Role.MEMBER, Role.TRAINER, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   async findAll(@Query() query: any, @CurrentUser() user: any) {
     if (user.role === Role.TRAINER) {
       const trainer = await this.ptSessionsService['prisma'].trainer.findFirst({ where: { userId: user.id } });

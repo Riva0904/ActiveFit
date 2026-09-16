@@ -23,6 +23,7 @@ export class GamificationController {
   // every member's points and badges come back empty, so resolve the row first.
 
   @Get('my/points')
+  @Roles(Role.MEMBER)
   async getMyPoints(@CurrentUser() user: any) {
     const memberId = await this.pointsService.resolveMemberId(user.id, user.gymId);
     if (!memberId) return { points: 0 }; // trainer/staff/admin: no member profile
@@ -30,6 +31,7 @@ export class GamificationController {
   }
 
   @Get('my/badges')
+  @Roles(Role.MEMBER)
   async getMyBadges(@CurrentUser() user: any) {
     const memberId = await this.pointsService.resolveMemberId(user.id, user.gymId);
     if (!memberId) return [];

@@ -51,11 +51,13 @@ export class ChatController {
   // ── Non-admin: own GYM conversation ──────────────────────────────────────
 
   @Get('my-conversation')
+  @Roles(Role.MEMBER, Role.TRAINER)
   getMyConversation(@CurrentUser() user: any) {
     return this.chatService.getOrCreateConversation(user.gymId, user.id);
   }
 
   @Get('my-messages')
+  @Roles(Role.MEMBER, Role.TRAINER)
   getMyMessages(
     @CurrentUser() user: any,
     @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
@@ -64,6 +66,7 @@ export class ChatController {
   }
 
   @Patch('my-conversation/read')
+  @Roles(Role.MEMBER, Role.TRAINER)
   markMyRead(@CurrentUser() user: any) {
     return this.chatService.markRead(user.gymId, user.id, false);
   }

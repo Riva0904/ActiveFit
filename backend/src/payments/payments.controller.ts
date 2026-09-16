@@ -46,6 +46,7 @@ export class PaymentsController {
   }
 
   @Get('my')
+  @Roles(Role.MEMBER)
   getMyPayments(@Query() query: any, @CurrentUser() user: any) {
     return this.paymentsService.findAll(query, user.gymId, user.id);
   }
@@ -70,6 +71,7 @@ export class PaymentsController {
   // never expose those types here, or a caller can pass an arbitrary `amount` for them.
   @Post('create-order')
   @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @Roles(Role.MEMBER)
   createOrder(
     @Body() body: { amount: number; type: string; promoCode?: string; referralCreditToApply?: number; membershipPlanId?: string; useUpi?: boolean },
     @CurrentUser() user: any,
@@ -83,6 +85,7 @@ export class PaymentsController {
   }
 
   @Post('verify')
+  @Roles(Role.MEMBER)
   verifyPayment(
     @Body() body: { paymentId: string; razorpayPaymentId: string; signature: string },
     @CurrentUser() user: any,
@@ -100,6 +103,7 @@ export class PaymentsController {
   // ── Manual UPI (no gateway, gym admin's own VPA) ──────────────────────────
 
   @Post(':id/mark-paid')
+  @Roles(Role.MEMBER)
   markPaid(@Param('id') id: string, @CurrentUser() user: any) {
     return this.paymentsService.markMemberPaid(id, user.id);
   }

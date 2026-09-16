@@ -7,6 +7,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { GymScopeGuard } from './common/guards/gym-scope.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { EmailModule } from './email/email.module';
 import { OtpModule } from './otp/otp.module';
@@ -117,9 +118,16 @@ import { ActivitiesModule } from './activities/activities.module';
   // before any controller-level @UseGuards(). JwtAuthGuard must therefore be global
   // and precede GymScopeGuard, otherwise req.user is still undefined when the scope
   // guard runs and it degrades to a no-op.
+  //
+  // RolesGuard is global too, and must follow JwtAuthGuard for the same reason (it
+  // reads user.role). It returns true whenever a handler carries no @Roles metadata,
+  // so making it global is a no-op for existing routes — but it permanently removes
+  // the "@Roles present, @UseGuards(RolesGuard) forgotten" failure mode, where the
+  // decorator silently does nothing and the route is open to every logged-in user.
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: GymScopeGuard },
   ],
 })

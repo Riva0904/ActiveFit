@@ -17,11 +17,13 @@ export class WorkoutPlansController {
   constructor(private readonly workoutPlansService: WorkoutPlansService) {}
 
   @Get('my')
+  @Roles(Role.MEMBER)
   getMyPlans(@CurrentUser() user: any) {
     return this.workoutPlansService.findByUser(user.id, user.gymId);
   }
 
   @Post('ai-generate')
+  @Roles(Role.MEMBER, Role.TRAINER)
   generateAiPlan(
     @Body() body: { goal: string; level: string; daysPerWeek?: number; equipment?: string },
     @CurrentUser() user: any,
@@ -39,6 +41,7 @@ export class WorkoutPlansController {
   }
 
   @Get(':id')
+  @Roles(Role.MEMBER, Role.TRAINER, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findById(@Param('id') id: string, @CurrentUser() user: any) {
     return this.workoutPlansService.findById(id, user.gymId);
   }

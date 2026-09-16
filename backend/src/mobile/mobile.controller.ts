@@ -3,6 +3,8 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { MobileService } from './mobile.service';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '@prisma/client';
 
 @ApiTags('Mobile')
 @ApiBearerAuth()
@@ -38,12 +40,14 @@ export class MobileController {
 
   /** Aggregated home screen data for trainers */
   @Get('trainer-home')
+  @Roles(Role.TRAINER)
   getTrainerHomeData(@CurrentUser() user: any) {
     return this.mobileService.getTrainerHomeData(user.id, user.gymId);
   }
 
   /** Offline-safe check-in: accepts a pre-signed member QR token */
   @Post('checkin')
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF)
   mobileCheckIn(@CurrentUser() user: any, @Body() body: { gymId?: string }) {
     return this.mobileService.selfCheckIn(user.id, body.gymId ?? user.gymId);
   }

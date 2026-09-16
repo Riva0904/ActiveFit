@@ -121,11 +121,21 @@ export class SupplementsService {
     });
   }
 
-  async getOrders(query: any, gymId?: string, userId?: string) {
+  /**
+   * `mine` means "only this user's orders". It is passed explicitly rather than
+   * inferred from `userId` being set, so a caller who resolves to no user can
+   * never fall through to the gym-wide list.
+   */
+  async getOrders(query: any, gymId?: string, userId?: string, mine = false) {
     const { page = 1, limit = 10 } = query;
     const where: any = {};
     if (gymId) where.gymId = gymId;
-    if (userId) where.userId = userId;
+    if (mine) {
+      if (!userId) return { data: [], total: 0, page: +page, limit: +limit, totalPages: 0 };
+      where.userId = userId;
+    } else if (userId) {
+      where.userId = userId;
+    }
 
     const [orders, total] = await Promise.all([
       this.prisma.supplementOrder.findMany({

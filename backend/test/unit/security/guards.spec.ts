@@ -3,6 +3,7 @@ import { Reflector, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../../src/auth/guards/jwt-auth.guard';
 import { GymScopeGuard } from '../../../src/common/guards/gym-scope.guard';
+import { RolesGuard } from '../../../src/common/guards/roles.guard';
 import { Public, IS_PUBLIC_KEY } from '../../../src/common/decorators/public.decorator';
 import { SkipGymScope } from '../../../src/common/decorators/skip-gym-scope.decorator';
 import { gymScopeOf, scopedWhere } from '../../../src/common/utils/gym-scope';
@@ -42,7 +43,9 @@ describe('AppModule guard registration', () => {
     const { AppModule } = require('../../../src/app.module');
     const providers: any[] = Reflect.getMetadata('providers', AppModule) ?? [];
     const guards = providers.filter((p) => p?.provide === APP_GUARD).map((p) => p.useClass);
-    expect(guards).toEqual([ThrottlerGuard, JwtAuthGuard, GymScopeGuard]);
+    // RolesGuard sits between them: it needs req.user (so after JwtAuthGuard) and
+    // rejecting on role before the scope guard runs keeps the failure reasons clean.
+    expect(guards).toEqual([ThrottlerGuard, JwtAuthGuard, RolesGuard, GymScopeGuard]);
   });
 });
 

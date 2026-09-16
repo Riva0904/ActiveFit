@@ -45,7 +45,11 @@ export class PaymentsService {
 
     if (userId) {
       const member = await this.prisma.member.findFirst({ where: { userId, gymId } });
-      if (member) where.memberId = member.id;
+      // No member row means "this person has no payments", never "no filter". The
+      // old `if (member)` fell through and returned the whole gym's payment list
+      // to any caller without a member profile (staff, trainer, admin).
+      if (!member) return { data: [], total: 0, page: +page, limit: +limit, totalPages: 0 };
+      where.memberId = member.id;
     }
 
     const [payments, total] = await Promise.all([

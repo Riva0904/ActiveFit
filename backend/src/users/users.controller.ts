@@ -42,6 +42,7 @@ export class UsersController {
   @Get('me/export')
   @SkipGymScope()
   @ApiOperation({ summary: 'Export all of the requesting user\'s own data (data portability)' })
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   exportMyData(@CurrentUser('id') id: string) {
     return this.usersService.exportOwnData(id);
   }

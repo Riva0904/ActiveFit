@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { GymsService } from './gyms.service';
@@ -8,6 +8,13 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateGymDto } from './dto/create-gym.dto';
 import { SetGymPlanDto, UpdateGymAdminDto, UpdateGymProfileDto, UpdateGymStatusDto } from './dto/update-gym.dto';
+
+/** A GYM_ADMIN may only ever address their own gym; SUPER_ADMIN addresses any. */
+function assertOwnGym(user: any, gymId: string) {
+  if (user?.role !== Role.SUPER_ADMIN && user?.gymId !== gymId) {
+    throw new ForbiddenException('Not authorized for this gym');
+  }
+}
 
 @ApiTags('Gyms')
 @ApiBearerAuth()
@@ -30,17 +37,21 @@ export class GymsController {
     return this.gymsService.create(body);
   }
 
+  // Both take the gym from the path, so without this check a gym admin could read
+  // any competitor's record or stats by guessing an id.
   @Get(':id')
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN)
   @ApiOperation({ summary: 'Get gym by ID' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    assertOwnGym(user, id);
     return this.gymsService.findOne(id);
   }
 
   @Get(':id/stats')
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN)
   @ApiOperation({ summary: 'Get gym stats' })
-  getStats(@Param('id') id: string) {
+  getStats(@Param('id') id: string, @CurrentUser() user: any) {
+    assertOwnGym(user, id);
     return this.gymsService.getStats(id);
   }
 

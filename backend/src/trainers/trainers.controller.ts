@@ -7,7 +7,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { gymScopeOf } from '../common/utils/gym-scope';
+import { gymScopeOf, resolveGymScopeOptional } from '../common/utils/gym-scope';
 import { UpdateTrainerDto } from './dto/update-trainer.dto';
 
 @ApiTags('Trainers')
@@ -27,9 +27,13 @@ export class TrainersController {
     return this.usersService.createUser({ ...body, role: 'TRAINER' }, user.role, user.gymId);
   }
 
+  // Only a SUPER_ADMIN may target another gym. The old ternary tested for
+  // GYM_ADMIN, so members, trainers and staff fell into the `query.gymId` branch
+  // and — with no param — got every gym's trainer roster.
   @Get()
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findAll(@Query() query: any, @CurrentUser() user: any) {
-    const gymId = user.role === Role.GYM_ADMIN ? user.gymId : query.gymId;
+    const gymId = resolveGymScopeOptional(user, query.gymId);
     return this.trainersService.findAll(query, gymId);
   }
 
@@ -48,6 +52,7 @@ export class TrainersController {
   }
 
   @Get(':id')
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.trainersService.findOne(id, gymScopeOf(user));
   }

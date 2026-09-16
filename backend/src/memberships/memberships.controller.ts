@@ -36,6 +36,7 @@ export class MembershipsController {
 
   @Get('my')
   @ApiOperation({ summary: 'Get my memberships' })
+  @Roles(Role.MEMBER)
   getMyMemberships(@CurrentUser() user: any) {
     return this.membershipsService.findAll({ limit: 10, userId: user.id }, user.gymId);
   }
@@ -83,6 +84,7 @@ export class MembershipsController {
   // ─────────────────────────────────────────────────────────────────────────
 
   @Get(':id')
+  @Roles(Role.MEMBER, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.membershipsService.findOne(id, user.id, user.role);
   }

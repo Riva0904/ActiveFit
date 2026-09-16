@@ -22,11 +22,13 @@ export class InvoicesController {
   }
 
   @Get('my')
+  @Roles(Role.MEMBER)
   getMyInvoices(@CurrentUser('id') id: string) {
     return this.invoicesService.getMyInvoices(id);
   }
 
   @Get(':id')
+  @Roles(Role.MEMBER, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.invoicesService.findOne(id, user.id, user.role);
   }

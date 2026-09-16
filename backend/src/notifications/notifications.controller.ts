@@ -20,16 +20,19 @@ export class NotificationsController {
   }
 
   @Get('unread-count')
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   getUnreadCount(@CurrentUser('id') id: string) {
     return this.notificationsService.getUnreadCount(id);
   }
 
   @Patch(':id/read')
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   markAsRead(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.notificationsService.markAsRead(id, userId);
   }
 
   @Patch('read-all')
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   markAllAsRead(@CurrentUser('id') id: string) {
     return this.notificationsService.markAllAsRead(id);
   }
