@@ -27,6 +27,10 @@ export const FEATURES_BY_PLAN: Record<SaaSPlan, ReadonlyArray<FeatureKey>> = {
   ENTERPRISE: ['EXPENSES', 'PREMIUM_PACKAGES', 'PROMO_CODES', 'ADVANCED_REPORTS', 'MULTI_BRANCH', 'PAYROLL'],
 };
 
+export const ALL_FEATURE_KEYS: ReadonlyArray<FeatureKey> = [
+  'EXPENSES', 'PREMIUM_PACKAGES', 'PROMO_CODES', 'ADVANCED_REPORTS', 'MULTI_BRANCH', 'PAYROLL',
+];
+
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
   EXPENSES: 'Expense tracking',
   PREMIUM_PACKAGES: 'Premium diet & workout packages',

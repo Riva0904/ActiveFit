@@ -329,6 +329,9 @@ model GymSubscription {
   cancelReason           String?
   /// Set when an upgrade replaces this term early.
   supersededById         String?
+  /// Stamped when the single pre-expiry reminder goes out, so the daily sweep
+  /// sends it exactly once rather than every day inside the window.
+  expiryReminderSentAt   DateTime?
   /// UPI_MANUAL | TRIAL | SUPER_ADMIN_GRANT | MIGRATION
   source                 String            @default("UPI_MANUAL")
   grantedByUserId        String?
@@ -395,7 +398,9 @@ model PlatformSettings {
   upiVpa          String?
   upiPayeeName    String?
   trialDays       Int      @default(14)
-  graceDays       Int      @default(7)
+  /// 0 = a plan goes inactive the moment it expires. Raise it to give gyms a
+  /// cushion after the end date.
+  graceDays       Int      @default(0)
   supportEmail    String?
   gstPct          Float    @default(0)
   updatedByUserId String?

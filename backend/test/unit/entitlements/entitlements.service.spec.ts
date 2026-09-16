@@ -246,3 +246,68 @@ describe('EntitlementsService', () => {
     });
   });
 });
+
+describe('expiry always locks paid features, regardless of the rollout flag', () => {
+  const prisma = {
+    gymSubscription: { findFirst: jest.fn() },
+    gym: { findUnique: jest.fn() },
+    member: { count: jest.fn().mockResolvedValue(0) },
+    trainer: { count: jest.fn().mockResolvedValue(0) },
+    staff: { count: jest.fn().mockResolvedValue(0) },
+    branch: { count: jest.fn().mockResolvedValue(0) },
+  };
+  const saasPlans = { findAll: jest.fn().mockResolvedValue(PLANS) };
+  const platformSettings = { get: jest.fn().mockResolvedValue({ graceDays: 0 }) };
+
+  const build = async (enforce: string) => {
+    const mod = await Test.createTestingModule({
+      providers: [
+        EntitlementsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: SaasPlansService, useValue: saasPlans },
+        { provide: PlatformSettingsService, useValue: platformSettings },
+        { provide: ConfigService, useValue: { get: () => enforce } },
+      ],
+    }).compile();
+    return mod.get(EntitlementsService) as EntitlementsService;
+  };
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it.each(['true', 'false'])('an expired gym has no paid features (enforcement=%s)', async (enforce) => {
+    prisma.gymSubscription.findFirst.mockResolvedValue({
+      status: 'ACTIVE', endDate: new Date(Date.now() - DAY), plan: planRow('ENTERPRISE'),
+    });
+    const service = await build(enforce);
+
+    const e = await service.getEntitlement(GYM);
+
+    expect(e.isActive).toBe(false);
+    expect([...e.features]).toEqual([]);
+    await expect(service.hasFeature(GYM, 'EXPENSES')).resolves.toBe(false);
+    await expect(service.hasFeature(GYM, 'PAYROLL')).resolves.toBe(false);
+  });
+
+  it('a live gym keeps the free-today features when tier enforcement is off', async () => {
+    prisma.gymSubscription.findFirst.mockResolvedValue({
+      status: 'ACTIVE', endDate: new Date(Date.now() + DAY), plan: planRow('STARTER'),
+    });
+    const service = await build('false');
+
+    const e = await service.getEntitlement(GYM);
+
+    expect(e.isActive).toBe(true);
+    expect([...e.features]).toContain('EXPENSES');
+    // The pre-existing gate still bites even with the flag off.
+    expect([...e.features]).not.toContain('PREMIUM_PACKAGES');
+  });
+
+  it('a live STARTER gym loses the paid features once tier enforcement is on', async () => {
+    prisma.gymSubscription.findFirst.mockResolvedValue({
+      status: 'ACTIVE', endDate: new Date(Date.now() + DAY), plan: planRow('STARTER'),
+    });
+    const service = await build('true');
+
+    expect([...(await service.getEntitlement(GYM)).features]).toEqual([]);
+  });
+});

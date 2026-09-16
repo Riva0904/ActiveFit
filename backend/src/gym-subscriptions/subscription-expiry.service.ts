@@ -8,8 +8,11 @@ import { EntitlementsService } from '../entitlements/entitlements.service';
 import { GymSubscriptionsService } from './gym-subscriptions.service';
 import { isPrimaryInstance } from '../common/utils/cluster';
 
-/** Days before expiry we nudge the gym admin. */
-const REMINDER_DAYS = [7, 3, 1];
+/**
+ * One nudge, five days out. Sent once per subscription — `expiryReminderSentAt`
+ * is what stops the daily sweep resending it every day inside the window.
+ */
+const REMINDER_DAYS_BEFORE = 5;
 
 /**
  * Housekeeping only. `EntitlementsService` already treats a past endDate as
@@ -37,6 +40,7 @@ export class SubscriptionExpiryService {
   }
 
   async sweep() {
+    // graceDays defaults to 0, so a plan goes inactive the day it expires.
     const { graceDays } = await this.platformSettings.get();
     const cutoff = new Date(Date.now() - graceDays * 86_400_000);
 
@@ -63,28 +67,39 @@ export class SubscriptionExpiryService {
     return { expired: lapsed.length, reminded };
   }
 
+  /**
+   * Sends the one pre-expiry reminder. Anything already stamped is skipped, so
+   * running the sweep twice in a day (or manually) never double-notifies.
+   */
   private async sendReminders(): Promise<number> {
+    const windowEnd = new Date();
+    windowEnd.setDate(windowEnd.getDate() + REMINDER_DAYS_BEFORE);
+    windowEnd.setHours(23, 59, 59, 999);
+
+    const due = await this.prisma.gymSubscription.findMany({
+      where: {
+        status: { in: [SaaSStatus.ACTIVE, SaaSStatus.TRIAL] },
+        expiryReminderSentAt: null,
+        endDate: { gt: new Date(), lte: windowEnd },
+      },
+      select: { id: true, gymId: true, endDate: true, plan: { select: { name: true } } },
+    });
+
     let sent = 0;
-    for (const days of REMINDER_DAYS) {
-      const start = new Date();
-      start.setDate(start.getDate() + days);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setHours(23, 59, 59, 999);
-
-      const due = await this.prisma.gymSubscription.findMany({
-        where: { status: { in: [SaaSStatus.ACTIVE, SaaSStatus.TRIAL] }, endDate: { gte: start, lte: end } },
-        select: { gymId: true, endDate: true, plan: { select: { name: true } } },
+    for (const row of due) {
+      const days = Math.max(0, Math.ceil((row.endDate.getTime() - Date.now()) / 86_400_000));
+      await this.notifyAdmins(
+        row.gymId,
+        `Subscription expires in ${days} day${days === 1 ? '' : 's'}`,
+        `Your ${row.plan.name} plan ends on ${row.endDate.toLocaleDateString('en-IN')}. Renew it to keep your plan features.`,
+      );
+      // Stamp after sending: a failed notification retries tomorrow rather than
+      // being silently swallowed.
+      await this.prisma.gymSubscription.update({
+        where: { id: row.id },
+        data: { expiryReminderSentAt: new Date() },
       });
-
-      for (const row of due) {
-        await this.notifyAdmins(
-          row.gymId,
-          `Subscription expires in ${days} day${days === 1 ? '' : 's'}`,
-          `Your ${row.plan.name} plan ends on ${row.endDate.toLocaleDateString('en-IN')}. Renew to avoid interruption.`,
-        );
-        sent++;
-      }
+      sent++;
     }
     return sent;
   }

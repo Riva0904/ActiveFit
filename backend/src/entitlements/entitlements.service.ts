@@ -4,7 +4,7 @@ import { SaaSPlan, SaaSStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { SaasPlansService } from '../saas-plans/saas-plans.service';
-import { FEATURE_LABELS, featuresFor, type FeatureKey, type LimitKey } from './feature-catalogue';
+import { ALL_FEATURE_KEYS, FEATURE_LABELS, featuresFor, type FeatureKey, type LimitKey } from './feature-catalogue';
 
 const CACHE_TTL_MS = 60_000;
 
@@ -140,7 +140,29 @@ export class EntitlementsService {
 
     const isActive = status === SaaSStatus.ACTIVE || status === SaaSStatus.TRIAL || inGrace;
 
-    return { gymId, plan, status, expiresAt, inGrace, isActive, limits, features: featuresFor(plan) };
+    return { gymId, plan, status, expiresAt, inGrace, isActive, limits, features: this.grantedFeatures(plan, isActive) };
+  }
+
+  /**
+   * Exactly what the server will allow right now — not the tier's brochure list.
+   *
+   * Two independent questions, and they are gated differently on purpose:
+   *  - "Is the subscription live?" is ALWAYS enforced. An unpaid, expired gym
+   *    keeps no paid features, otherwise "inactive" would be cosmetic.
+   *  - "Does this tier include X?" is behind ENTITLEMENTS_ENFORCE_FEATURES,
+   *    because expenses, promo codes, payroll and reports ship free today and
+   *    removing them from existing paying gyms mid-flight is a regression.
+   */
+  private grantedFeatures(plan: SaaSPlan, isActive: boolean): ReadonlySet<FeatureKey> {
+    if (!isActive) return new Set<FeatureKey>();
+
+    const ofPlan = featuresFor(plan);
+    const granted = new Set<FeatureKey>();
+    for (const feature of ALL_FEATURE_KEYS) {
+      const tierEnforced = this.featureEnforcementEnabled || EntitlementsService.ALWAYS_ENFORCED.includes(feature);
+      if (!tierEnforced || ofPlan.has(feature)) granted.add(feature);
+    }
+    return granted;
   }
 
   private async limitsForPlan(plan: SaaSPlan): Promise<EntitlementLimits> {
@@ -181,11 +203,9 @@ export class EntitlementsService {
     }
   }
 
+  /** Single source of truth: the resolved set already accounts for enforcement and expiry. */
   async hasFeature(gymId: string, feature: FeatureKey): Promise<boolean> {
-    const enforced = this.featureEnforcementEnabled || EntitlementsService.ALWAYS_ENFORCED.includes(feature);
-    if (!enforced) return true;
     const entitlement = await this.getEntitlement(gymId);
-    if (!entitlement.isActive) return false;
     return entitlement.features.has(feature);
   }
 
