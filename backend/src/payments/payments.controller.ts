@@ -10,6 +10,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RecordCashPaymentDto } from './dto/record-cash-payment.dto';
 import { Public } from '../common/decorators/public.decorator';
+import { resolveGymScope } from '../common/utils/gym-scope';
 
 // Webhook handler — NO auth guard (called by Razorpay server-to-server);
 // authenticity is established by the HMAC signature check in the service.
@@ -54,15 +55,15 @@ export class PaymentsController {
   @Get('stats')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
-  getStats(@CurrentUser() user: any) {
-    return this.paymentsService.getRevenueStats(user.gymId);
+  getStats(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.paymentsService.getRevenueStats(resolveGymScope(user, gymId));
   }
 
   @Get('stats/monthly')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
-  getMonthlyStats(@CurrentUser() user: any) {
-    return this.paymentsService.getMonthlyRevenueBreakdown(user.gymId);
+  getMonthlyStats(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.paymentsService.getMonthlyRevenueBreakdown(resolveGymScope(user, gymId));
   }
 
   // Public endpoint — only MEMBERSHIP is safe here (server re-prices via membershipPlanId).
@@ -110,9 +111,9 @@ export class PaymentsController {
 
   @Get('manual-upi/pending')
   @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN)
-  getPendingManualUpi(@CurrentUser() user: any) {
-    return this.paymentsService.getPendingManualUpiPayments(user.gymId);
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
+  getPendingManualUpi(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.paymentsService.getPendingManualUpiPayments(resolveGymScope(user, gymId));
   }
 
   @Post(':id/confirm-upi')

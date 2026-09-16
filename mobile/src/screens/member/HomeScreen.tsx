@@ -4,9 +4,10 @@ import { Text } from '../../components/Text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { can } from '../../lib/roles';
 import { MobileHomeData } from '../../types';
 import { usePushToken } from '../../hooks/usePushToken';
-import { AnimatedBar, Avatar, Card, Enter, GlowOrb, Icon, Loading, PressScale, PulseRing, Screen, SectionTitle, StatPill, StatRow, type IconName } from '../../components';
+import { AnimatedBar, Avatar, Card, Enter, GlowOrb, GymBadge, Icon, Loading, PressScale, PulseRing, Screen, SectionTitle, StatPill, StatRow, type IconName } from '../../components';
 import { ActivityChecklist, RunSummaryCard, type ChecklistItem } from '../../components/widgets';
 import type { ActivityRun } from '../../types';
 import { useDailyChecklistStore } from '../../store/dailyChecklistStore';
@@ -35,12 +36,12 @@ export default function HomeScreen({ navigation }: any) {
     onError: (err: any) => Alert.alert('Check-out failed', err?.message ?? 'Try again'),
   });
 
-  // This screen also serves STAFF / GYM_ADMIN / SUPER_ADMIN (they use the app for
-  // chat + notifications). Membership, plans and the store need a Member row, and
-  // self check-in is allowed only for MEMBER/TRAINER/STAFF on the backend.
+  // Capabilities, not role names: canSelfCheckIn correctly includes TRAINER,
+  // which the old `isMember || STAFF` check silently excluded even though the
+  // backend allows it.
   const role = user?.role ?? 'MEMBER';
-  const isMember = role === 'MEMBER';
-  const canCheckIn = isMember || role === 'STAFF';
+  const isMember = can(user, 'hasMemberRecord');
+  const canCheckIn = can(user, 'canSelfCheckIn');
 
   // Member-only stats for the StatRow (all three endpoints are @Roles(MEMBER)).
   const now = new Date();
@@ -131,9 +132,10 @@ export default function HomeScreen({ navigation }: any) {
         <GlowOrb size={320} intensity={0.45} breathe style={styles.headerGlow} />
         <GlowOrb size={200} intensity={0.25} color={colors.purple} style={styles.headerGlow2} />
         <View style={styles.headerTop}>
-          <View>
+          <View style={styles.headerTitles}>
             <Text style={styles.greeting}>Good {getGreeting()} 👋</Text>
             <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
+            <GymBadge style={styles.gymBadge} />
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
             <Avatar uri={user?.avatar} firstName={user?.firstName} lastName={user?.lastName} ring />
@@ -272,8 +274,10 @@ const styles = StyleSheet.create({
   headerGlow2: { top: 30, left: -120 },
   cardGlow: { top: -90, right: -70 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  headerTitles: { flex: 1, minWidth: 0 },
   greeting: { color: colors.textMuted, ...typography.label },
   name: { color: colors.text, fontSize: 24, fontWeight: '800', marginTop: 2 },
+  gymBadge: { marginTop: 6 },
   statsRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   statCard: { marginBottom: 0 },
 

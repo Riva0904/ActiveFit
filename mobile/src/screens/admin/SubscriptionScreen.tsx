@@ -3,6 +3,7 @@ import { Alert, Clipboard, Linking, Modal, RefreshControl, StyleSheet, View } fr
 import { Text } from '../../components/Text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useGymScope } from '../../hooks/useGymScope';
 import {
   Button, Card, Chip, ChipRow, Enter, Field, GlowOrb, Header, Icon, Loading, PressScale, Screen, SectionTitle, TextField,
 } from '../../components';
@@ -38,8 +39,12 @@ export default function SubscriptionScreen({ navigation }: any) {
   const [payment, setPayment] = useState<any | null>(null);
   const [utr, setUtr] = useState('');
 
+  const scope = useGymScope();
   const plansQ = useQuery<Plan[]>({ queryKey: ['sub-plans'], queryFn: () => api.get('/gym-subscriptions/plans') as any });
-  const mineQ = useQuery<Mine>({ queryKey: ['gym-subscription-me'], queryFn: () => api.get('/gym-subscriptions/me') as any });
+  const mineQ = useQuery<Mine>({
+    queryKey: scope.key(['gym-subscription-me']),
+    queryFn: () => api.get('/gym-subscriptions/me', { params: scope.params() }) as any,
+  });
 
   const request = useMutation({
     mutationFn: (planId: string) => api.post('/gym-subscriptions/request', { planId, billingPeriod: period }) as any,
@@ -52,14 +57,14 @@ export default function SubscriptionScreen({ navigation }: any) {
     onSuccess: () => {
       setPayment(null); setUtr('');
       Alert.alert('Sent for confirmation', 'Your plan activates as soon as we verify the transfer.');
-      queryClient.invalidateQueries({ queryKey: ['gym-subscription-me'] });
+      queryClient.invalidateQueries({ queryKey: scope.key(['gym-subscription-me']) });
     },
     onError: (e: any) => Alert.alert('Could not submit', e?.message ?? 'Try again'),
   });
 
   const cancelRequest = useMutation({
     mutationFn: (id: string) => api.post(`/gym-subscriptions/requests/${id}/cancel`) as any,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gym-subscription-me'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: scope.key(['gym-subscription-me']) }),
   });
 
   if (plansQ.isLoading || mineQ.isLoading) return <Loading fullScreen />;

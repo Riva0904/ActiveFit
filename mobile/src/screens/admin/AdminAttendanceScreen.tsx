@@ -5,8 +5,11 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { api } from '../../lib/api';
+import { can } from '../../lib/roles';
+import { useGymScope } from '../../hooks/useGymScope';
+import { useAuthStore } from '../../store/authStore';
 import {
-  Avatar, Button, Card, Enter, EmptyState, Header, Icon, Loading, PressScale, Screen, SectionTitle, StatRow, TextField,
+  Avatar, Button, Card, Enter, EmptyState, GymBadge, Header, Icon, Loading, PressScale, Screen, SectionTitle, StatRow, TextField,
 } from '../../components';
 import { colors, radius, spacing, tint, typography } from '../../theme';
 
@@ -17,21 +20,29 @@ const time = (iso?: string) =>
 
 export default function AdminAttendanceScreen() {
   const queryClient = useQueryClient();
+  const user = useAuthStore((st) => st.user);
+  // The QR kiosk is gym-admin only on the backend; staff check people in by code.
+  const canScan = can(user, 'canScanQr');
   const [scanning, setScanning] = useState(false);
   const [code, setCode] = useState('');
   const [permission, requestPermission] = useCameraPermissions();
   // A scanner fires continuously; this stops one QR turning into ten check-ins.
   const lastScan = useRef<{ value: string; at: number } | null>(null);
 
+  // Keys and params both carry the gym: for a gym admin that is their own gym
+  // and nothing changes, for a super admin it is the gym they drilled into —
+  // which is also what stops gym A's rows rendering under gym B's header.
+  const scope = useGymScope();
+
   const stats = useQuery<TodayStats>({
-    queryKey: ['attendance-today'],
-    queryFn: () => api.get('/attendance/stats/today') as any,
+    queryKey: scope.key(['attendance-today']),
+    queryFn: () => api.get('/attendance/stats/today', { params: scope.params() }) as any,
     staleTime: 30_000,
   });
 
   const list = useQuery({
-    queryKey: ['attendance-list'],
-    queryFn: () => api.get('/attendance', { params: { limit: 100 } }) as any,
+    queryKey: scope.key(['attendance-list']),
+    queryFn: () => api.get('/attendance', { params: scope.params({ limit: 100 }) }) as any,
     staleTime: 30_000,
   });
 
@@ -48,8 +59,8 @@ export default function AdminAttendanceScreen() {
       const action = res?.checkOutTime ? 'checked out' : 'checked in';
       Alert.alert('Done', `${name} ${action}.`);
       setCode('');
-      queryClient.invalidateQueries({ queryKey: ['attendance-today'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-list'] });
+      queryClient.invalidateQueries({ queryKey: scope.key(['attendance-today']) });
+      queryClient.invalidateQueries({ queryKey: scope.key(['attendance-list']) });
     },
     onError: (e: any) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
@@ -106,7 +117,7 @@ export default function AdminAttendanceScreen() {
   return (
     <Screen padded={false}>
       <View style={styles.pad}>
-        <Header title="Attendance" subtitle="Today at your gym" />
+        <Header title="Attendance" subtitle="Today at your gym" eyebrow={<GymBadge />} />
 
         <Enter index={0}>
           <Card padding="md">
@@ -119,13 +130,13 @@ export default function AdminAttendanceScreen() {
         </Enter>
 
         <Enter index={1}>
-          <Button title="Scan member QR" size="lg" icon="qrcode" onPress={openScanner} />
+          {canScan ? <Button title="Scan member QR" size="lg" icon="qrcode" onPress={openScanner} /> : null}
           <View style={styles.manualRow}>
             <View style={{ flex: 1 }}>
               <TextField
                 value={code}
                 onChangeText={setCode}
-                placeholder="Or type a member code"
+                placeholder={canScan ? 'Or type a member code' : 'Enter the member code'}
                 autoCapitalize="characters"
                 onSubmitEditing={() => code.trim() && checkIn.mutate({ code: code.trim() })}
               />

@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveGymScope } from '../common/utils/gym-scope';
 
 @ApiTags('Chat')
 @ApiBearerAuth()
@@ -75,20 +76,21 @@ export class ChatController {
 
   @Get('conversations')
   @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN, Role.STAFF)
-  getAllConversations(@CurrentUser() user: any) {
-    return this.chatService.getAllConversations(user.gymId);
+  @Roles(Role.GYM_ADMIN, Role.STAFF, Role.SUPER_ADMIN)
+  getAllConversations(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.chatService.getAllConversations(resolveGymScope(user, gymId));
   }
 
   @Get('conversations/:userId/messages')
   @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN, Role.STAFF)
+  @Roles(Role.GYM_ADMIN, Role.STAFF, Role.SUPER_ADMIN)
   getConversationMessages(
     @CurrentUser() user: any,
     @Param('userId') userId: string,
     @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
+    @Query('gymId') gymId?: string,
   ) {
-    return this.chatService.getMessages(user.gymId, userId, 50, skip);
+    return this.chatService.getMessages(resolveGymScope(user, gymId), userId, 50, skip);
   }
 
   @Patch('conversations/:userId/read')

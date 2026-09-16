@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveGymScope } from '../common/utils/gym-scope';
 import { GymSubscriptionsService } from './gym-subscriptions.service';
 import { MarkSaasPaidDto, RequestSubscriptionDto } from './dto/gym-subscription.dto';
 
@@ -28,24 +29,24 @@ export class GymSubscriptionsController {
   }
 
   @Get('me')
-  @Roles(Role.GYM_ADMIN)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Current plan, limits, usage and any pending request' })
-  me(@CurrentUser() user: any) {
-    return this.service.getMine(user.gymId);
+  me(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.service.getMine(resolveGymScope(user, gymId));
   }
 
   @Get('history')
-  @Roles(Role.GYM_ADMIN)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Past subscription terms' })
-  history(@CurrentUser() user: any) {
-    return this.service.history(user.gymId);
+  history(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.service.history(resolveGymScope(user, gymId));
   }
 
   @Get('requests')
-  @Roles(Role.GYM_ADMIN)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'This gym’s subscription payment requests' })
-  requests(@CurrentUser() user: any) {
-    return this.service.myRequests(user.gymId);
+  requests(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.service.myRequests(resolveGymScope(user, gymId));
   }
 
   // Writes a uniquely-coded row per call — throttled like the member payment route.

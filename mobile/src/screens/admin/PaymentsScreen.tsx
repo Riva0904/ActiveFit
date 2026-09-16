@@ -3,6 +3,7 @@ import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Text } from '../../components/Text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useGymScope } from '../../hooks/useGymScope';
 import {
   Avatar, Button, Card, Chip, ChipRow, EmptyState, Header, Icon, Loading, PressScale, Screen, SectionTitle, StatRow,
 } from '../../components';
@@ -20,21 +21,23 @@ export default function PaymentsScreen({ navigation }: any) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState('pending-upi');
 
+  const scope = useGymScope();
+
   const stats = useQuery({
-    queryKey: ['payment-stats'],
-    queryFn: () => api.get('/payments/stats') as any,
+    queryKey: scope.key(['payment-stats']),
+    queryFn: () => api.get('/payments/stats', { params: scope.params() }) as any,
     staleTime: 60_000,
   });
 
   const pending = useQuery({
-    queryKey: ['pending-upi'],
-    queryFn: () => api.get('/payments/manual-upi/pending') as any,
+    queryKey: scope.key(['pending-upi']),
+    queryFn: () => api.get('/payments/manual-upi/pending', { params: scope.params() }) as any,
     enabled: tab === 'pending-upi',
   });
 
   const all = useQuery({
-    queryKey: ['payments-all'],
-    queryFn: () => api.get('/payments', { params: { limit: 50 } }) as any,
+    queryKey: scope.key(['payments-all']),
+    queryFn: () => api.get('/payments', { params: scope.params({ limit: 50 }) }) as any,
     enabled: tab === 'all',
   });
 
@@ -42,9 +45,9 @@ export default function PaymentsScreen({ navigation }: any) {
     mutationFn: (id: string) => api.post(`/payments/${id}/confirm-upi`) as any,
     onSuccess: () => {
       Alert.alert('Confirmed', 'The payment has been marked as received.');
-      queryClient.invalidateQueries({ queryKey: ['pending-upi'] });
-      queryClient.invalidateQueries({ queryKey: ['payments-all'] });
-      queryClient.invalidateQueries({ queryKey: ['payment-stats'] });
+      queryClient.invalidateQueries({ queryKey: scope.key(['pending-upi']) });
+      queryClient.invalidateQueries({ queryKey: scope.key(['payments-all']) });
+      queryClient.invalidateQueries({ queryKey: scope.key(['payment-stats']) });
       queryClient.invalidateQueries({ queryKey: ['gym-stats'] });
     },
     onError: (e: any) => Alert.alert('Could not confirm', e?.message ?? 'Try again'),

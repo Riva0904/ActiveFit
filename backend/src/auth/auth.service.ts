@@ -158,7 +158,13 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
-      include: { member: { select: { id: true, memberCode: true, qrToken: true } } },
+      include: {
+        member: { select: { id: true, memberCode: true, qrToken: true } },
+        // The app shows the gym name to everyone who belongs to it. getProfile
+        // already selected this; without it here the name is missing until the
+        // next hydrate, so a fresh login shows a nameless gym.
+        gym: { select: { id: true, name: true, logo: true, address: true } },
+      },
     });
     if (!user) throw new UnauthorizedException('Invalid email or password');
     if (!user.isActive) throw new UnauthorizedException('Your account has been deactivated. Contact support.');

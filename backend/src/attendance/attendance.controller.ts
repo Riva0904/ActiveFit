@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveGymScope } from '../common/utils/gym-scope';
 
 @ApiTags('Attendance')
 @ApiBearerAuth()
@@ -33,16 +34,18 @@ export class AttendanceController {
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.STAFF)
   @ApiOperation({ summary: 'Get today attendance stats' })
-  getTodayStats(@CurrentUser() user: any) {
-    return this.attendanceService.getTodayStats(user.gymId);
+  // `?gymId=` is read for a SUPER_ADMIN drilling into a gym and ignored for
+  // everyone else — see resolveGymScope. Same for every handler below.
+  getTodayStats(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.attendanceService.getTodayStats(resolveGymScope(user, gymId));
   }
 
   @Get('stats/weekly')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.STAFF)
   @ApiOperation({ summary: 'Get weekly attendance report' })
-  getWeeklyReport(@CurrentUser() user: any) {
-    return this.attendanceService.getWeeklyReport(user.gymId);
+  getWeeklyReport(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.attendanceService.getWeeklyReport(resolveGymScope(user, gymId));
   }
 
   @Post('qr-check-in')
@@ -152,16 +155,16 @@ export class AttendanceController {
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.STAFF)
   @ApiOperation({ summary: 'Live gym occupancy (currently-in count vs capacity)' })
-  getOccupancy(@CurrentUser() user: any) {
-    return this.attendanceService.getOccupancy(user.gymId);
+  getOccupancy(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.attendanceService.getOccupancy(resolveGymScope(user, gymId));
   }
 
   @Get('analytics')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Attendance analytics: avg duration, daily/monthly trend, peak hours, peak day, most active members' })
-  getAnalytics(@CurrentUser() user: any) {
-    return this.attendanceService.getAnalytics(user.gymId);
+  getAnalytics(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.attendanceService.getAnalytics(resolveGymScope(user, gymId));
   }
 
   // ─── Attendance Intelligence V2 ─────────────────────────────────────────────
@@ -178,8 +181,8 @@ export class AttendanceController {
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Members absent 5+/7+/14+/30+ days, with severity (LOW/MEDIUM/HIGH/CRITICAL)' })
-  getInactiveMembers(@CurrentUser() user: any) {
-    return this.attendanceService.getInactiveMembers(user.gymId);
+  getInactiveMembers(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.attendanceService.getInactiveMembers(resolveGymScope(user, gymId));
   }
 
   @Get('calendar')
@@ -196,16 +199,16 @@ export class AttendanceController {
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.STAFF)
   @ApiOperation({ summary: "Today's occupancy snapshots (captured every 30 minutes) for a trend chart" })
-  getOccupancyTrend(@CurrentUser() user: any) {
-    return this.attendanceService.getOccupancyTrend(user.gymId);
+  getOccupancyTrend(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.attendanceService.getOccupancyTrend(resolveGymScope(user, gymId));
   }
 
   @Get('leaderboard')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.STAFF, Role.MEMBER)
   @ApiOperation({ summary: 'Top 10 members by visit count this calendar month' })
-  getLeaderboard(@CurrentUser() user: any) {
-    return this.attendanceService.getLeaderboard(user.gymId);
+  getLeaderboard(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.attendanceService.getLeaderboard(resolveGymScope(user, gymId));
   }
 
   @Get('my-insights')

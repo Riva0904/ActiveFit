@@ -3,6 +3,9 @@ import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Text } from '../../components/Text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useGymScope } from '../../hooks/useGymScope';
+import { can } from '../../lib/roles';
+import { useAuthStore } from '../../store/authStore';
 import {
   Avatar, Button, Card, Checkbox, EmptyState, Header, Icon, Loading, PressScale, Screen, SectionTitle, TextField,
 } from '../../components';
@@ -11,12 +14,21 @@ import { colors, radius, spacing, tint, typography } from '../../theme';
 export default function PlanAssignScreen({ route, navigation }: any) {
   const { kind, plan } = route.params as { kind: 'workout' | 'diet'; plan: any };
   const queryClient = useQueryClient();
+  const user = useAuthStore((st) => st.user);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // A trainer cannot read /users — that would expose every staff and trainer row
+  // gym-wide. They get their own assigned members instead, which is the list
+  // they should be assigning plans from anyway.
+  const canListAll = can(user, 'canListAllMembers');
+  const scope = useGymScope();
   const membersQ = useQuery({
-    queryKey: ['admin-people', 'MEMBER'],
-    queryFn: () => api.get('/users', { params: { role: 'MEMBER', limit: 200 } }) as any,
+    queryKey: canListAll ? scope.key(['admin-people', 'MEMBER']) : ['trainer-assigned-members'],
+    queryFn: () =>
+      (canListAll
+        ? api.get('/users', { params: scope.params({ role: 'MEMBER', limit: 200 }) })
+        : api.get('/pt-sessions/assigned-members')) as any,
     staleTime: 60_000,
   });
 
@@ -45,7 +57,18 @@ export default function PlanAssignScreen({ route, navigation }: any) {
     onError: (e: any) => Alert.alert('Could not remove', e?.message ?? 'Try again'),
   });
 
-  const members: any[] = Array.isArray(membersQ.data) ? membersQ.data : (membersQ.data?.data ?? []);
+  // The two sources have different shapes: /users returns User rows carrying a
+  // memberId, /pt-sessions/assigned-members returns Member rows. Normalise both
+  // to { memberId, firstName, lastName, memberCode } so the list below is one path.
+  const rawMembers: any[] = Array.isArray(membersQ.data) ? membersQ.data : (membersQ.data?.data ?? []);
+  const members: any[] = rawMembers.map((m: any) => ({
+    id: m.id,
+    memberId: m.memberId ?? (canListAll ? undefined : m.id),
+    firstName: m.firstName ?? m.user?.firstName,
+    lastName: m.lastName ?? m.user?.lastName,
+    memberCode: m.memberCode,
+    email: m.email ?? m.user?.email,
+  }));
   const assignments: any[] = Array.isArray(assignmentsQ.data) ? assignmentsQ.data : (assignmentsQ.data?.data ?? []);
   const assignedIds = useMemo(() => new Set(assignments.map((a) => a.member?.id).filter(Boolean)), [assignments]);
 

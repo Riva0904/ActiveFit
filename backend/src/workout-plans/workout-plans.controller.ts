@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveGymScope } from '../common/utils/gym-scope';
 import { CreateWorkoutPlanDto, UpdateWorkoutPlanDto } from './dto/workout-plan.dto';
 import { AssignPlanDto } from '../diet-plans/dto/diet-plan.dto';
 
@@ -71,7 +72,7 @@ export class WorkoutPlansController {
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.TRAINER)
   listAll(@Query() query: any, @CurrentUser() user: any) {
-    return this.workoutPlansService.listAll(user.gymId, query);
+    return this.workoutPlansService.listAll(resolveGymScope(user, query.gymId), query);
   }
 
   @Patch('manage/:id')

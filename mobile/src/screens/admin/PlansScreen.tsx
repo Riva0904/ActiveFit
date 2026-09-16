@@ -3,6 +3,7 @@ import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useGymScope } from '../../hooks/useGymScope';
 import {
   Card, Chip, ChipRow, EmptyState, Header, Icon, Loading, PressScale, Screen, SectionTitle,
 } from '../../components';
@@ -17,10 +18,11 @@ interface Plan {
 
 export default function AdminPlansScreen({ navigation }: any) {
   const [kind, setKind] = useState<Kind>('workout');
+  const scope = useGymScope();
 
   const { data, isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ['admin-plans', kind],
-    queryFn: () => api.get(`/${kind}-plans/manage/all`) as any,
+    queryKey: scope.key(['admin-plans', kind]),
+    queryFn: () => api.get(`/${kind}-plans/manage/all`, { params: scope.params() }) as any,
   });
 
   const plans: Plan[] = Array.isArray(data) ? data : (data?.data ?? []);

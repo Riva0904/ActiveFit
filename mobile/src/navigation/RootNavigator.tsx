@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useAuthStore } from '../store/authStore';
 import { Loading } from '../components';
 import { navTheme } from '../theme/navigation';
+import { shellForRole } from '../lib/roles';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
@@ -12,6 +13,8 @@ import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import MemberTabs from './MemberTabs';
 import TrainerTabs from './TrainerTabs';
 import AdminTabs from './AdminTabs';
+import StaffTabs from './StaffTabs';
+import PlatformTabs from './PlatformTabs';
 
 const Stack = createStackNavigator();
 
@@ -26,13 +29,18 @@ function AuthStack() {
   );
 }
 
+/**
+ * One app, one shell per role. The mapping lives in lib/roles so it is testable
+ * and so the four screens that used to re-derive it by hand cannot drift.
+ */
 function AppNavigator({ role }: { role: string }) {
-  if (role === 'TRAINER') return <TrainerTabs />;
-  // Gym admins and super admins used to land in the member app, where every tab
-  // was a member-only feature that 403'd for them.
-  if (role === 'GYM_ADMIN' || role === 'SUPER_ADMIN') return <AdminTabs />;
-  // MEMBER, STAFF — member app UI
-  return <MemberTabs />;
+  switch (shellForRole(role)) {
+    case 'PLATFORM': return <PlatformTabs />;
+    case 'ADMIN': return <AdminTabs />;
+    case 'STAFF': return <StaffTabs />;
+    case 'TRAINER': return <TrainerTabs />;
+    default: return <MemberTabs />;
+  }
 }
 
 export default function RootNavigator() {

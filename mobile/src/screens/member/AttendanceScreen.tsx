@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import QRCode from 'react-native-qrcode-svg';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { can } from '../../lib/roles';
 import { Card, Enter, GlowOrb, Header, HeroStat, Icon, Loading, Screen, SectionTitle, type IconName } from '../../components';
 import { WeeklyBarChart } from '../../components/widgets';
 import { useWeeklyActivity } from '../../hooks/useWeeklyActivity';
@@ -18,7 +19,7 @@ const ACTIONS: { label: string; icon: IconName; screen: string }[] = [
 
 export default function AttendanceScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
-  const isMember = user?.role === 'MEMBER';
+  const isMember = can(user, 'hasMemberRecord');
 
   const { data: homeData, isLoading } = useQuery({
     queryKey: ['mobile-home'],

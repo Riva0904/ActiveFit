@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveGymScope } from '../common/utils/gym-scope';
 import { EntitlementGuard } from '../entitlements/guards/entitlement.guard';
 import { RequiresFeature } from '../entitlements/decorators/requires-feature.decorator';
 
@@ -24,10 +25,10 @@ export class SalaryPayoutsController {
   }
 
   @Get()
-  @Roles(Role.GYM_ADMIN)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
   @RequiresFeature('PAYROLL')
   findAll(@Query() query: any, @CurrentUser() user: any) {
-    return this.service.findAllForGym(user.gymId, query);
+    return this.service.findAllForGym(resolveGymScope(user, query.gymId), query);
   }
 
   @Get('my')

@@ -17,6 +17,8 @@ import TrainerNotificationsScreen from '../screens/trainer/NotificationsScreen';
 import LeaveScreen from '../screens/trainer/LeaveScreen';
 import SalaryScreen from '../screens/trainer/SalaryScreen';
 import CreateSessionScreen from '../screens/trainer/CreateSessionScreen';
+import AdminPlansScreen from '../screens/admin/PlansScreen';
+import PlanAssignScreen from '../screens/admin/PlanAssignScreen';
 
 import EditProfileScreen from '../screens/member/EditProfileScreen';
 import ChangePasswordScreen from '../screens/member/ChangePasswordScreen';
@@ -24,9 +26,10 @@ import ChangePasswordScreen from '../screens/member/ChangePasswordScreen';
 const Tab = createBottomTabNavigator();
 const SessionsStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
+const PlansStack = createStackNavigator();
 
 const TAB_ICONS: Record<string, IconName> = {
-  Home: 'home', Members: 'users', Sessions: 'dumbbell', Attendance: 'calendar', Profile: 'user',
+  Home: 'home', Members: 'users', Sessions: 'dumbbell', Plans: 'clipboard-text-outline', Attendance: 'calendar', Profile: 'user',
 };
 
 function TabIcon({ name, focused, color }: { name: string; focused: boolean; color: string }) {
@@ -35,6 +38,17 @@ function TabIcon({ name, focused, color }: { name: string; focused: boolean; col
       <Icon name={TAB_ICONS[name] ?? 'home'} size={24} color={color} />
       <View style={[styles.dot, { opacity: focused ? 1 : 0 }]} />
     </View>
+  );
+}
+
+// Trainers already have full plan authoring rights on the backend; this just
+// surfaces them. Reuses the admin screens rather than duplicating the builder.
+function PlansStackNavigator() {
+  return (
+    <PlansStack.Navigator screenOptions={{ headerShown: false }}>
+      <PlansStack.Screen name="PlansMain" component={AdminPlansScreen} />
+      <PlansStack.Screen name="PlanAssign" component={PlanAssignScreen} />
+    </PlansStack.Navigator>
   );
 }
 
@@ -84,6 +98,7 @@ export default function TrainerTabs() {
       <Tab.Screen name="Home" component={TrainerHomeScreen} />
       <Tab.Screen name="Members" component={TrainerMembersScreen} />
       <Tab.Screen name="Sessions" component={SessionsStackNavigator} />
+      <Tab.Screen name="Plans" component={PlansStackNavigator} />
       <Tab.Screen name="Attendance" component={TrainerAttendanceScreen} />
       <Tab.Screen name="Profile" component={TrainerProfileStackNavigator} />
     </Tab.Navigator>

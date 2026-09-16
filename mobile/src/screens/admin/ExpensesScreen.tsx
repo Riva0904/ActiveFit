@@ -3,6 +3,7 @@ import { Alert, FlatList, Modal, RefreshControl, StyleSheet, View } from 'react-
 import { Text } from '../../components/Text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useGymScope } from '../../hooks/useGymScope';
 import {
   Button, Card, Chip, ChipRow, EmptyState, Field, Header, Icon, Loading, PressScale, Screen, SectionTitle, TextField, type IconName,
 } from '../../components';
@@ -35,9 +36,11 @@ export default function ExpensesScreen({ navigation }: any) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
 
+  const scope = useGymScope();
+
   const { data, isLoading, isRefetching, refetch, error } = useQuery({
-    queryKey: ['expenses', month, year],
-    queryFn: () => api.get('/expenses', { params: { month, year, limit: 100 } }) as any,
+    queryKey: scope.key(['expenses', month, year]),
+    queryFn: () => api.get('/expenses', { params: scope.params({ month, year, limit: 100 }) }) as any,
   });
 
   const remove = useMutation({

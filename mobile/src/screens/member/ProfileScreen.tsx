@@ -2,7 +2,8 @@ import React from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text';
 import { useAuthStore } from '../../store/authStore';
-import { Avatar, Card, Enter, GlowOrb, Icon, ListRow, PressScale, Screen, SectionTitle, type IconName } from '../../components';
+import { can, supportChatTarget } from '../../lib/roles';
+import { Avatar, Card, Enter, GlowOrb, GymBadge, Icon, ListRow, PressScale, Screen, SectionTitle, type IconName } from '../../components';
 import { colors, radius, shadow, spacing, typography } from '../../theme';
 
 interface MenuItem {
@@ -18,33 +19,34 @@ export default function ProfileScreen({ navigation }: any) {
   const logout = useAuthStore((s) => s.logout);
 
   const role = user?.role ?? 'MEMBER';
-  const isTrainer = role === 'TRAINER';
-  const isAdminRole = role === 'SUPER_ADMIN' || role === 'GYM_ADMIN' || role === 'STAFF';
+  const isEmployee = can(user, 'canRequestLeave'); // staff and trainers
 
-  const isGymAdmin = role === 'GYM_ADMIN';
+  // Built from capabilities rather than role names, so staff finally get the
+  // rows the backend already grants them (their salary, their leave) instead of
+  // being lumped in with admins and shown nothing.
+  const gymItems: MenuItem[] = [
+    ...(can(user, 'hasMemberRecord')
+      ? ([
+          { label: 'My Membership', icon: 'award', color: colors.primary, onPress: () => navigation.navigate('MyMembership') },
+          { label: 'Renew Membership', icon: 'refresh-cw', color: colors.warning, onPress: () => navigation.navigate('MembershipRenewal') },
+          { label: 'Payment History', icon: 'credit-card', color: colors.info, onPress: () => navigation.navigate('PaymentHistory') },
+          { label: 'Progress Log', icon: 'trending-up', color: colors.success, onPress: () => navigation.navigate('ProgressLog') },
+          { label: 'My Trainer', icon: 'dumbbell', color: colors.purple, onPress: () => navigation.navigate('MyTrainer') },
+          { label: 'Referrals', icon: 'gift', color: colors.pink, onPress: () => navigation.navigate('Referrals') },
+        ] as MenuItem[])
+      : []),
+    ...(can(user, 'canRequestLeave')
+      ? ([{ label: 'Leave Requests', icon: 'file-text', color: colors.purple, onPress: () => navigation.navigate('Leave') }] as MenuItem[])
+      : []),
+    ...(can(user, 'canSeeOwnSalary')
+      ? ([{ label: 'Salary History', icon: 'dollar-sign', color: colors.success, onPress: () => navigation.navigate('Salary') }] as MenuItem[])
+      : []),
+    ...(can(user, 'canManageGymSubscription')
+      ? ([{ label: 'Subscription & plan', icon: 'crown-outline', color: colors.gold, onPress: () => navigation.navigate('Subscription') }] as MenuItem[])
+      : []),
+  ];
 
-  const gymItems: MenuItem[] = isTrainer
-    ? [
-        { label: 'Leave Requests', icon: 'file-text', color: colors.purple, onPress: () => navigation.navigate('Leave') },
-        { label: 'Salary History', icon: 'dollar-sign', color: colors.success, onPress: () => navigation.navigate('Salary') },
-      ]
-    : isGymAdmin
-    ? [
-        { label: 'Subscription & plan', icon: 'crown-outline', color: colors.gold, onPress: () => navigation.navigate('Subscription') },
-      ]
-    : isAdminRole
-    ? []
-    : [
-        { label: 'My Membership', icon: 'award', color: colors.primary, onPress: () => navigation.navigate('MyMembership') },
-        { label: 'Renew Membership', icon: 'refresh-cw', color: colors.warning, onPress: () => navigation.navigate('MembershipRenewal') },
-        { label: 'Payment History', icon: 'credit-card', color: colors.info, onPress: () => navigation.navigate('PaymentHistory') },
-        { label: 'Progress Log', icon: 'trending-up', color: colors.success, onPress: () => navigation.navigate('ProgressLog') },
-        { label: 'My Trainer', icon: 'dumbbell', color: colors.purple, onPress: () => navigation.navigate('MyTrainer') },
-        { label: 'Referrals', icon: 'gift', color: colors.pink, onPress: () => navigation.navigate('Referrals') },
-      ];
-
-  const chatTarget = role === 'SUPER_ADMIN' ? 'SuperAdminChat' : role === 'GYM_ADMIN' ? 'GymAdminChat' : 'Chat';
-  const chatLabel = role === 'SUPER_ADMIN' ? 'Gym Admin Chats' : role === 'GYM_ADMIN' ? 'Member Messages' : 'Chat with Admin';
+  const chat = supportChatTarget(role);
 
   type Section = { title: string; items: MenuItem[] };
   const sections: Section[] = [
@@ -56,12 +58,12 @@ export default function ProfileScreen({ navigation }: any) {
         { label: 'Notifications', icon: 'bell', color: colors.warning, onPress: () => navigation.navigate('Notifications') },
       ],
     },
-    ...(gymItems.length > 0 ? [{ title: isTrainer ? 'Work' : 'Gym', items: gymItems }] : []),
+    ...(gymItems.length > 0 ? [{ title: isEmployee ? 'Work' : 'Gym', items: gymItems }] : []),
     {
       title: 'Support',
       items: [
-        { label: chatLabel, icon: 'message-circle', color: colors.cyan, onPress: () => navigation.navigate(chatTarget) },
-        ...(!isTrainer && !isAdminRole
+        { label: chat.label, icon: 'message-circle', color: colors.cyan, onPress: () => navigation.navigate(chat.screen) },
+        ...(can(user, 'hasMemberRecord')
           ? [{ label: 'Gamification & Badges', icon: 'trophy-outline' as IconName, color: colors.warning, onPress: () => navigation.navigate('Gamification') }]
           : []),
       ],
@@ -96,6 +98,7 @@ export default function ProfileScreen({ navigation }: any) {
         <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
         <Text style={styles.email}>{user?.email}</Text>
         <View style={styles.rolePill}><Text style={styles.roleText}>{role.replace(/_/g, ' ')}</Text></View>
+        <GymBadge style={styles.gymBadge} />
         {user?.memberCode ? (
           <View style={styles.memberCodeWrap}>
             <Text style={styles.memberCodeLabel}>Member Code</Text>
@@ -139,6 +142,7 @@ const styles = StyleSheet.create({
   name: { color: colors.text, ...typography.title, fontWeight: '800', marginBottom: 3 },
   email: { color: colors.textMuted, ...typography.label, marginBottom: spacing.md },
   rolePill: { backgroundColor: colors.surface, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.primary, paddingHorizontal: 14, paddingVertical: 5, marginBottom: 10 },
+  gymBadge: { alignSelf: 'center', marginBottom: 10 },
   roleText: { color: colors.primary, ...typography.caption, fontWeight: '700', letterSpacing: 0.5 },
   memberCodeWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md - 2, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 6 },
   memberCodeLabel: { color: colors.textMuted, ...typography.micro },

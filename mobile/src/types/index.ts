@@ -1,5 +1,13 @@
 export type UserRole = 'SUPER_ADMIN' | 'GYM_ADMIN' | 'STAFF' | 'TRAINER' | 'MEMBER';
 
+/** The gym a user belongs to, as returned by login and /auth/profile. */
+export interface GymSummary {
+  id: string;
+  name: string;
+  logo?: string | null;
+  address?: string | null;
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -7,6 +15,8 @@ export interface AuthUser {
   lastName: string;
   role: UserRole;
   gymId?: string | null;
+  /** Absent for a super admin, who belongs to no gym. */
+  gym?: GymSummary | null;
   avatar?: string | null;
   phone?: string | null;
   qrCode?: string | null;

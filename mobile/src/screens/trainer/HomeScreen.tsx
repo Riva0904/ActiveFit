@@ -6,6 +6,7 @@ import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { TrainerHomeData } from '../../types';
 import { usePushToken } from '../../hooks/usePushToken';
+import { GymBadge } from '../../components';
 import { colors } from '../../theme';
 
 export default function TrainerHomeScreen() {
@@ -31,6 +32,7 @@ export default function TrainerHomeScreen() {
       <View style={styles.header}>
         <Text style={styles.greeting}>Welcome back 👋</Text>
         <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
+        <GymBadge style={styles.gymBadge} />
       </View>
 
       {/* Stats grid */}
@@ -80,6 +82,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 20 },
   greeting: { color: colors.textSecondary, fontSize: 14 },
   name: { color: colors.text, fontSize: 22, fontWeight: '700', marginTop: 2 },
+  gymBadge: { marginTop: 6 },
   statsGrid: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 16 },
   statCard: {
     flex: 1, backgroundColor: colors.surface, borderRadius: 14,

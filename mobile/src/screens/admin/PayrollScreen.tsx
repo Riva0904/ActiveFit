@@ -3,6 +3,7 @@ import { Alert, FlatList, Modal, RefreshControl, StyleSheet, View } from 'react-
 import { Text } from '../../components/Text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useGymScope } from '../../hooks/useGymScope';
 import {
   Avatar, Button, Card, Chip, ChipRow, EmptyState, Field, Header, Icon, Loading, PressScale, Screen, SectionTitle, StatRow, TextField,
 } from '../../components';
@@ -27,9 +28,11 @@ export default function PayrollScreen({ navigation }: any) {
   const [status, setStatus] = useState('');
   const [showPay, setShowPay] = useState(false);
 
+  const scope = useGymScope();
+
   const { data, isLoading, isRefetching, refetch, error } = useQuery({
-    queryKey: ['payouts', status],
-    queryFn: () => api.get('/salary-payouts', { params: { limit: 100, ...(status ? { status } : {}) } }) as any,
+    queryKey: scope.key(['payouts', status]),
+    queryFn: () => api.get('/salary-payouts', { params: scope.params({ limit: 100, ...(status ? { status } : {}) }) }) as any,
   });
 
   const markPaid = useMutation({
@@ -160,14 +163,15 @@ function PayModal({ visible, onClose, onSaved }: { visible: boolean; onClose: ()
   const [periodLabel, setPeriodLabel] = useState(() => new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' }));
   const [notes, setNotes] = useState('');
 
+  const scope = useGymScope();
   const { data: trainers } = useQuery({
-    queryKey: ['payable', 'TRAINER'],
-    queryFn: () => api.get('/users', { params: { role: 'TRAINER', limit: 100 } }) as any,
+    queryKey: scope.key(['payable', 'TRAINER']),
+    queryFn: () => api.get('/users', { params: scope.params({ role: 'TRAINER', limit: 100 }) }) as any,
     enabled: visible,
   });
   const { data: staff } = useQuery({
-    queryKey: ['payable', 'STAFF'],
-    queryFn: () => api.get('/users', { params: { role: 'STAFF', limit: 100 } }) as any,
+    queryKey: scope.key(['payable', 'STAFF']),
+    queryFn: () => api.get('/users', { params: scope.params({ role: 'STAFF', limit: 100 }) }) as any,
     enabled: visible,
   });
 

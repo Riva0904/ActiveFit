@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useGymScope } from '../../hooks/useGymScope';
 import {
   Avatar, Card, Chip, ChipRow, EmptyState, Header, Icon, Loading, PressScale, Screen, TextField,
 } from '../../components';
@@ -32,10 +33,11 @@ interface Person {
 export default function PeopleScreen({ navigation }: any) {
   const [role, setRole] = useState<Role>('MEMBER');
   const [search, setSearch] = useState('');
+  const scope = useGymScope();
 
   const { data, isLoading, isRefetching, refetch } = useQuery({
-    queryKey: ['admin-people', role],
-    queryFn: () => api.get('/users', { params: { role, limit: 200 } }) as any,
+    queryKey: scope.key(['admin-people', role]),
+    queryFn: () => api.get('/users', { params: scope.params({ role, limit: 200 }) }) as any,
     staleTime: 60_000,
   });
 

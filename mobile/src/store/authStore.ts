@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AuthUser } from '../types';
 import { tokenStore } from '../lib/secureStore';
+import { useGymContextStore } from './gymContextStore';
 import { disconnectSocket } from '../lib/socket';
 
 interface AuthState {
@@ -22,6 +23,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    useGymContextStore.getState().clearSelectedGym();
     disconnectSocket();
     const pushToken = await tokenStore.getPushToken();
     if (pushToken) {

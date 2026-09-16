@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveGymScope } from '../common/utils/gym-scope';
 import { AssignPlanDto, CreateDietPlanDto, UpdateDietPlanDto } from './dto/diet-plan.dto';
 
 @ApiTags('Diet Plans')
@@ -74,7 +75,7 @@ export class DietPlansController {
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.TRAINER)
   @ApiOperation({ summary: 'Every diet plan in the gym (premium and plain)' })
   listAll(@Query() query: any, @CurrentUser() user: any) {
-    return this.dietPlansService.listAll(user.gymId, query);
+    return this.dietPlansService.listAll(resolveGymScope(user, query.gymId), query);
   }
 
   @Patch('manage/:id')

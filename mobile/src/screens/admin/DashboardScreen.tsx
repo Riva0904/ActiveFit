@@ -4,8 +4,9 @@ import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { useGymScope } from '../../hooks/useGymScope';
 import {
-  Avatar, Card, Enter, GlowOrb, Icon, Loading, PressScale, Screen, SectionTitle, StatRow, type IconName,
+  Avatar, Card, EmptyState, Enter, GlowOrb, GymBadge, Icon, Loading, PressScale, Screen, SectionTitle, StatRow, type IconName,
 } from '../../components';
 import { colors, radius, spacing, tint, typography } from '../../theme';
 
@@ -31,30 +32,41 @@ const money = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
 export default function AdminDashboardScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
-  const gymId = user?.gymId;
+  const scope = useGymScope();
+  const gymId = scope.gymId;
 
   const stats = useQuery<GymStats>({
-    queryKey: ['gym-stats', gymId],
+    queryKey: scope.key(['gym-stats']),
     queryFn: () => api.get(`/gyms/${gymId}/stats`) as any,
     enabled: !!gymId,
   });
 
   const subscription = useQuery<Subscription>({
-    queryKey: ['gym-subscription-me'],
-    queryFn: () => api.get('/gym-subscriptions/me') as any,
+    queryKey: scope.key(['gym-subscription-me']),
+    queryFn: () => api.get('/gym-subscriptions/me', { params: scope.params() }) as any,
     enabled: !!gymId,
     staleTime: 5 * 60_000,
   });
 
   const pendingUpi = useQuery<any[]>({
-    queryKey: ['pending-upi'],
-    queryFn: () => api.get('/payments/manual-upi/pending') as any,
+    queryKey: scope.key(['pending-upi']),
+    queryFn: () => api.get('/payments/manual-upi/pending', { params: scope.params() }) as any,
     enabled: !!gymId,
     staleTime: 60_000,
   });
 
   const refreshing = stats.isRefetching || subscription.isRefetching;
   const refetchAll = () => { stats.refetch(); subscription.refetch(); pendingUpi.refetch(); };
+
+  // A disabled react-query is not "loading", so without this the screen used to
+  // render permanent zeros for anyone without a gym instead of saying why.
+  if (!gymId) {
+    return (
+      <Screen>
+        <EmptyState icon="bank-outline" title="No gym selected" subtitle="Choose a gym to see its dashboard." />
+      </Screen>
+    );
+  }
 
   if (stats.isLoading) return <Loading fullScreen text={'Loading your gym…'} />;
 
@@ -80,6 +92,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
           <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>{greeting()}</Text>
             <Text style={styles.name} numberOfLines={1}>{user?.firstName} {user?.lastName}</Text>
+            <GymBadge style={styles.gymBadge} />
           </View>
           <PressScale onPress={() => navigation.navigate('Profile')} scaleTo={0.92}>
             <Avatar uri={user?.avatar} firstName={user?.firstName} lastName={user?.lastName} ring />
@@ -191,6 +204,7 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
   greeting: { color: colors.textMuted, ...typography.label },
   name: { color: colors.text, fontSize: 24, fontWeight: '800', marginTop: 2 },
+  gymBadge: { marginTop: 6 },
   statCard: { marginBottom: 0 },
 
   moneyRow: { flexDirection: 'row', gap: spacing.md },

@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveGymScope } from '../common/utils/gym-scope';
 import { EnquiryStatus } from '@prisma/client';
 
 @Controller('enquiries')
@@ -20,7 +21,7 @@ export class EnquiriesController {
   }
 
   @Get()
-  @Roles('GYM_ADMIN', 'STAFF')
+  @Roles('GYM_ADMIN', 'STAFF', 'SUPER_ADMIN')
   findAll(
     @CurrentUser() user: any,
     @Query('status') status?: EnquiryStatus,
@@ -28,20 +29,21 @@ export class EnquiriesController {
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('gymId') gymId?: string,
   ) {
-    return this.service.findAll(user.gymId, { status, source, search, page: page ? +page : undefined, limit: limit ? +limit : undefined });
+    return this.service.findAll(resolveGymScope(user, gymId), { status, source, search, page: page ? +page : undefined, limit: limit ? +limit : undefined });
   }
 
   @Get('kanban-stats')
-  @Roles('GYM_ADMIN', 'STAFF')
-  kanbanStats(@CurrentUser() user: any) {
-    return this.service.getKanbanStats(user.gymId);
+  @Roles('GYM_ADMIN', 'STAFF', 'SUPER_ADMIN')
+  kanbanStats(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.service.getKanbanStats(resolveGymScope(user, gymId));
   }
 
   @Get(':id')
-  @Roles('GYM_ADMIN', 'STAFF')
-  findOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.findOne(id, user.gymId);
+  @Roles('GYM_ADMIN', 'STAFF', 'SUPER_ADMIN')
+  findOne(@Param('id') id: string, @CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.service.findOne(id, resolveGymScope(user, gymId));
   }
 
   @Patch(':id')

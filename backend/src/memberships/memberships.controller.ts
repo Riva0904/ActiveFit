@@ -8,7 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateMembershipPlanDto, UpdateMembershipPlanDto } from './dto/membership-plan.dto';
 import { UpdateMembershipDto } from './dto/update-membership.dto';
-import { gymScopeOf } from '../common/utils/gym-scope';
+import { gymScopeOf, resolveGymScope } from '../common/utils/gym-scope';
 
 @ApiTags('Memberships')
 @ApiBearerAuth()
@@ -46,9 +46,8 @@ export class MembershipsController {
   @Get('plans')
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.MEMBER)
   @ApiOperation({ summary: 'Get all membership plans for gym' })
-  findAllPlans(@CurrentUser() user: any) {
-    const gymId = user.gymId;
-    return this.membershipsService.findAllPlans(gymId);
+  findAllPlans(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
+    return this.membershipsService.findAllPlans(resolveGymScope(user, gymId));
   }
 
   @Post('plans')
