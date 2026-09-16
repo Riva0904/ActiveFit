@@ -27,6 +27,7 @@ export type Capability =
   // people
   | 'canManageMembers'
   | 'canListAllMembers'
+  | 'canAddPeople'
   // plans
   | 'canAuthorPlans'
   | 'canAssignPlans'
@@ -57,7 +58,7 @@ export const ROLES: ReadonlyArray<Role> = ['SUPER_ADMIN', 'GYM_ADMIN', 'STAFF', 
 export const ALL_CAPABILITIES: ReadonlyArray<Capability> = [
   'isPlatformOperator', 'canDrillIntoAnyGym',
   'canScanQr', 'canCheckInOthers', 'canSelfCheckIn', 'canSeeGymAttendance',
-  'canManageMembers', 'canListAllMembers',
+  'canManageMembers', 'canListAllMembers', 'canAddPeople',
   'canAuthorPlans', 'canAssignPlans',
   'canHandleEnquiries', 'canConvertEnquiry',
   'canRequestLeave', 'canApproveLeave', 'canSeeOwnSalary', 'canManagePayroll',
@@ -83,6 +84,7 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canSeeGymAttendance: true,
     canManageMembers: true,
     canListAllMembers: true,
+    canAddPeople: false,      // drill-down is read-only: accounts are created by the gym itself
     canAuthorPlans: true,
     canAssignPlans: true,
     canHandleEnquiries: false,   // enquiries are GYM_ADMIN/STAFF
@@ -111,6 +113,7 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canSeeGymAttendance: true,
     canManageMembers: true,
     canListAllMembers: true,
+    canAddPeople: true,
     canAuthorPlans: true,
     canAssignPlans: true,
     canHandleEnquiries: true,
@@ -139,6 +142,7 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canSeeGymAttendance: true,
     canManageMembers: false,
     canListAllMembers: false,
+    canAddPeople: true,          // front desk signs people up (member or trainer)
     canAuthorPlans: false,
     canAssignPlans: false,
     canHandleEnquiries: true,
@@ -167,6 +171,7 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canSeeGymAttendance: false,
     canManageMembers: false,
     canListAllMembers: false,   // reads /pt-sessions/assigned-members instead
+    canAddPeople: false,
     canAuthorPlans: true,
     canAssignPlans: true,
     canHandleEnquiries: false,
@@ -195,6 +200,7 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canSeeGymAttendance: false,
     canManageMembers: false,
     canListAllMembers: false,
+    canAddPeople: false,
     canAuthorPlans: false,
     canAssignPlans: false,
     canHandleEnquiries: false,
@@ -263,10 +269,14 @@ export function isPlatformOperator(role: string | undefined | null): boolean {
   return role === 'SUPER_ADMIN';
 }
 
-/** Which chat screen the Profile menu points at, and what to call it. */
+/**
+ * Which chat screen the Profile menu points at, and what to call it.
+ *
+ * Everyone inside a gym now lands on the same private inbox — the shared "all
+ * member messages" desk is gone, because it let the front desk read the
+ * admin's conversations. A super admin has no gym inbox, only platform support.
+ */
 export function supportChatTarget(role: string | undefined | null): { screen: string; label: string } {
   if (role === 'SUPER_ADMIN') return { screen: 'SuperAdminChat', label: 'Gym admin support' };
-  if (role === 'GYM_ADMIN') return { screen: 'GymAdminChat', label: 'Member messages' };
-  if (role === 'STAFF') return { screen: 'GymAdminChat', label: 'Member messages' };
-  return { screen: 'Chat', label: 'Chat with the gym' };
+  return { screen: 'Messages', label: 'Messages' };
 }

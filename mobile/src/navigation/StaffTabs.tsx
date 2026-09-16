@@ -13,7 +13,10 @@ import AdminAttendanceScreen from '../screens/admin/AdminAttendanceScreen';
 import EnquiriesScreen from '../screens/staff/EnquiriesScreen';
 
 // Shared with the other shells.
-import GymAdminChatScreen from '../screens/member/GymAdminChatScreen';
+import MessagesScreen from '../screens/chat/MessagesScreen';
+import ChatContactsScreen from '../screens/chat/ContactsScreen';
+import DirectChatScreen from '../screens/chat/DirectChatScreen';
+import AddPersonScreen from '../screens/admin/AddPersonScreen';
 import ProfileScreen from '../screens/member/ProfileScreen';
 import EditProfileScreen from '../screens/member/EditProfileScreen';
 import ChangePasswordScreen from '../screens/member/ChangePasswordScreen';
@@ -55,6 +58,7 @@ function DeskStackNavigator() {
   return (
     <DeskStack.Navigator screenOptions={{ headerShown: false }}>
       <DeskStack.Screen name="DeskMain" component={AdminAttendanceScreen} />
+      <DeskStack.Screen name="AddPerson" component={AddPersonScreen} />
     </DeskStack.Navigator>
   );
 }
@@ -70,7 +74,9 @@ function EnquiriesStackNavigator() {
 function MessagesStackNavigator() {
   return (
     <MessagesStack.Navigator screenOptions={{ headerShown: false }}>
-      <MessagesStack.Screen name="MessagesMain" component={GymAdminChatScreen} />
+      <MessagesStack.Screen name="MessagesMain" component={MessagesScreen} />
+      <MessagesStack.Screen name="ChatContacts" component={ChatContactsScreen} />
+      <MessagesStack.Screen name="DirectChat" component={DirectChatScreen} />
     </MessagesStack.Navigator>
   );
 }
@@ -84,7 +90,9 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
       <ProfileStack.Screen name="Leave" component={LeaveScreen} />
       <ProfileStack.Screen name="Salary" component={SalaryScreen} />
-      <ProfileStack.Screen name="GymAdminChat" component={GymAdminChatScreen} />
+      <ProfileStack.Screen name="Messages" component={MessagesScreen} />
+      <ProfileStack.Screen name="ChatContacts" component={ChatContactsScreen} />
+      <ProfileStack.Screen name="DirectChat" component={DirectChatScreen} />
     </ProfileStack.Navigator>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Modal, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { Text } from '../../components/Text';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
@@ -158,10 +158,12 @@ export default function PayrollScreen({ navigation }: any) {
 }
 
 function PayModal({ visible, onClose, onSaved }: { visible: boolean; onClose: () => void; onSaved: () => void }) {
-  const [person, setPerson] = useState<any | null>(null);
-  const [amount, setAmount] = useState('');
   const [periodLabel, setPeriodLabel] = useState(() => new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' }));
   const [notes, setNotes] = useState('');
+  // Amount per person, keyed by user id. A row is in the run when it has an
+  // amount — that is what "edit each amount separately" means here: one run,
+  // one submit, but every figure is typed on its own line.
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
 
   const scope = useGymScope();
   const { data: trainers } = useQuery({
@@ -175,29 +177,42 @@ function PayModal({ visible, onClose, onSaved }: { visible: boolean; onClose: ()
     enabled: visible,
   });
 
-  const people = [
+  const people: any[] = [
     ...(Array.isArray(trainers) ? trainers : trainers?.data ?? []),
     ...(Array.isArray(staff) ? staff : staff?.data ?? []),
   ];
 
+  const items = useMemo(
+    () =>
+      Object.entries(amounts)
+        .map(([userId, raw]) => ({ userId, amount: Number(raw) }))
+        .filter((i) => i.amount > 0),
+    [amounts],
+  );
+  const runTotal = items.reduce((sum, i) => sum + i.amount, 0);
+
   const save = useMutation({
     mutationFn: () =>
-      api.post('/salary-payouts', {
-        userId: person.id,
-        amount: Number(amount),
+      api.post('/salary-payouts/batch', {
         periodLabel: periodLabel.trim(),
         notes: notes.trim() || undefined,
+        items,
       }) as any,
-    onSuccess: () => {
-      setPerson(null); setAmount(''); setNotes('');
+    onSuccess: (res: any) => {
+      setAmounts({});
+      setNotes('');
+      Alert.alert('Payroll run created', `${res?.created ?? items.length} payouts totalling ${money(res?.total ?? runTotal)}.`);
       onSaved();
     },
-    onError: (e: any) => Alert.alert('Could not record', e?.message ?? 'Try again'),
+    onError: (e: any) => Alert.alert('Could not create the run', e?.message ?? 'Try again'),
   });
 
+  const setAmount = (userId: string, value: string) =>
+    setAmounts((prev) => ({ ...prev, [userId]: value.replace(/[^0-9.]/g, '') }));
+
   const submit = () => {
-    if (!person) return Alert.alert('Pick who you are paying');
-    if (!(Number(amount) > 0)) return Alert.alert('Enter a valid amount');
+    if (!periodLabel.trim()) return Alert.alert('Name the pay period');
+    if (items.length === 0) return Alert.alert('Enter an amount for at least one person');
     save.mutate();
   };
 
@@ -206,52 +221,64 @@ function PayModal({ visible, onClose, onSaved }: { visible: boolean; onClose: ()
       <View style={styles.modalBg}>
         <View style={styles.sheet}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Record a salary payout</Text>
-
-          <Field label="Who are you paying?">
-            {person ? (
-              <PressScale style={styles.selected} onPress={() => setPerson(null)}>
-                <Avatar firstName={person.firstName} lastName={person.lastName} size={32} />
-                <Text style={styles.selectedName}>{person.firstName} {person.lastName}</Text>
-                <Icon name="x" size={16} color={colors.textMuted} />
-              </PressScale>
-            ) : (
-              <FlatList
-                data={people}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(p: any) => p.id}
-                contentContainerStyle={{ gap: spacing.sm }}
-                ListEmptyComponent={<Text style={styles.rowMeta}>No trainers or staff yet</Text>}
-                renderItem={({ item }: any) => (
-                  <PressScale style={styles.personChip} onPress={() => setPerson(item)}>
-                    <Avatar firstName={item.firstName} lastName={item.lastName} size={28} />
-                    <Text style={styles.personName} numberOfLines={1}>{item.firstName}</Text>
-                  </PressScale>
-                )}
-              />
-            )}
-          </Field>
-
-          <Field label="Amount (₹)">
-            <TextField value={amount} onChangeText={setAmount} placeholder="0" keyboardType="numeric" />
-          </Field>
+          <Text style={styles.sheetTitle}>Pay salaries</Text>
 
           <Field label="Pay period">
             <TextField value={periodLabel} onChangeText={setPeriodLabel} placeholder="e.g. October 2026" />
           </Field>
 
+          <Text style={styles.runHint}>Type an amount next to everyone you are paying. Leave a row blank to skip it.</Text>
+
+          <FlatList
+            data={people}
+            keyExtractor={(p: any) => p.id}
+            style={styles.runList}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={<Text style={styles.rowMeta}>No trainers or staff yet</Text>}
+            renderItem={({ item }: any) => {
+              const value = amounts[item.id] ?? '';
+              const active = Number(value) > 0;
+              return (
+                <View style={[styles.runRow, active && styles.runRowActive]}>
+                  <Avatar firstName={item.firstName} lastName={item.lastName} size={34} />
+                  <View style={styles.rowBody}>
+                    <Text style={styles.rowName} numberOfLines={1}>{item.firstName} {item.lastName}</Text>
+                    <Text style={styles.rowMeta}>{item.role === 'TRAINER' ? 'Trainer' : 'Staff'}</Text>
+                  </View>
+                  <TextInput
+                    style={[styles.amountInput, active && styles.amountInputActive]}
+                    value={value}
+                    onChangeText={(t) => setAmount(item.id, t)}
+                    placeholder="₹0"
+                    placeholderTextColor={colors.textFaint}
+                    keyboardType="numeric"
+                  />
+                </View>
+              );
+            }}
+          />
+
           <Field label="Notes">
-            <TextField value={notes} onChangeText={setNotes} placeholder="Optional" />
+            <TextField value={notes} onChangeText={setNotes} placeholder="Optional — applies to the whole run" />
           </Field>
 
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>{items.length} {items.length === 1 ? 'person' : 'people'}</Text>
+            <Text style={styles.totalValue}>{money(runTotal)}</Text>
+          </View>
+
           <Text style={styles.note}>
-            This only records the payment. Transfer the money with your own UPI or bank app, then mark it paid.
+            This only records the payments. Transfer the money with your own UPI or bank app, then mark them paid.
           </Text>
 
           <View style={styles.sheetBtns}>
             <Button title="Cancel" variant="secondary" style={{ flex: 1 }} onPress={onClose} />
-            <Button title="Record payout" style={{ flex: 2 }} onPress={submit} loading={save.isPending} />
+            <Button
+              title={items.length > 1 ? `Create ${items.length} payouts` : 'Create payout'}
+              style={{ flex: 2 }}
+              onPress={submit}
+              loading={save.isPending}
+            />
           </View>
         </View>
       </View>
@@ -277,6 +304,29 @@ const styles = StyleSheet.create({
   rowAmount: { color: colors.text, ...typography.h2, ...typography.number },
   pill: { borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 },
   pillText: { ...typography.micro, fontWeight: '700' },
+
+  runHint: { color: colors.textMuted, ...typography.caption, marginBottom: spacing.sm },
+  runList: { maxHeight: 260 },
+  runRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.sm,
+    borderRadius: radius.md, borderWidth: 1, borderColor: 'transparent',
+  },
+  runRowActive: { borderColor: tint(colors.primary, '55'), backgroundColor: tint(colors.primary, '10') },
+  amountInput: {
+    width: 96, textAlign: 'right', color: colors.text, ...typography.body,
+    backgroundColor: colors.surfaceRaised, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.surfaceRaised,
+    paddingHorizontal: spacing.sm, paddingVertical: 6,
+  },
+  amountInputActive: { borderColor: colors.primary },
+  totalRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: spacing.sm, paddingTop: spacing.sm,
+    borderTopWidth: 1, borderTopColor: colors.surfaceRaised,
+  },
+  totalLabel: { color: colors.textMuted, ...typography.caption },
+  totalValue: { color: colors.text, ...typography.title, ...typography.number },
   markBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.success,
     borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4,

@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { salaryPayoutsApi, usersApi } from '@/lib/api';
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
-import { PaySalaryModal } from '@/components/shared/PaySalaryModal';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
@@ -42,7 +41,6 @@ export default function PayrollPage() {
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [marking, setMarking] = useState<string | null>(null);
-  const [payTarget, setPayTarget] = useState<Person | null>(null);
   const [showPicker, setShowPicker] = useState(false);
 
   const fetchPayouts = () => {
@@ -115,7 +113,7 @@ export default function PayrollPage() {
           onClick={() => setShowPicker(true)}
           className="gradient-brand text-white font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-brand self-start"
         >
-          <Plus className="w-4 h-4" /> Pay salary
+          <Plus className="w-4 h-4" /> Pay salaries
         </button>
       </div>
 
@@ -233,51 +231,131 @@ export default function PayrollPage() {
         )}
       </div>
 
-      {/* Who to pay */}
       {showPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col animate-pop">
-            <div className="gradient-brand p-5">
-              <h2 className="font-extrabold text-xl text-white">Who are you paying?</h2>
-              <p className="text-sm text-white/70">Trainers and staff in your gym</p>
-            </div>
-            <div className="p-3 overflow-y-auto">
-              {people.length === 0 ? (
-                <p className="p-6 text-center text-sm text-muted-foreground">No trainers or staff yet.</p>
-              ) : people.map((person) => (
-                <button
-                  key={person.id}
-                  onClick={() => { setPayTarget(person); setShowPicker(false); }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted text-left transition-colors"
-                >
-                  <div className="w-9 h-9 rounded-lg gradient-brand text-white text-xs font-bold flex items-center justify-center">
-                    {getInitials(person.firstName, person.lastName)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{person.firstName} {person.lastName}</p>
-                    <p className="text-xs text-muted-foreground">{person.role === 'TRAINER' ? 'Trainer' : 'Staff'}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="p-4 border-t border-border">
-              <button onClick={() => setShowPicker(false)} className="w-full py-2.5 rounded-xl border border-border hover:bg-muted text-sm font-medium">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {payTarget && (
-        <PaySalaryModal
-          userId={payTarget.id}
-          userName={`${payTarget.firstName} ${payTarget.lastName}`}
-          payoutUpiVpa={payTarget.payoutUpiVpa}
-          onClose={() => setPayTarget(null)}
-          onSuccess={fetchPayouts}
+        <PayRunModal
+          people={people}
+          onClose={() => setShowPicker(false)}
+          onSuccess={() => { setShowPicker(false); fetchPayouts(); }}
         />
       )}
+
+    </div>
+  );
+}
+
+/**
+ * One payroll run. Everyone payable is listed with their own amount box, so a
+ * month is entered once and submitted once — rather than repeating a
+ * single-person form for each trainer and each staff member.
+ */
+function PayRunModal({
+  people, onClose, onSuccess,
+}: { people: Person[]; onClose: () => void; onSuccess: () => void }) {
+  const [periodLabel, setPeriodLabel] = useState(() => new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' }));
+  const [notes, setNotes] = useState('');
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const items = Object.entries(amounts)
+    .map(([userId, raw]) => ({ userId, amount: Number(raw) }))
+    .filter((i) => i.amount > 0);
+  const total = items.reduce((sum, i) => sum + i.amount, 0);
+
+  const submit = async () => {
+    if (!periodLabel.trim()) return toast.error('Name the pay period');
+    if (items.length === 0) return toast.error('Enter an amount for at least one person');
+    setSaving(true);
+    try {
+      const res: any = await salaryPayoutsApi.createBatch({ periodLabel: periodLabel.trim(), notes: notes.trim() || undefined, items });
+      toast.success(`${res?.created ?? items.length} payouts recorded`);
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Could not create the run');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg max-h-[86vh] overflow-hidden flex flex-col animate-pop">
+        <div className="gradient-brand p-5">
+          <h2 className="font-extrabold text-xl text-white">Pay salaries</h2>
+          <p className="text-sm text-white/70">Set each amount, create the run in one go</p>
+        </div>
+
+        <div className="p-4 space-y-3 overflow-y-auto">
+          <label className="block">
+            <span className="text-xs font-semibold text-muted-foreground">Pay period</span>
+            <input
+              value={periodLabel}
+              onChange={(e) => setPeriodLabel(e.target.value)}
+              className="mt-1 w-full h-10 px-3 text-sm bg-muted/50 border border-border/60 rounded-xl outline-none focus:border-primary/40"
+            />
+          </label>
+
+          {people.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">No trainers or staff yet.</p>
+          ) : (
+            <div className="divide-y divide-border/60 rounded-xl border border-border/60">
+              {people.map((person) => {
+                const value = amounts[person.id] ?? '';
+                return (
+                  <div key={person.id} className="flex items-center gap-3 p-3">
+                    <div className="w-9 h-9 rounded-lg gradient-brand text-white text-xs font-bold flex items-center justify-center">
+                      {getInitials(person.firstName, person.lastName)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{person.firstName} {person.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{person.role === 'TRAINER' ? 'Trainer' : 'Staff'}</p>
+                    </div>
+                    <input
+                      value={value}
+                      onChange={(e) => setAmounts((prev) => ({ ...prev, [person.id]: e.target.value.replace(/[^0-9.]/g, '') }))}
+                      placeholder="₹0"
+                      inputMode="decimal"
+                      className={cn(
+                        'w-28 h-10 px-3 text-sm text-right bg-muted/50 border rounded-xl outline-none tabular-nums',
+                        Number(value) > 0 ? 'border-primary/60' : 'border-border/60',
+                      )}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <label className="block">
+            <span className="text-xs font-semibold text-muted-foreground">Notes (applies to the whole run)</span>
+            <input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional"
+              className="mt-1 w-full h-10 px-3 text-sm bg-muted/50 border border-border/60 rounded-xl outline-none focus:border-primary/40"
+            />
+          </label>
+
+          <p className="text-xs text-muted-foreground">
+            This only records the payments. Transfer the money with your own UPI or bank app, then mark them paid.
+          </p>
+        </div>
+
+        <div className="p-4 border-t border-border flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground">{items.length} selected</p>
+            <p className="font-extrabold tabular-nums">{formatCurrency(total)}</p>
+          </div>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-border hover:bg-muted text-sm font-medium">
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={saving || items.length === 0}
+            className="gradient-brand text-white font-bold text-sm px-5 py-2.5 rounded-xl disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : items.length > 1 ? `Create ${items.length} payouts` : 'Create payout'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

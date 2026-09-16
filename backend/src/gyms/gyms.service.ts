@@ -130,7 +130,7 @@ export class GymsService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [totalMembers, activeMembers, todayAttendance, monthlyRevenue, pendingPayments] =
+    const [totalMembers, activeMembers, todayAttendance, monthlyRevenue, pendingPayments, openEnquiries, newEnquiriesToday] =
       await Promise.all([
         this.prisma.member.count({ where: { gymId, deletedAt: null } }),
         this.prisma.memberSubscription.count({ where: { gymId, status: 'ACTIVE' } }),
@@ -144,6 +144,13 @@ export class GymsService {
           _sum: { amount: true },
         }),
         this.prisma.payment.count({ where: { gymId, status: 'PENDING' } }),
+        // Enquiries the front desk has taken and nobody has closed out. The
+        // admin dashboard shows these so a walk-in logged by staff does not sit
+        // unseen until someone opens the enquiries screen.
+        this.prisma.enquiry.count({
+          where: { gymId, deletedAt: null, status: { in: ['NEW', 'CONTACTED', 'INTERESTED'] } },
+        }),
+        this.prisma.enquiry.count({ where: { gymId, deletedAt: null, createdAt: { gte: today } } }),
       ]);
 
     return {
@@ -152,6 +159,8 @@ export class GymsService {
       todayAttendance,
       monthlyRevenue: monthlyRevenue._sum.amount ?? 0,
       pendingPayments,
+      openEnquiries,
+      newEnquiriesToday,
     };
   }
 }

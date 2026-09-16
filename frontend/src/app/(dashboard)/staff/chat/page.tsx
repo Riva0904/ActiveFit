@@ -1,3 +1,3 @@
 'use client';
-import { MyChatPage } from '@/components/chat/MyChatPage';
-export default function StaffChatPage() { return <MyChatPage />; }
+import { DirectMessagesPage } from '@/components/chat/DirectMessagesPage';
+export default function ChatPage() { return <DirectMessagesPage />; }

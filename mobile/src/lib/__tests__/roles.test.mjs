@@ -141,11 +141,12 @@ test('the member tab bar is unchanged — a fence around the shipped app', () =>
 });
 
 test('chat routes to the right screen per role', () => {
+  // Everyone inside a gym shares one private inbox; the shared "all member
+  // messages" desk is gone, so no role routes to it any more.
   assert.equal(supportChatTarget('SUPER_ADMIN').screen, 'SuperAdminChat');
-  assert.equal(supportChatTarget('GYM_ADMIN').screen, 'GymAdminChat');
-  assert.equal(supportChatTarget('STAFF').screen, 'GymAdminChat');
-  assert.equal(supportChatTarget('MEMBER').screen, 'Chat');
-  assert.equal(supportChatTarget('TRAINER').screen, 'Chat');
+  for (const role of ['GYM_ADMIN', 'STAFF', 'TRAINER', 'MEMBER']) {
+    assert.equal(supportChatTarget(role).screen, 'Messages');
+  }
   for (const role of [...ROLES, undefined]) {
     assert.ok(supportChatTarget(role).label.length > 0);
   }

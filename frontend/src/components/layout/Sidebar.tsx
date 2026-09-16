@@ -15,7 +15,7 @@ import {
   QrCode, UserCheck, Package, ShoppingBag, BarChart3, Bell, FileText,
   Settings, LogOut, Zap, Star, TrendingUp, Utensils, Activity, X,
   ChevronRight, Award, ShieldCheck, Receipt, Crown, Lock, CalendarOff,
-  ClipboardList, MessageSquare, Wallet,
+  ClipboardList, MessageSquare, Wallet, UserPlus,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -59,6 +59,8 @@ const adminNav: NavItem[] = [
 const staffNav: NavItem[] = [
   { label: 'Dashboard',    href: '/staff',                icon: LayoutDashboard, color: 'text-orange-500' },
   { label: 'My Attendance', href: '/staff/check-in',      icon: Activity,        color: 'text-green-500' },
+  { label: 'Add Person',   href: '/staff/people',         icon: UserPlus,        color: 'text-blue-500' },
+  { label: 'Enquiries',    href: '/staff/enquiries',      icon: ClipboardList,   color: 'text-purple-500' },
   { label: 'Leave',        href: '/staff/leave',          icon: CalendarOff,     color: 'text-rose-500' },
   { label: 'Chat',         href: '/staff/chat',           icon: MessageSquare,   color: 'text-cyan-500' },
   { label: 'Notifications', href: '/staff/notifications', icon: Bell,            color: 'text-indigo-500' },
@@ -130,31 +132,26 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
   const [chatUnread, setChatUnread] = useState(0);
 
-  // Fetch once on mount + stay live via socket — not on every navigation, which
-  // was firing a full getAllConversations() round trip on every route change
-  // just to recompute a badge count.
+  // One count for my own threads — fetched once, then kept live by the socket.
+  // Everyone inside a gym has an inbox now, not just the admin.
   useEffect(() => {
-    if (user?.role !== 'GYM_ADMIN') return;
+    if (!user || user.role === 'SUPER_ADMIN') return;
 
-    chatApi.getAllConversations()
-      .then((res: any) => {
-        const convs = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-        setChatUnread(convs.reduce((s: number, c: any) => s + (c.unreadAdmin || 0), 0));
-      })
+    chatApi.getUnreadCount()
+      .then((res: any) => setChatUnread(res?.count ?? res?.data?.count ?? 0))
       .catch(() => {});
 
     const socket = getSocket();
     const handleMsg = (msg: any) => {
-      if (msg.sender?.role !== 'GYM_ADMIN') {
-        setChatUnread((n) => n + 1);
-      }
+      const fromMe = (msg.senderId ?? msg.sender?.id) === user.id;
+      if (!fromMe) setChatUnread((n) => n + 1);
     };
     socket.on('chat:message', handleMsg);
     return () => { socket.off('chat:message', handleMsg); };
-  }, [user?.role]);
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
-    if (pathname === '/admin/chat') setChatUnread(0);
+    if (pathname.endsWith('/chat')) setChatUnread(0);
   }, [pathname]);
 
   const navItems =

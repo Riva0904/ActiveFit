@@ -61,7 +61,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(_client: Socket) {}
 
-  // ─── GYM chat: member/trainer/staff ↔ gym admin ──────────────────────────
+  // ─── Direct chat: private, 1:1, inside one gym ───────────────────────────
+  //
+  // A message is emitted to exactly two rooms — the sender's and the
+  // recipient's. Nothing is broadcast to `gym-admins:` any more: that room is
+  // what used to put every member's messages in front of the whole front desk.
 
   @SubscribeMessage('chat:send')
   async handleSend(
@@ -78,28 +82,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const hasContent = !!payload?.content?.trim();
     const hasAttachment = !!payload?.attachmentUrl;
     if (!user?.gymId || (!hasContent && !hasAttachment)) return;
-
-    const isAdmin = user.role === 'GYM_ADMIN';
-    const conversationUserId = isAdmin ? payload.toUserId : user.id;
-    if (!conversationUserId) return;
+    if (!payload?.toUserId) return;
 
     try {
-      const msg = await this.chatService.saveMessage(
+      const { message, peerId } = await this.chatService.saveDirectMessage(
         user.gymId,
-        conversationUserId,
         user.id,
+        payload.toUserId,
         payload.content?.trim() ?? '',
         hasAttachment ? { url: payload.attachmentUrl!, name: payload.attachmentName ?? '', type: payload.attachmentType ?? '' } : undefined,
       );
-      if (isAdmin) {
-        this.server.to(`user:${conversationUserId}`).emit('chat:message', msg);
-        this.server.to(`user:${user.id}`).emit('chat:message', msg);
-      } else {
-        this.server.to(`user:${user.id}`).emit('chat:message', msg);
-        this.server.to(`gym-admins:${user.gymId}`).emit('chat:message', msg);
-      }
-    } catch {
-      client.emit('chat:error', { message: 'Failed to send message' });
+      const envelope = { ...message, peerId: user.id, threadWith: user.id };
+      this.server.to(`user:${peerId}`).emit('chat:message', envelope);
+      this.server.to(`user:${user.id}`).emit('chat:message', { ...message, peerId, threadWith: peerId });
+    } catch (e: any) {
+      // The service throws for "not in this gym" and "may not message" — say so
+      // rather than failing silently, so the UI can drop the thread.
+      client.emit('chat:error', { message: e?.message ?? 'Failed to send message' });
     }
   }
 
@@ -166,9 +165,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to(`user:${result.conversationUserId}`).emit('chat:deleted', deletedPayload);
         this.server.to('super-admin').emit('chat:deleted', deletedPayload);
       } else {
+        // Only the two people on the thread.
         this.server.to(`user:${result.conversationUserId}`).emit('chat:deleted', deletedPayload);
-        this.server.to(`user:${user.id}`).emit('chat:deleted', deletedPayload);
-        this.server.to(`gym-admins:${result.gymId}`).emit('chat:deleted', deletedPayload);
+        if (result.conversationPeerId) {
+          this.server.to(`user:${result.conversationPeerId}`).emit('chat:deleted', deletedPayload);
+        }
       }
     } catch { /* ignore */ }
   }
@@ -195,8 +196,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to('super-admin').emit('chat:reaction', update);
       } else {
         this.server.to(`user:${result.conversationUserId}`).emit('chat:reaction', update);
-        this.server.to(`user:${user.id}`).emit('chat:reaction', update);
-        this.server.to(`gym-admins:${result.gymId}`).emit('chat:reaction', update);
+        if (result.conversationPeerId) {
+          this.server.to(`user:${result.conversationPeerId}`).emit('chat:reaction', update);
+        }
       }
     } catch { /* ignore */ }
   }
@@ -209,10 +211,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() payload: { toUserId?: string },
   ) {
     const user = (client as any).user;
-    if (!user?.gymId) return;
-    const isAdmin = user.role === 'GYM_ADMIN';
-    const target = isAdmin ? `user:${payload?.toUserId}` : `gym-admins:${user.gymId}`;
-    client.to(target).emit('chat:typing', { userId: user.id, role: user.role });
+    if (!user?.gymId || !payload?.toUserId) return;
+    // Typing goes to the one person being typed at, never to a room.
+    client.to(`user:${payload.toUserId}`).emit('chat:typing', { userId: user.id, role: user.role });
   }
 
   @SubscribeMessage('chat:support-typing')

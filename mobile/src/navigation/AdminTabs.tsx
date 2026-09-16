@@ -23,9 +23,12 @@ import ProfileScreen from '../screens/member/ProfileScreen';
 import EditProfileScreen from '../screens/member/EditProfileScreen';
 import ChangePasswordScreen from '../screens/member/ChangePasswordScreen';
 import NotificationsScreen from '../screens/member/NotificationsScreen';
-import GymAdminChatScreen from '../screens/member/GymAdminChatScreen';
 import SuperAdminChatScreen from '../screens/member/SuperAdminChatScreen';
-import ChatScreen from '../screens/member/ChatScreen';
+import MessagesScreen from '../screens/chat/MessagesScreen';
+import ChatContactsScreen from '../screens/chat/ContactsScreen';
+import DirectChatScreen from '../screens/chat/DirectChatScreen';
+import AddPersonScreen from '../screens/admin/AddPersonScreen';
+import EnquiriesScreen from '../screens/staff/EnquiriesScreen';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createStackNavigator();
@@ -64,6 +67,7 @@ function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="DashboardMain" component={AdminDashboardScreen} />
+      <HomeStack.Screen name="Enquiries" component={EnquiriesScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -73,6 +77,8 @@ function PeopleStackNavigator() {
     <PeopleStack.Navigator screenOptions={{ headerShown: false }}>
       <PeopleStack.Screen name="PeopleMain" component={PeopleScreen} />
       <PeopleStack.Screen name="PersonDetail" component={PersonDetailScreen} />
+      <PeopleStack.Screen name="AddPerson" component={AddPersonScreen} />
+      <PeopleStack.Screen name="Enquiries" component={EnquiriesScreen} />
     </PeopleStack.Navigator>
   );
 }
@@ -113,9 +119,10 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
-      <ProfileStack.Screen name="GymAdminChat" component={GymAdminChatScreen} />
       <ProfileStack.Screen name="SuperAdminChat" component={SuperAdminChatScreen} />
-      <ProfileStack.Screen name="Chat" component={ChatScreen} />
+      <ProfileStack.Screen name="Messages" component={MessagesScreen} />
+      <ProfileStack.Screen name="ChatContacts" component={ChatContactsScreen} />
+      <ProfileStack.Screen name="DirectChat" component={DirectChatScreen} />
       <ProfileStack.Screen name="Subscription" component={SubscriptionScreen} />
     </ProfileStack.Navigator>
   );

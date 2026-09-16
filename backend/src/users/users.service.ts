@@ -30,6 +30,10 @@ export class UsersService {
     // GYM_ADMIN creates MEMBER, TRAINER, or STAFF within their gym
     const GYM_ROLES = ['MEMBER', 'TRAINER', 'STAFF'];
 
+    // Staff run the front desk, so they sign people up — but only the two roles
+    // that are customers of the gym, never another staff account or an admin.
+    const STAFF_CREATABLE = ['MEMBER', 'TRAINER'];
+
     if (creatorRole === 'SUPER_ADMIN') {
       const targetRole = data.role ?? 'GYM_ADMIN';
       if (targetRole !== 'GYM_ADMIN') {
@@ -40,6 +44,13 @@ export class UsersService {
       if (!GYM_ROLES.includes(targetRole)) {
         throw new ForbiddenException('Gym admin can only create member, trainer, or staff accounts');
       }
+    } else if (creatorRole === 'STAFF') {
+      const targetRole = data.role ?? 'MEMBER';
+      if (!STAFF_CREATABLE.includes(targetRole)) {
+        throw new ForbiddenException('Staff can only create member or trainer accounts');
+      }
+    } else {
+      throw new ForbiddenException('You cannot create accounts');
     }
 
     const targetRole = data.role ?? (creatorRole === 'SUPER_ADMIN' ? 'GYM_ADMIN' : 'MEMBER');
@@ -52,8 +63,9 @@ export class UsersService {
     if (emailExists) throw new ConflictException('Email already registered');
     if (phoneExists) throw new ConflictException('Phone number already registered');
 
-    // GYM_ADMIN always uses their own gymId; SUPER_ADMIN passes gymId in body
-    const gymId = creatorRole === 'GYM_ADMIN' ? creatorGymId : (data.gymId ?? null);
+    // A gym-scoped creator always uses their OWN gym, whatever the body says;
+    // only SUPER_ADMIN may name the gym.
+    const gymId = creatorRole === 'SUPER_ADMIN' ? (data.gymId ?? null) : creatorGymId;
 
     // Enforce SaaS plan limits when a gym admin creates gym-scoped roles
     if (gymId && ['MEMBER', 'TRAINER', 'STAFF'].includes(targetRole)) {

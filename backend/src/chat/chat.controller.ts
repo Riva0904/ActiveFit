@@ -12,7 +12,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { resolveGymScope } from '../common/utils/gym-scope';
 
 @ApiTags('Chat')
 @ApiBearerAuth()
@@ -49,55 +48,56 @@ export class ChatController {
     };
   }
 
-  // ── Non-admin: own GYM conversation ──────────────────────────────────────
+  // ── Direct messages: private, 1:1, inside one gym ────────────────────────
+  //
+  // Every handler here is scoped to the caller's own gym and own threads. There
+  // is deliberately NO "all conversations in the gym" endpoint any more: that
+  // was the shared desk inbox, and it let staff read the admin's messages.
 
-  @Get('my-conversation')
-  @Roles(Role.MEMBER, Role.TRAINER)
-  getMyConversation(@CurrentUser() user: any) {
-    return this.chatService.getOrCreateConversation(user.gymId, user.id);
+  @Get('contacts')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  getContacts(@CurrentUser() user: any, @Query('search') search?: string) {
+    return this.chatService.listContacts(user.gymId, user.id, user.role, search);
   }
 
-  @Get('my-messages')
-  @Roles(Role.MEMBER, Role.TRAINER)
-  getMyMessages(
+  @Get('threads')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  getThreads(@CurrentUser() user: any) {
+    return this.chatService.listThreads(user.gymId, user.id);
+  }
+
+  @Get('unread-count')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  async getUnreadCount(@CurrentUser() user: any) {
+    return { count: await this.chatService.unreadCount(user.gymId, user.id) };
+  }
+
+  @Get('threads/:peerId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  openThread(@CurrentUser() user: any, @Param('peerId') peerId: string) {
+    return this.chatService.getOrCreateDirect(user.gymId, user.id, peerId);
+  }
+
+  @Get('threads/:peerId/messages')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  getThreadMessages(
     @CurrentUser() user: any,
+    @Param('peerId') peerId: string,
     @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
   ) {
-    return this.chatService.getMessages(user.gymId, user.id, 50, skip);
+    return this.chatService.getDirectMessages(user.gymId, user.id, peerId, 50, skip);
   }
 
-  @Patch('my-conversation/read')
-  @Roles(Role.MEMBER, Role.TRAINER)
-  markMyRead(@CurrentUser() user: any) {
-    return this.chatService.markRead(user.gymId, user.id, false);
-  }
-
-  // ── Gym admin: all GYM conversations ─────────────────────────────────────
-
-  @Get('conversations')
+  @Patch('threads/:peerId/read')
   @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN, Role.STAFF, Role.SUPER_ADMIN)
-  getAllConversations(@CurrentUser() user: any, @Query('gymId') gymId?: string) {
-    return this.chatService.getAllConversations(resolveGymScope(user, gymId));
-  }
-
-  @Get('conversations/:userId/messages')
-  @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN, Role.STAFF, Role.SUPER_ADMIN)
-  getConversationMessages(
-    @CurrentUser() user: any,
-    @Param('userId') userId: string,
-    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
-    @Query('gymId') gymId?: string,
-  ) {
-    return this.chatService.getMessages(resolveGymScope(user, gymId), userId, 50, skip);
-  }
-
-  @Patch('conversations/:userId/read')
-  @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN, Role.STAFF)
-  markConversationRead(@CurrentUser() user: any, @Param('userId') userId: string) {
-    return this.chatService.markRead(user.gymId, userId, true);
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  markThreadRead(@CurrentUser() user: any, @Param('peerId') peerId: string) {
+    return this.chatService.markDirectRead(user.gymId, user.id, peerId);
   }
 
   // ── SUPPORT: gym admin ↔ super admin ─────────────────────────────────────

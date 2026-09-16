@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { BatchPayoutDto, MarkManyPaidDto } from './dto/batch-payout.dto';
 import { Role } from '@prisma/client';
 import { SalaryPayoutsService } from './salary-payouts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -22,6 +23,25 @@ export class SalaryPayoutsController {
   @RequiresFeature('PAYROLL')
   create(@Body() body: { userId: string; amount: number; periodLabel: string; notes?: string }, @CurrentUser() user: any) {
     return this.service.create(user.gymId, body);
+  }
+
+  @Post('batch')
+  @Roles(Role.GYM_ADMIN)
+  @RequiresFeature('PAYROLL')
+  @ApiOperation({ summary: 'One payroll run: several people, each with their own amount' })
+  createBatch(
+    @Body() body: BatchPayoutDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.service.createBatch(user.gymId, body);
+  }
+
+  @Patch('mark-paid')
+  @Roles(Role.GYM_ADMIN)
+  @RequiresFeature('PAYROLL')
+  @ApiOperation({ summary: 'Mark a whole run paid' })
+  markManyPaid(@Body() body: MarkManyPaidDto, @CurrentUser() user: any) {
+    return this.service.markManyPaid(user.gymId, body.ids);
   }
 
   @Get()

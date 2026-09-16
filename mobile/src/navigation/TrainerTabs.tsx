@@ -12,7 +12,9 @@ import TrainerSessionsScreen from '../screens/trainer/SessionsScreen';
 import TrainerAttendanceScreen from '../screens/trainer/AttendanceScreen';
 import ProfileScreen from '../screens/member/ProfileScreen';
 
-import TrainerChatScreen from '../screens/trainer/ChatScreen';
+import MessagesScreen from '../screens/chat/MessagesScreen';
+import ChatContactsScreen from '../screens/chat/ContactsScreen';
+import DirectChatScreen from '../screens/chat/DirectChatScreen';
 import TrainerNotificationsScreen from '../screens/trainer/NotificationsScreen';
 import LeaveScreen from '../screens/trainer/LeaveScreen';
 import SalaryScreen from '../screens/trainer/SalaryScreen';
@@ -67,7 +69,9 @@ function TrainerProfileStackNavigator() {
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-      <ProfileStack.Screen name="Chat" component={TrainerChatScreen} />
+      <ProfileStack.Screen name="Messages" component={MessagesScreen} />
+      <ProfileStack.Screen name="ChatContacts" component={ChatContactsScreen} />
+      <ProfileStack.Screen name="DirectChat" component={DirectChatScreen} />
       <ProfileStack.Screen name="Notifications" component={TrainerNotificationsScreen} />
       <ProfileStack.Screen name="Leave" component={LeaveScreen} />
       <ProfileStack.Screen name="Salary" component={SalaryScreen} />

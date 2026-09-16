@@ -16,6 +16,9 @@ interface GymStats {
   todayAttendance: number;
   monthlyRevenue: number;
   pendingPayments: number;
+  /** Walk-ins the front desk logged and nobody has closed out yet. */
+  openEnquiries?: number;
+  newEnquiriesToday?: number;
 }
 
 interface Subscription {
@@ -81,6 +84,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
     { label: 'Expenses', icon: 'receipt', tab: 'Money', screen: 'Expenses' },
     { label: 'Payroll', icon: 'cash-multiple', tab: 'Money', screen: 'Payroll' },
     { label: 'Plans', icon: 'clipboard-text-outline', tab: 'Plans', screen: 'PlansMain' },
+    { label: 'Enquiries', icon: 'inbox', tab: 'Home', screen: 'Enquiries', badge: s?.openEnquiries ?? 0 },
   ];
 
   return (
@@ -122,6 +126,32 @@ export default function AdminDashboardScreen({ navigation }: any) {
             <Text style={styles.moneyLabel}>Pending payments</Text>
           </Card>
         </View>
+      </Enter>
+
+      {/* Enquiries — front desk work lands here, so a walk-in staff logged is
+          visible on the admin's own home screen rather than only in their tab. */}
+      <Enter index={2}>
+        <Card
+          accent={(s?.openEnquiries ?? 0) > 0 ? 'warning' : undefined}
+          onPress={() => navigation.navigate('Enquiries')}
+        >
+          <View style={styles.enquiryRow}>
+            <View style={styles.enquiryIcon}>
+              <Icon name="inbox" size={18} color={colors.cyan} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.enquiryValue}>
+                {s?.openEnquiries ?? 0} open {(s?.openEnquiries ?? 0) === 1 ? 'enquiry' : 'enquiries'}
+              </Text>
+              <Text style={styles.enquiryLabel}>
+                {(s?.newEnquiriesToday ?? 0) > 0
+                  ? `${s?.newEnquiriesToday} added today by you or the front desk`
+                  : 'Walk-ins and calls your team logged'}
+              </Text>
+            </View>
+            <Icon name="chevron-right" size={18} color={colors.textMuted} />
+          </View>
+        </Card>
       </Enter>
 
       {/* Subscription */}
@@ -205,6 +235,13 @@ const styles = StyleSheet.create({
   greeting: { color: colors.textMuted, ...typography.label },
   name: { color: colors.text, fontSize: 24, fontWeight: '800', marginTop: 2 },
   gymBadge: { marginTop: 6 },
+  enquiryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  enquiryIcon: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: tint(colors.cyan, '1F'),
+    alignItems: 'center', justifyContent: 'center',
+  },
+  enquiryValue: { color: colors.text, ...typography.h2 },
+  enquiryLabel: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
   statCard: { marginBottom: 0 },
 
   moneyRow: { flexDirection: 'row', gap: spacing.md },

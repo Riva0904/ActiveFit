@@ -221,6 +221,10 @@ export const platformSettingsApi = {
 // Salary Payouts (gym admin -> trainer/staff, manual transfer + record only)
 export const salaryPayoutsApi = {
   create: (data: { userId: string; amount: number; periodLabel: string; notes?: string }) => api.post('/salary-payouts', data),
+  // One run, many people, an amount each.
+  createBatch: (data: { periodLabel: string; notes?: string; items: { userId: string; amount: number }[] }) =>
+    api.post('/salary-payouts/batch', data),
+  markManyPaid: (ids: string[]) => api.patch('/salary-payouts/mark-paid', { ids }),
   getAll: (params?: any) => api.get('/salary-payouts', { params }),
   getMine: () => api.get('/salary-payouts/my'),
   markPaid: (id: string) => api.patch(`/salary-payouts/${id}/mark-paid`),
@@ -287,14 +291,14 @@ export const notificationsApi = {
 
 // Chat — NestJS returns raw arrays/objects (no {success,data} wrapper)
 export const chatApi = {
-  // Non-admin GYM chat
-  getMyConversation: () => api.get('/chat/my-conversation'),
-  getMyMessages: (skip = 0) => api.get('/chat/my-messages', { params: { skip } }),
-  markMyRead: () => api.patch('/chat/my-conversation/read'),
-  // GymAdmin GYM chat
-  getAllConversations: () => api.get('/chat/conversations'),
-  getConversationMessages: (userId: string, skip = 0) => api.get(`/chat/conversations/${userId}/messages`, { params: { skip } }),
-  markConversationRead: (userId: string) => api.patch(`/chat/conversations/${userId}/read`),
+  // Direct messages — private 1:1 threads inside one gym. There is no
+  // gym-wide inbox: a thread is only readable by the two people on it.
+  getContacts: (search?: string) => api.get('/chat/contacts', { params: search ? { search } : {} }),
+  getThreads: () => api.get('/chat/threads'),
+  openThread: (peerId: string) => api.get(`/chat/threads/${peerId}`),
+  getThreadMessages: (peerId: string, skip = 0) => api.get(`/chat/threads/${peerId}/messages`, { params: { skip } }),
+  markThreadRead: (peerId: string) => api.patch(`/chat/threads/${peerId}/read`),
+  getUnreadCount: () => api.get('/chat/unread-count'),
   // GymAdmin ↔ SuperAdmin support chat
   getSupportConversation: () => api.get('/chat/support/conversation'),
   getSupportMessages: (skip = 0) => api.get('/chat/support/messages', { params: { skip } }),

@@ -6,7 +6,7 @@ import {
   Users, QrCode, TrendingUp, AlertTriangle, Activity,
   CheckCircle, Clock, BarChart3, ArrowRight,
   UserPlus, CreditCard, Dumbbell, Zap, Crown, Lock, Loader2,
-  HeartHandshake, Send,
+  HeartHandshake, Send, ClipboardList,
 } from 'lucide-react';
 import { StatsCard } from '@/components/shared/StatsCard';
 import { attendanceApi, gymsApi, membershipsApi, paymentsApi, usersApi } from '@/lib/api';
@@ -123,6 +123,15 @@ export default function AdminDashboard() {
     { title: "Today's Attendance", value: gymStats?.todayAttendance ?? '—', subtitle: 'Check-ins today', icon: QrCode, gradient: 'green', trend: { value: 12 } },
     { title: 'Monthly Revenue', value: gymStats?.monthlyRevenue ?? 0, isCurrency: true, subtitle: 'This month', icon: TrendingUp, gradient: 'orange', trend: { value: 15 } },
     { title: 'Pending Payments', value: gymStats?.pendingPayments ?? '—', subtitle: 'Require attention', icon: AlertTriangle, gradient: 'rose', trend: { value: -3 } },
+    // Enquiries the front desk logged. On the dashboard so a staff-entered
+    // walk-in is seen without opening the enquiries screen.
+    {
+      title: 'Open Enquiries',
+      value: gymStats?.openEnquiries ?? '—',
+      subtitle: (gymStats?.newEnquiriesToday ?? 0) > 0 ? `${gymStats?.newEnquiriesToday} added today` : 'Walk-ins and calls',
+      icon: ClipboardList,
+      gradient: 'purple',
+    },
   ];
 
   const maxAttendance = Math.max(...weeklyData.map(d => d.count), 1);
@@ -221,7 +230,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 stagger-children">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 stagger-children">
         {stats.map((s) => (
           <StatsCard key={s.title} {...s} className="animate-slide-up" />
         ))}

@@ -4,8 +4,10 @@ import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useGymScope } from '../../hooks/useGymScope';
+import { can } from '../../lib/roles';
+import { useAuthStore } from '../../store/authStore';
 import {
-  Avatar, Card, Chip, ChipRow, EmptyState, Header, Icon, Loading, PressScale, Screen, TextField,
+  Avatar, Card, Chip, ChipRow, EmptyState, GymBadge, Header, Icon, Loading, PressScale, Screen, TextField,
 } from '../../components';
 import { colors, radius, spacing, tint, typography } from '../../theme';
 
@@ -34,6 +36,7 @@ export default function PeopleScreen({ navigation }: any) {
   const [role, setRole] = useState<Role>('MEMBER');
   const [search, setSearch] = useState('');
   const scope = useGymScope();
+  const user = useAuthStore((s) => s.user);
 
   const { data, isLoading, isRefetching, refetch } = useQuery({
     queryKey: scope.key(['admin-people', role]),
@@ -54,7 +57,21 @@ export default function PeopleScreen({ navigation }: any) {
   return (
     <Screen padded={false}>
       <View style={styles.pad}>
-        <Header title="People" subtitle={`${filtered.length} ${role.toLowerCase()}${filtered.length === 1 ? '' : 's'}`} />
+        <Header
+          title="People"
+          subtitle={`${filtered.length} ${role.toLowerCase()}${filtered.length === 1 ? '' : 's'}`}
+          eyebrow={<GymBadge />}
+          right={
+            can(user, 'canAddPeople') ? (
+              <PressScale
+                style={styles.addBtn}
+                onPress={() => navigation.navigate('AddPerson', { role: role === 'STAFF' ? 'STAFF' : role })}
+              >
+                <Icon name="user-plus" size={19} color={colors.white} />
+              </PressScale>
+            ) : undefined
+          }
+        />
 
         <ChipRow>
           {TABS.map((t) => (
@@ -108,6 +125,7 @@ export default function PeopleScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   pad: { paddingHorizontal: spacing.screen },
   searchWrap: { marginTop: spacing.md, marginBottom: spacing.sm },
   list: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl, gap: spacing.sm },

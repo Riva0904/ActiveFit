@@ -34,6 +34,7 @@ const mockPrisma = {
   memberSubscription: { count: jest.fn() },
   attendance: { count: jest.fn() },
   payment: { aggregate: jest.fn(), count: jest.fn() },
+  enquiry: { count: jest.fn() },
 };
 
 describe('GymsService', () => {
@@ -253,10 +254,16 @@ describe('GymsService', () => {
       mockPrisma.attendance.count.mockResolvedValue(45);
       mockPrisma.payment.aggregate.mockResolvedValue({ _sum: { amount: 75000 } });
       mockPrisma.payment.count.mockResolvedValue(3);
+      mockPrisma.enquiry.count.mockResolvedValueOnce(7).mockResolvedValueOnce(2);
 
       const result: any = await service.getStats('gym-001');
 
-      expect(result).toEqual({ totalMembers: 150, activeMembers: 120, todayAttendance: 45, monthlyRevenue: 75000, pendingPayments: 3 });
+      expect(result).toEqual({
+        totalMembers: 150, activeMembers: 120, todayAttendance: 45, monthlyRevenue: 75000, pendingPayments: 3,
+        // Walk-ins the front desk logged: the admin dashboard surfaces them so
+        // staff-entered enquiries do not sit unseen.
+        openEnquiries: 7, newEnquiriesToday: 2,
+      });
       // totalMembers comes from Member (deletedAt: null), not a raw User count
       expect(mockPrisma.member.count).toHaveBeenCalledWith({ where: { gymId: 'gym-001', deletedAt: null } });
     });
@@ -267,6 +274,7 @@ describe('GymsService', () => {
       mockPrisma.attendance.count.mockResolvedValue(0);
       mockPrisma.payment.aggregate.mockResolvedValue({ _sum: { amount: null } });
       mockPrisma.payment.count.mockResolvedValue(0);
+      mockPrisma.enquiry.count.mockResolvedValue(0);
 
       const result: any = await service.getStats('gym-001');
       expect(result.monthlyRevenue).toBe(0);

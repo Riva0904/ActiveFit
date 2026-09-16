@@ -22,7 +22,7 @@ export class TrainersController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(Role.GYM_ADMIN)
+  @Roles(Role.GYM_ADMIN, Role.STAFF)
   create(@Body() body: any, @CurrentUser() user: any) {
     return this.usersService.createUser({ ...body, role: 'TRAINER' }, user.role, user.gymId);
   }

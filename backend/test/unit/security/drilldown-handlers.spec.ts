@@ -7,7 +7,6 @@ import { MembershipsController } from '../../../src/memberships/memberships.cont
 import { ExpensesController } from '../../../src/expenses/expenses.controller';
 import { SalaryPayoutsController } from '../../../src/salary-payouts/salary-payouts.controller';
 import { GymSubscriptionsController } from '../../../src/gym-subscriptions/gym-subscriptions.controller';
-import { ChatController } from '../../../src/chat/chat.controller';
 import { EnquiriesController } from '../../../src/enquiries/enquiries.controller';
 
 const OWN = 'gym-own';
@@ -59,8 +58,6 @@ const cases: Case[] = [
   ['subscription me', (u, g) => new GymSubscriptionsController(svc()).me(u, g) as any, 0],
   ['subscription history', (u, g) => new GymSubscriptionsController(svc()).history(u, g) as any, 0],
   ['subscription requests', (u, g) => new GymSubscriptionsController(svc()).requests(u, g) as any, 0],
-  ['chat conversations', (u, g) => new ChatController(svc()).getAllConversations(u, g) as any, 0],
-  ['chat conversation messages', (u, g) => new ChatController(svc()).getConversationMessages(u, 'm1', 0, g) as any, 0],
   ['enquiries list', (u, g) => new EnquiriesController(svc()).findAll(u, undefined, undefined, undefined, undefined, undefined, g) as any, 0],
   ['enquiries kanban-stats', (u, g) => new EnquiriesController(svc()).kanbanStats(u, g) as any, 0],
   ['enquiries detail', (u, g) => new EnquiriesController(svc()).findOne('e1', u, g) as any, 1],

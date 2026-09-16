@@ -210,7 +210,11 @@ enum SupplementOrderStatus {
 }
 
 enum ChatType {
+  /// Legacy shared "gym desk" thread. Migrated to DIRECT; kept so old rows read.
   GYM
+  /// Private 1:1 thread between two people in the same gym.
+  DIRECT
+  /// Gym admin ↔ super admin.
   SUPPORT
 }
 
@@ -451,6 +455,7 @@ model User {
   notifications     Notification[]
   leaveRequests     LeaveRequest[]
   conversations     ChatConversation[] @relation("UserConversations")
+  peerConversations ChatConversation[] @relation("PeerConversations")
   chatMessages      ChatMessage[]      @relation("SentChatMessages")
   attendanceRecords Attendance[]       @relation("AttendanceUser")
   supplementOrders  SupplementOrder[]
@@ -1069,11 +1074,22 @@ model PtSession {
   @@map("pt_sessions")
 }
 
+/// A chat thread.
+///
+/// DIRECT is a private 1:1 thread between `user` and `peer`, and the pair is
+/// stored in a canonical order (userId < peerId) so a pair has exactly one row
+/// whichever side opens it. SUPPORT is the gym admin ↔ super admin thread and
+/// has no peer.
+///
+/// Unread counters follow the two sides, not roles: `unreadUser` is what
+/// `userId` has not read, `unreadAdmin` what `peerId` has not read (the names
+/// predate direct messages; see chat.service for the accessors).
 model ChatConversation {
   id            String    @id @default(uuid())
   gymId         String
   userId        String
-  type          ChatType  @default(GYM)
+  peerId        String?
+  type          ChatType  @default(DIRECT)
   lastMessage   String?
   lastMessageAt DateTime  @default(now())
   unreadAdmin   Int       @default(0)
@@ -1084,11 +1100,13 @@ model ChatConversation {
 
   gym      Gym           @relation(fields: [gymId], references: [id])
   user     User          @relation("UserConversations", fields: [userId], references: [id])
+  peer     User?         @relation("PeerConversations", fields: [peerId], references: [id])
   messages ChatMessage[]
 
-  @@unique([gymId, userId, type])
+  @@unique([gymId, userId, peerId, type])
   @@index([gymId])
   @@index([type])
+  @@index([peerId])
   @@map("chat_conversations")
 }
 

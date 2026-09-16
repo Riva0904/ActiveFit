@@ -107,6 +107,7 @@ function AddEnquiryModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
 
 export default function EnquiriesPage() {
   const { user } = useAuthStore();
+  const isAdmin = user?.role === 'GYM_ADMIN' || user?.role === 'SUPER_ADMIN';
   const [enquiries, setEnquiries] = useState<any[]>([]);
   const [stats, setStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -275,7 +276,10 @@ export default function EnquiriesPage() {
                             Mark Interested
                           </button>
                         )}
-                        {(enq.status === 'INTERESTED' || enq.status === 'CONTACTED') && (
+                        {/* Convert and delete are gym-admin only on the backend;
+                            staff work the list but do not turn enquiries into
+                            accounts or remove them. */}
+                        {isAdmin && (enq.status === 'INTERESTED' || enq.status === 'CONTACTED') && (
                           <button
                             onClick={() => convertEnquiry(enq)}
                             disabled={actionLoading === enq.id + 'convert'}
@@ -294,9 +298,11 @@ export default function EnquiriesPage() {
                       </div>
                     </div>
                   )}
-                  <button onClick={() => deleteEnquiry(enq.id)} className="p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {isAdmin && (
+                    <button onClick={() => deleteEnquiry(enq.id)} className="p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -23,6 +23,62 @@ export class SalaryPayoutsService {
     });
   }
 
+  /**
+   * One payroll run: several people, each with their own amount, created
+   * together. All-or-nothing — a half-written run would leave the admin
+   * guessing who still needs paying.
+   */
+  async createBatch(
+    gymId: string,
+    data: { periodLabel: string; notes?: string; items: { userId: string; amount: number }[] },
+  ) {
+    const items = data.items ?? [];
+    if (items.length === 0) throw new BadRequestException('Add at least one person to the run');
+    if (items.some((i) => !i.amount || i.amount <= 0)) {
+      throw new BadRequestException('Every amount must be greater than zero');
+    }
+    const ids = items.map((i) => i.userId);
+    if (new Set(ids).size !== ids.length) throw new BadRequestException('The same person appears twice in this run');
+
+    const recipients = await this.prisma.user.findMany({
+      where: { id: { in: ids }, gymId, role: { in: ['TRAINER', 'STAFF'] } },
+      select: { id: true },
+    });
+    if (recipients.length !== ids.length) {
+      throw new NotFoundException('One or more people are not trainers or staff in this gym');
+    }
+
+    const created = await this.prisma.$transaction(
+      items.map((i) =>
+        this.prisma.salaryPayout.create({
+          data: {
+            gymId,
+            userId: i.userId,
+            amount: i.amount,
+            periodLabel: data.periodLabel,
+            notes: data.notes ?? null,
+          },
+        }),
+      ),
+    );
+
+    return {
+      created: created.length,
+      total: created.reduce((sum, p) => sum + p.amount, 0),
+      payouts: created,
+    };
+  }
+
+  /** Marks a whole run paid in one go, ignoring any already-paid rows. */
+  async markManyPaid(gymId: string, ids: string[]) {
+    if (!ids?.length) throw new BadRequestException('Nothing to mark paid');
+    const { count } = await this.prisma.salaryPayout.updateMany({
+      where: { id: { in: ids }, gymId, status: 'PENDING' },
+      data: { status: 'PAID', paidAt: new Date() },
+    });
+    return { paid: count };
+  }
+
   async findAllForGym(gymId: string, query: any) {
     const { page = 1, limit = 20, status, userId } = query;
     const where: any = { gymId };
