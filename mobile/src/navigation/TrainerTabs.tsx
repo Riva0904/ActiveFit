@@ -8,13 +8,12 @@ import { colors, spacing } from '../theme';
 
 import TrainerHomeScreen from '../screens/trainer/HomeScreen';
 import TrainerMembersScreen from '../screens/trainer/MembersScreen';
+import TrainerMemberDetailScreen from '../screens/trainer/MemberDetailScreen';
 import TrainerSessionsScreen from '../screens/trainer/SessionsScreen';
 import TrainerAttendanceScreen from '../screens/trainer/AttendanceScreen';
 import ProfileScreen from '../screens/member/ProfileScreen';
 
-import MessagesScreen from '../screens/chat/MessagesScreen';
-import ChatContactsScreen from '../screens/chat/ContactsScreen';
-import DirectChatScreen from '../screens/chat/DirectChatScreen';
+import { chatScreens } from './chatScreens';
 import TrainerNotificationsScreen from '../screens/trainer/NotificationsScreen';
 import LeaveScreen from '../screens/trainer/LeaveScreen';
 import SalaryScreen from '../screens/trainer/SalaryScreen';
@@ -29,6 +28,7 @@ const Tab = createBottomTabNavigator();
 const SessionsStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 const PlansStack = createStackNavigator();
+const MembersStack = createStackNavigator();
 
 const TAB_ICONS: Record<string, IconName> = {
   Home: 'home', Members: 'users', Sessions: 'dumbbell', Plans: 'clipboard-text-outline', Attendance: 'calendar', Profile: 'user',
@@ -40,6 +40,15 @@ function TabIcon({ name, focused, color }: { name: string; focused: boolean; col
       <Icon name={TAB_ICONS[name] ?? 'home'} size={24} color={color} />
       <View style={[styles.dot, { opacity: focused ? 1 : 0 }]} />
     </View>
+  );
+}
+
+function MembersStackNavigator() {
+  return (
+    <MembersStack.Navigator screenOptions={{ headerShown: false }}>
+      <MembersStack.Screen name="MembersList" component={TrainerMembersScreen} />
+      <MembersStack.Screen name="TrainerMemberDetail" component={TrainerMemberDetailScreen} />
+    </MembersStack.Navigator>
   );
 }
 
@@ -69,9 +78,7 @@ function TrainerProfileStackNavigator() {
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-      <ProfileStack.Screen name="Messages" component={MessagesScreen} />
-      <ProfileStack.Screen name="ChatContacts" component={ChatContactsScreen} />
-      <ProfileStack.Screen name="DirectChat" component={DirectChatScreen} />
+      {chatScreens(ProfileStack)}
       <ProfileStack.Screen name="Notifications" component={TrainerNotificationsScreen} />
       <ProfileStack.Screen name="Leave" component={LeaveScreen} />
       <ProfileStack.Screen name="Salary" component={SalaryScreen} />
@@ -100,7 +107,7 @@ export default function TrainerTabs() {
       })}
     >
       <Tab.Screen name="Home" component={TrainerHomeScreen} />
-      <Tab.Screen name="Members" component={TrainerMembersScreen} />
+      <Tab.Screen name="Members" component={MembersStackNavigator} />
       <Tab.Screen name="Sessions" component={SessionsStackNavigator} />
       <Tab.Screen name="Plans" component={PlansStackNavigator} />
       <Tab.Screen name="Attendance" component={TrainerAttendanceScreen} />

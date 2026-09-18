@@ -6,17 +6,20 @@ import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { can } from '../../lib/roles';
 import { MobileHomeData } from '../../types';
-import { usePushToken } from '../../hooks/usePushToken';
 import { AnimatedBar, Avatar, Card, Enter, GlowOrb, GymBadge, Icon, Loading, PressScale, PulseRing, Screen, SectionTitle, StatPill, StatRow, type IconName } from '../../components';
 import { ActivityChecklist, RunSummaryCard, type ChecklistItem } from '../../components/widgets';
 import type { ActivityRun } from '../../types';
-import { useDailyChecklistStore } from '../../store/dailyChecklistStore';
+import { useDailyLog } from '../../hooks/useDailyLog';
+import { useRunStore } from '../../store/runStore';
+import { formatDistance } from '../../lib/run';
 import { colors, radius, shadow, spacing, tint, typography } from '../../theme';
+
+const GLASS_ML = 250;
+const WATER_GOAL_ML = 3000;
 
 export default function HomeScreen({ navigation }: any) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  usePushToken();
 
   const { data, isLoading, refetch, isRefetching } = useQuery<MobileHomeData>({
     queryKey: ['mobile-home'],
@@ -28,6 +31,12 @@ export default function HomeScreen({ navigation }: any) {
     mutationFn: () => api.post('/mobile/checkin', {}) as any,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mobile-home'] }),
     onError: (err: any) => Alert.alert('Check-in failed', err?.message ?? 'Try again'),
+  });
+
+  const goalMutation = useMutation({
+    mutationFn: (weeklyGoal: number) => api.put('/mobile/weekly-goal', { weeklyGoal }) as any,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['mobile-home'] }),
+    onError: (err: any) => Alert.alert('Could not update goal', err?.message ?? 'Try again'),
   });
 
   const checkOutMutation = useMutation({
@@ -68,8 +77,14 @@ export default function HomeScreen({ navigation }: any) {
   });
   const ranToday = !!latestRun && new Date(latestRun.startedAt).toDateString() === new Date().toDateString();
 
-  const checklistDone = useDailyChecklistStore((s) => s.isDone);
-  const checklistToggle = useDailyChecklistStore((s) => s.toggle);
+  const { isDone: checklistDone, toggle: checklistToggle, log: dailyLog, setWater } = useDailyLog(isMember);
+
+  // A run restored by App.tsx after a force-stop was previously invisible: the
+  // member had to guess that navigating to Run would bring it back.
+  const runStatus = useRunStore((s) => s.status);
+  const runDistance = useRunStore((s) => s.distanceMeters);
+  const runInterrupted = useRunStore((s) => s.interrupted);
+  const runInProgress = runStatus === 'running' || runStatus === 'paused';
 
   if (isLoading) return <Loading fullScreen text={'Connecting…\nFirst load may take 60s'} />;
 
@@ -77,6 +92,10 @@ export default function HomeScreen({ navigation }: any) {
   const end = data?.membership ? new Date(data.membership.endDate) : null;
   const daysLeft = end ? Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000)) : null;
   const busy = checkInMutation.isPending || checkOutMutation.isPending;
+
+  const weeklyGoal = data?.weeklyGoal ?? 3;
+  const visitsThisWeek = data?.visitsThisWeek ?? 0;
+  const goalMet = visitsThisWeek >= weeklyGoal;
 
   const monthVisits = ((calendar as any)?.presentDates ?? []).length;
   const currentStreak = (streak as any)?.currentStreak ?? 0;
@@ -189,6 +208,24 @@ export default function HomeScreen({ navigation }: any) {
         </Enter>
       )}
 
+      {/* ── Run in progress ── */}
+      {isMember && runInProgress && (
+        <Enter index={1}>
+          <PressScale style={styles.runBanner} onPress={() => navigation.navigate('Run')} scaleTo={0.97}>
+            <View style={styles.runBannerIcon}><Icon name="run" size={22} color={colors.info} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.runBannerTitle}>
+                {runStatus === 'running' ? 'Run in progress' : runInterrupted ? 'Run was interrupted' : 'Run paused'}
+              </Text>
+              <Text style={styles.runBannerSub}>
+                {formatDistance(runDistance)} so far · tap to {runStatus === 'running' ? 'open' : 'resume'}
+              </Text>
+            </View>
+            <Icon name="chevron-right" size={20} color={colors.textMuted} />
+          </PressScale>
+        </Enter>
+      )}
+
       {/* ── Membership ── */}
       {!isMember ? (
         <Card accent="muted" enter={2}>
@@ -228,6 +265,77 @@ export default function HomeScreen({ navigation }: any) {
         <Enter index={3}>
           <SectionTitle title="Today" action={{ label: `${checklist.filter((c) => c.done).length}/${checklist.length} done`, onPress: () => {} }} />
           <ActivityChecklist items={checklist} />
+        </Enter>
+      )}
+
+      {/* ── Weekly goal ── */}
+      {isMember && (
+        <Enter index={3}>
+          <SectionTitle title="This week" />
+          <Card padding="md">
+            <View style={styles.goalTop}>
+              <View>
+                <Text style={styles.goalValue}>
+                  {visitsThisWeek}<Text style={styles.goalOf}> of {weeklyGoal}</Text>
+                </Text>
+                <Text style={styles.goalLabel}>
+                  {goalMet
+                    ? 'Goal hit — nice work'
+                    : `${weeklyGoal - visitsThisWeek} more ${weeklyGoal - visitsThisWeek === 1 ? 'session' : 'sessions'} to go`}
+                </Text>
+              </View>
+              <View style={styles.goalBtns}>
+                <TouchableOpacity
+                  style={[styles.goalBtn, weeklyGoal <= 1 && styles.goalBtnOff]}
+                  disabled={weeklyGoal <= 1 || goalMutation.isPending}
+                  onPress={() => goalMutation.mutate(weeklyGoal - 1)}
+                >
+                  <Icon name="minus" size={16} color={weeklyGoal <= 1 ? colors.textMuted : colors.text} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.goalBtn, weeklyGoal >= 7 && styles.goalBtnOff]}
+                  disabled={weeklyGoal >= 7 || goalMutation.isPending}
+                  onPress={() => goalMutation.mutate(weeklyGoal + 1)}
+                >
+                  <Icon name="plus" size={16} color={weeklyGoal >= 7 ? colors.textMuted : colors.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <AnimatedBar
+              progress={weeklyGoal > 0 ? Math.min(1, visitsThisWeek / weeklyGoal) : 0}
+              color={goalMet ? colors.success : colors.primary}
+              style={styles.bar}
+            />
+          </Card>
+        </Enter>
+      )}
+
+      {/* ── Water ── */}
+      {isMember && (
+        <Enter index={4}>
+          <SectionTitle title="Hydration" />
+          <Card padding="md">
+            <View style={styles.waterTop}>
+              <View>
+                <Text style={styles.waterValue}>{(dailyLog.waterMl / 1000).toFixed(2)} L</Text>
+                <Text style={styles.waterGoal}>of {(WATER_GOAL_ML / 1000).toFixed(1)} L goal</Text>
+              </View>
+              <View style={styles.waterBtns}>
+                <TouchableOpacity
+                  style={[styles.waterBtn, dailyLog.waterMl === 0 && styles.waterBtnOff]}
+                  disabled={dailyLog.waterMl === 0}
+                  onPress={() => setWater(dailyLog.waterMl - GLASS_ML)}
+                >
+                  <Icon name="minus" size={18} color={dailyLog.waterMl === 0 ? colors.textMuted : colors.text} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.waterBtn, styles.waterBtnAdd]} onPress={() => setWater(dailyLog.waterMl + GLASS_ML)}>
+                  <Icon name="plus" size={18} color={colors.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <AnimatedBar progress={dailyLog.waterMl / WATER_GOAL_ML} color={colors.info} style={styles.bar} />
+            <Text style={styles.expiry}>{Math.round(dailyLog.waterMl / GLASS_ML)} glasses · {GLASS_ML} ml each</Text>
+          </Card>
         </Enter>
       )}
 
@@ -290,6 +398,38 @@ const styles = StyleSheet.create({
   checkIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: tint(colors.white, '30'), alignItems: 'center', justifyContent: 'center' },
   checkBtnLabel: { color: colors.white, fontSize: 20, fontWeight: '800' },
   checkBtnSub: { color: 'rgba(255,255,255,0.65)', ...typography.caption, marginTop: 2 },
+
+  goalTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  goalValue: { color: colors.text, ...typography.h2, ...typography.number },
+  goalOf: { color: colors.textMuted, ...typography.caption },
+  goalLabel: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
+  goalBtns: { flexDirection: 'row', gap: spacing.sm },
+  goalBtn: {
+    width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border,
+  },
+  goalBtnOff: { opacity: 0.5 },
+
+  waterTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  waterValue: { color: colors.text, ...typography.h2, ...typography.number },
+  waterGoal: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
+  waterBtns: { flexDirection: 'row', gap: spacing.sm },
+  waterBtn: {
+    width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border,
+  },
+  waterBtnOff: { opacity: 0.5 },
+  waterBtnAdd: { backgroundColor: colors.info, borderColor: colors.info },
+
+  runBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: tint(colors.info, '18'), borderRadius: radius.lg,
+    borderWidth: 1, borderColor: tint(colors.info, '38'),
+    padding: spacing.lg, marginBottom: spacing.lg,
+  },
+  runBannerIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: tint(colors.info), alignItems: 'center', justifyContent: 'center' },
+  runBannerTitle: { color: colors.text, ...typography.body, fontWeight: '700' },
+  runBannerSub: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
 
   memberCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md },
   planName: { color: colors.text, ...typography.h2 },

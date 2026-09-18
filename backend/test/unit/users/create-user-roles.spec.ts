@@ -118,3 +118,80 @@ describe('who may create which account', () => {
     expect(seenGymId).toBe(OWN_GYM);
   });
 });
+
+/**
+ * Front desk vs cleaning. Both are `Role.STAFF`, so `RolesGuard` lets either
+ * through — the sub-role check lives in the service, and this is what proves it.
+ */
+describe('staff sub-role: only the front desk signs people up', () => {
+  let service: UsersService;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        UsersService,
+        { provide: PrismaService, useValue: mockPrisma },
+        {
+          provide: EmailService,
+          useValue: {
+            sendAccountCreatedEmail: jest.fn().mockResolvedValue(undefined),
+            sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        { provide: AuditService, useValue: { log: jest.fn() } },
+        { provide: EntitlementsService, useValue: permissive },
+      ],
+    }).compile();
+    service = module.get(UsersService);
+    jest.clearAllMocks();
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.staff.findFirst = jest.fn();
+    mockPrisma.$transaction.mockImplementation(async (fn: any) =>
+      fn({
+        user: { create: jest.fn().mockResolvedValue({ id: 'new-user', email: 'x@y.com', role: 'MEMBER' }) },
+        member: { create: jest.fn().mockResolvedValue({ memberCode: 'M001' }), count: jest.fn().mockResolvedValue(0) },
+        trainer: { create: jest.fn().mockResolvedValue({}) },
+        staff: { create: jest.fn().mockResolvedValue({}) },
+        gym: { findUnique: jest.fn().mockResolvedValue({ id: OWN_GYM }) },
+      }),
+    );
+  });
+
+  const createAs = (staffUserId: string) =>
+    service.createUser(
+      { firstName: 'A', lastName: 'B', email: 'a@b.com', password: 'Password@123', role: 'MEMBER' },
+      'STAFF',
+      OWN_GYM,
+      staffUserId,
+    );
+
+  it('lets front desk staff add a member', async () => {
+    mockPrisma.staff.findFirst.mockResolvedValue({ staffType: 'FRONT_DESK' });
+    await expect(createAs('staff-1')).resolves.toBeDefined();
+  });
+
+  it('refuses cleaning staff', async () => {
+    mockPrisma.staff.findFirst.mockResolvedValue({ staffType: 'CLEANING' });
+    await expect(createAs('staff-2')).rejects.toThrow(ForbiddenException);
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('looks the staff row up inside the creator’s own gym', async () => {
+    mockPrisma.staff.findFirst.mockResolvedValue({ staffType: 'FRONT_DESK' });
+    await createAs('staff-1');
+    expect(mockPrisma.staff.findFirst.mock.calls[0][0].where).toEqual({ userId: 'staff-1', gymId: OWN_GYM });
+  });
+
+  // Older callers that do not pass the creator id keep working as front desk,
+  // which is what Role.STAFF meant before the split.
+  it('falls back to allowing when no creator id is supplied', async () => {
+    await expect(
+      service.createUser(
+        { firstName: 'A', lastName: 'B', email: 'a@b.com', password: 'Password@123', role: 'MEMBER' },
+        'STAFF',
+        OWN_GYM,
+      ),
+    ).resolves.toBeDefined();
+    expect(mockPrisma.staff.findFirst).not.toHaveBeenCalled();
+  });
+});

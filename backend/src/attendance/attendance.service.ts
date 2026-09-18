@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException,
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CheckInMethod, Role, AttendanceCloseReason } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveReadableMember } from '../common/utils/trainer-access';
 
 const WEEKDAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const ABSENCE_THRESHOLDS: { days: number; severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' }[] = [
@@ -753,6 +754,79 @@ export class AttendanceService {
     });
     if (!member) throw new BadRequestException('Member profile not found');
     return { currentStreak: member.attendanceStreak, bestStreak: member.bestAttendanceStreak };
+  }
+
+  /**
+   * One member's attendance, for their trainer or a gym admin: streak, this
+   * month's present days, and the most recent visits.
+   *
+   * A trainer is only let through for their own assignees — the gym-wide
+   * attendance endpoints stay closed to them.
+   */
+  async getMemberAttendance(
+    caller: { id: string; role: string },
+    memberIdOrUserId: string,
+    gymId: string,
+    month?: number,
+    year?: number,
+  ) {
+    const memberId = await resolveReadableMember(this.prisma, caller, memberIdOrUserId, gymId);
+
+    const now = new Date();
+    const m = month && month >= 1 && month <= 12 ? month : now.getMonth() + 1;
+    const y = year && year > 2000 ? year : now.getFullYear();
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y, m, 1);
+
+    const [member, monthRecords, recent] = await Promise.all([
+      this.prisma.member.findUnique({
+        where: { id: memberId },
+        select: {
+          attendanceStreak: true,
+          bestAttendanceStreak: true,
+          lastAttendanceDate: true,
+          joinDate: true,
+          memberCode: true,
+          user: { select: { id: true, firstName: true, lastName: true, avatar: true } },
+        },
+      }),
+      this.prisma.attendance.findMany({
+        where: { gymId, memberId, checkInTime: { gte: start, lt: end } },
+        select: { checkInTime: true, durationMinutes: true },
+      }),
+      this.prisma.attendance.findMany({
+        where: { gymId, memberId },
+        orderBy: { checkInTime: 'desc' },
+        take: 20,
+        select: { id: true, checkInTime: true, checkOutTime: true, durationMinutes: true, method: true },
+      }),
+    ]);
+
+    const presentDates = Array.from(
+      new Set(monthRecords.map((r) => r.checkInTime.toISOString().split('T')[0])),
+    ).sort();
+
+    const withDuration = monthRecords.filter((r) => typeof r.durationMinutes === 'number');
+    const avgDuration = withDuration.length
+      ? Math.round(withDuration.reduce((s, r) => s + (r.durationMinutes ?? 0), 0) / withDuration.length)
+      : null;
+
+    const since = member?.lastAttendanceDate ?? member?.joinDate ?? now;
+    const daysSinceLastVisit = Math.floor((now.getTime() - since.getTime()) / 86400000);
+
+    return {
+      member: member?.user ? { ...member.user, memberCode: member.memberCode } : null,
+      month: m,
+      year: y,
+      currentStreak: member?.attendanceStreak ?? 0,
+      bestStreak: member?.bestAttendanceStreak ?? 0,
+      lastAttendanceDate: member?.lastAttendanceDate ?? null,
+      daysSinceLastVisit,
+      visitsThisMonth: presentDates.length,
+      presentDates,
+      avgDuration,
+      recent,
+    };
   }
 
   // ─── Feature 2 & 9: inactive members / absence severity ──────────────────

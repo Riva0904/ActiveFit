@@ -216,6 +216,24 @@ enum ChatType {
   DIRECT
   /// Gym admin ↔ super admin.
   SUPPORT
+  /// Many-to-many room inside one gym. Only a gym admin creates one; every
+  /// active participant may post. Participants live in ChatParticipant.
+  GROUP
+}
+
+/// Role.STAFF is one role to the guards; this splits what that person does.
+enum StaffType {
+  /// Signs members up, runs the desk, sees who owes money.
+  FRONT_DESK
+  /// Attendance, leave and salary only — no member data, no money.
+  CLEANING
+}
+
+enum ChatParticipantRole {
+  /// May rename the group, add and remove people, and delete it.
+  OWNER
+  /// May read and post.
+  MEMBER
 }
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -457,6 +475,7 @@ model User {
   conversations     ChatConversation[] @relation("UserConversations")
   peerConversations ChatConversation[] @relation("PeerConversations")
   chatMessages      ChatMessage[]      @relation("SentChatMessages")
+  chatParticipations ChatParticipant[] @relation("ChatParticipations")
   attendanceRecords Attendance[]       @relation("AttendanceUser")
   supplementOrders  SupplementOrder[]
   invoices          Invoice[]          @relation("UserInvoices")
@@ -485,6 +504,9 @@ model Member {
   attendanceStreak     Int       @default(0)
   bestAttendanceStreak Int       @default(0)
   lastAttendanceDate   DateTime?
+  /// How many sessions a week this member is aiming for. Drives the Home
+  /// progress ring and the mid-week nudge.
+  weeklyGoal           Int       @default(3)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   deletedAt            DateTime?
@@ -499,6 +521,8 @@ model Member {
   workoutAssignments  WorkoutAssignment[]
   dietAssignments     DietAssignment[]
   progressLogs        ProgressLog[]
+  dailyLogs           MemberDailyLog[]
+  supplementPicks     SupplementAssignment[]
   activityRuns        ActivityRun[]
   trainerAssignments  TrainerAssignment[]
   ptSessions          PtSession[]
@@ -543,6 +567,10 @@ model Staff {
   userId      String    @unique
   gymId       String
   employeeId  String?
+  /// What this person actually does. `designation` is free text and always was;
+  /// this is the field behaviour keys off — front desk signs members up and sees
+  /// dues, cleaning staff do neither.
+  staffType   StaffType @default(FRONT_DESK)
   designation String?
   department  String?
   joiningDate DateTime  @default(now())
@@ -838,6 +866,31 @@ model ProgressLog {
   @@map("progress_logs")
 }
 
+/// One row per member per day: the Home checklist ticks plus the lightweight
+/// daily inputs (water, calories). Previously the checklist lived only in an
+/// in-memory store on the device, so it was lost on restart and no trainer or
+/// admin could ever see it.
+model MemberDailyLog {
+  id         String   @id @default(uuid())
+  memberId   String
+  gymId      String
+  /// Local calendar day, stored date-only so a member's "today" is stable.
+  date       DateTime @db.Date
+  /// Checklist ticks keyed by item, e.g. { "workout": true, "diet": false }.
+  items      Json     @default("{}")
+  waterMl    Int      @default(0)
+  caloriesIn Int?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, date])
+  @@index([gymId, date])
+  @@map("member_daily_logs")
+}
+
 /// A GPS-tracked run recorded from the mobile app (foreground tracking, v1).
 model ActivityRun {
   id              String   @id @default(uuid())
@@ -1090,6 +1143,9 @@ model ChatConversation {
   userId        String
   peerId        String?
   type          ChatType  @default(DIRECT)
+  /// GROUP only: the room's display name and picture.
+  name          String?
+  avatar        String?
   lastMessage   String?
   lastMessageAt DateTime  @default(now())
   unreadAdmin   Int       @default(0)
@@ -1098,16 +1154,42 @@ model ChatConversation {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  gym      Gym           @relation(fields: [gymId], references: [id])
-  user     User          @relation("UserConversations", fields: [userId], references: [id])
-  peer     User?         @relation("PeerConversations", fields: [peerId], references: [id])
-  messages ChatMessage[]
+  gym          Gym               @relation(fields: [gymId], references: [id])
+  user         User              @relation("UserConversations", fields: [userId], references: [id])
+  peer         User?             @relation("PeerConversations", fields: [peerId], references: [id])
+  messages     ChatMessage[]
+  participants ChatParticipant[]
 
   @@unique([gymId, userId, peerId, type])
   @@index([gymId])
   @@index([type])
   @@index([peerId])
+  @@index([gymId, type])
   @@map("chat_conversations")
+}
+
+/// Membership of a GROUP conversation, with that person's own unread counter.
+/// The pair-shaped `unreadUser`/`unreadAdmin` columns on ChatConversation only
+/// work for two sides, so a room counts unread here instead.
+model ChatParticipant {
+  id             String              @id @default(uuid())
+  conversationId String
+  userId         String
+  role           ChatParticipantRole @default(MEMBER)
+  unread         Int                 @default(0)
+  lastReadAt     DateTime?
+  joinedAt       DateTime            @default(now())
+  /// Left or was removed. Kept rather than deleted so their messages still
+  /// resolve to a name.
+  isActive       Boolean             @default(true)
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User             @relation("ChatParticipations", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, isActive])
+  @@index([conversationId])
+  @@map("chat_participants")
 }
 
 model ChatMessage {
@@ -1182,16 +1264,40 @@ model Supplement {
   images        String[]
   isFeatured    Boolean   @default(false)
   isActive      Boolean   @default(true)
+  /// When true the item is hidden from the gym-wide catalogue and only the
+  /// members named in `assignments` can see or buy it.
+  isPrivate     Boolean   @default(false)
   deletedAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  gym        Gym                   @relation(fields: [gymId], references: [id])
-  orderItems SupplementOrderItem[]
+  gym         Gym                     @relation(fields: [gymId], references: [id])
+  orderItems  SupplementOrderItem[]
+  assignments SupplementAssignment[]
 
   @@index([gymId])
   @@index([category])
+  @@index([gymId, isPrivate])
   @@map("supplements")
+}
+
+/// A supplement recommended to one member. Its only job is visibility: a private
+/// supplement is shown to the members listed here and to nobody else.
+model SupplementAssignment {
+  id           String   @id @default(uuid())
+  supplementId String
+  memberId     String
+  gymId        String
+  notes        String?
+  assignedAt   DateTime @default(now())
+
+  supplement Supplement @relation(fields: [supplementId], references: [id], onDelete: Cascade)
+  member     Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([supplementId, memberId])
+  @@index([memberId])
+  @@index([gymId])
+  @@map("supplement_assignments")
 }
 
 model SupplementOrder {

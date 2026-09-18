@@ -2,6 +2,7 @@
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { NotificationsService } from './notifications.service';
+import { InactivityRemindersService } from './inactivity-reminders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -12,7 +13,10 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @UseGuards(JwtAuthGuard)
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly inactivityReminders: InactivityRemindersService,
+  ) {}
 
   @Get()
   findAll(@CurrentUser('id') id: string) {
@@ -42,5 +46,25 @@ export class NotificationsController {
   @Roles(Role.GYM_ADMIN)
   broadcast(@Body() body: { title: string; message: string; type: any }, @CurrentUser() user: any) {
     return this.notificationsService.broadcast(user.gymId, body);
+  }
+
+  /** Who today's inactivity run would nudge, without nudging them. */
+  @Get('inactivity/preview')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN)
+  previewInactivity(@CurrentUser() user: any) {
+    return this.inactivityReminders.preview(user.gymId);
+  }
+
+  /**
+   * Runs the skip-gym reminders now, so the feature is testable without waiting
+   * for the 9am cron. Mirrors `POST /renewal-reminders/send-now`.
+   */
+  @Post('inactivity/send-now')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN)
+  async sendInactivityNow(@CurrentUser() user: any) {
+    const sent = await this.inactivityReminders.runForGym(user.gymId);
+    return { sent };
   }
 }

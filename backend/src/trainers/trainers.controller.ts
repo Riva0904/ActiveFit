@@ -24,7 +24,7 @@ export class TrainersController {
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.STAFF)
   create(@Body() body: any, @CurrentUser() user: any) {
-    return this.usersService.createUser({ ...body, role: 'TRAINER' }, user.role, user.gymId);
+    return this.usersService.createUser({ ...body, role: 'TRAINER' }, user.role, user.gymId, user.id);
   }
 
   // Only a SUPER_ADMIN may target another gym. The old ternary tested for
@@ -51,10 +51,28 @@ export class TrainersController {
     return this.trainersService.getMyDashboardStats(user.id, user.gymId);
   }
 
+  /**
+   * The trainer a member is currently with. Declared before `:id` so the literal
+   * segment is not swallowed by the parameterised route.
+   */
+  @Get('of-member/:memberId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.STAFF)
+  findTrainerOfMember(@Param('memberId') memberId: string, @CurrentUser() user: any) {
+    return this.trainersService.findAssignedTrainer(memberId, user.gymId);
+  }
+
   @Get(':id')
   @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.trainersService.findOne(id, gymScopeOf(user));
+  }
+
+  @Get(':id/assignments')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.TRAINER)
+  listAssignments(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.trainersService.listAssignments(id, user.gymId);
   }
 
   @Patch(':id')
@@ -71,6 +89,13 @@ export class TrainersController {
   @Roles(Role.GYM_ADMIN)
   assignMember(@Param('id') id: string, @Body('memberId') memberId: string, @CurrentUser() user: any) {
     return this.trainersService.assignMember(id, memberId, user.gymId);
+  }
+
+  @Delete(':id/assign/:memberId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN)
+  unassignMember(@Param('id') id: string, @Param('memberId') memberId: string, @CurrentUser() user: any) {
+    return this.trainersService.unassignMember(id, memberId, user.gymId);
   }
 
   @Delete(':id')

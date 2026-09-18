@@ -52,7 +52,10 @@ import { ActivitiesModule } from './activities/activities.module';
       isGlobal: true,
       cache: true,
       validationSchema: Joi.object({
-        NODE_ENV: Joi.string().valid('development', 'staging', 'production').default('development'),
+        // 'test' is here because Jest sets NODE_ENV=test before the app module
+        // is imported; without it every e2e spec died on config validation
+        // rather than on anything it was testing.
+        NODE_ENV: Joi.string().valid('development', 'test', 'staging', 'production').default('development'),
         PORT: Joi.number().default(3001),
         DATABASE_URL: Joi.string().required(),
         JWT_SECRET: Joi.string().min(32).required(),

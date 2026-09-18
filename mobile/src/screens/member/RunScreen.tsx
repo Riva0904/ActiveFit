@@ -1,19 +1,35 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useKeepAwake } from 'expo-keep-awake';
 import { api } from '../../lib/api';
 import { formatDistance, formatDuration, formatPace } from '../../lib/run';
+import { latestWeight } from '../../lib/weight';
 import { useRunTracker } from '../../hooks/useRunTracker';
 import { Button, Card, Header, HeroStat, Icon, Screen, StatRow } from '../../components';
 import { GpsStatusPill, RunMap } from '../../components/widgets';
 import { colors, radius, spacing, tint, typography } from '../../theme';
 
+/** Below this the GPS noise floor is larger than the run — nothing worth saving. */
+const MIN_SAVE_METERS = 20;
+
 export default function RunScreen({ navigation }: any) {
   useKeepAwake();
   const queryClient = useQueryClient();
-  const run = useRunTracker();
+
+  // Calories scale with body weight; without this every member burns as if they
+  // were 70 kg. The same query backs the Progress Log screen, so it is usually
+  // already warm in the cache.
+  const { data: progressLogs } = useQuery({
+    queryKey: ['progress-logs'],
+    queryFn: () => api.get('/progress-logs/my') as any,
+    staleTime: 5 * 60 * 1000,
+  });
+  const logs: any[] = Array.isArray(progressLogs) ? progressLogs : (progressLogs as any)?.data ?? [];
+  const weightKg = latestWeight(logs) ?? undefined;
+
+  const run = useRunTracker(weightKg);
   const [saving, setSaving] = useState(false);
 
   const saveMutation = useMutation({
@@ -28,27 +44,43 @@ export default function RunScreen({ navigation }: any) {
   });
 
   function finish() {
+    // The "too short" check has to happen BEFORE stop(): stop() moves the store to
+    // `finished` and tears tracking down, and `resume()` only acts on a `paused`
+    // run — so offering "keep going" afterwards left the GPS on while every fix
+    // was discarded. Nothing is torn down on this path, so cancelling really does
+    // keep the run alive.
+    if (run.distanceMeters < MIN_SAVE_METERS) {
+      Alert.alert(
+        'Run too short to save',
+        `Only ${formatDistance(run.distanceMeters)} recorded. Move at least ${MIN_SAVE_METERS} m, then finish.`,
+        [
+          { text: 'Keep tracking', style: 'cancel' },
+          { text: 'Discard run', style: 'destructive', onPress: () => { run.reset(); navigation.goBack(); } },
+        ],
+      );
+      return;
+    }
+
     const doStop = () => {
       const payload = run.stop();
-      if (!payload || payload.distanceMeters < 20) {
-        Alert.alert('Run too short', 'Nothing worth saving yet — move at least 20 m.', [
-          { text: 'Discard', style: 'destructive', onPress: () => { run.reset(); navigation.goBack(); } },
-          { text: 'Keep going', onPress: () => run.resume() },
-        ]);
+      if (!payload) {
+        // Only reachable if the run was never started.
+        run.reset();
+        navigation.goBack();
         return;
       }
       setSaving(true);
       saveMutation.mutate(payload);
     };
+
     Alert.alert('Finish run?', `${formatDistance(run.distanceMeters)} · ${formatDuration(run.elapsedSec)}`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Finish & save', onPress: doStop },
     ]);
   }
 
+  /** Leaving the screen never stops tracking — the run continues in the background. */
   function leave() {
-    if (run.status === 'idle' || run.status === 'finished') return navigation.goBack();
-    // Leaving the screen does not stop tracking — the run keeps going in the background.
     navigation.goBack();
   }
 

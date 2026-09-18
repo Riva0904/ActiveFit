@@ -296,7 +296,7 @@ export class AuthService {
   // ─── Get Profile ───────────────────────────────────────────────────────────
 
   async getProfile(userId: string) {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true, email: true, firstName: true, lastName: true, phone: true,
@@ -304,8 +304,21 @@ export class AuthService {
         city: true, state: true, pincode: true, gymId: true,
         isActive: true, isEmailVerified: true, lastLoginAt: true, createdAt: true,
         gym: { select: { id: true, name: true, logo: true, address: true } },
+        // Role.STAFF covers both the front desk and the cleaning crew; the app
+        // needs the sub-role to pick which shell to render.
+        staff: { select: { id: true, staffType: true } },
+        trainer: { select: { id: true } },
       },
     });
+    if (!user) return null;
+
+    const { staff, trainer, ...rest } = user as any;
+    return {
+      ...rest,
+      staffType: staff?.staffType ?? null,
+      staffId: staff?.id ?? null,
+      trainerId: trainer?.id ?? null,
+    };
   }
 
   // ─── Socket.io handshake token ─────────────────────────────────────────────

@@ -23,6 +23,10 @@ export const tokenStore = {
     await Promise.all([
       SecureStore.deleteItemAsync(KEYS.ACCESS),
       SecureStore.deleteItemAsync(KEYS.REFRESH),
+      // The cached push token used to survive logout, so the next person to sign
+      // in on this device short-circuited registration and silently received
+      // nothing — their token was never sent to the server.
+      SecureStore.deleteItemAsync(KEYS.PUSH_TOKEN),
     ]);
   },
   async getPushToken(): Promise<string | null> {

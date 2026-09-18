@@ -39,11 +39,14 @@ export default function GymsScreen({ navigation }: any) {
 
   const gyms: Gym[] = Array.isArray(data) ? data : (data?.data ?? []);
 
-  const totals = useMemo(() => ({
-    gyms: gyms.length,
-    members: gyms.reduce((s, g) => s + (g._count?.members ?? 0), 0),
-    paying: gyms.filter((g) => g.saasPlan !== 'STARTER' && g.saasStatus === 'ACTIVE').length,
-  }), [gyms]);
+  // Platform totals come from the server, not from this page of gyms: summing
+  // `gyms.length` and each gym's member count only ever counted the first 100,
+  // and the filters above narrow the list further.
+  const { data: stats } = useQuery({
+    queryKey: ['platform-stats'],
+    queryFn: () => api.get('/analytics/platform/stats') as any,
+    staleTime: 60_000,
+  });
 
   const openGym = (gym: Gym) => {
     setSelectedGym({ id: gym.id, name: gym.name });
@@ -57,9 +60,9 @@ export default function GymsScreen({ navigation }: any) {
 
         <Card padding="md">
           <StatRow items={[
-            { label: 'Gyms', value: totals.gyms },
-            { label: 'Members', value: totals.members, color: colors.primary },
-            { label: 'Paying', value: totals.paying, color: colors.success },
+            { label: 'Gyms', value: (stats as any)?.totalGyms ?? '—' },
+            { label: 'Members', value: (stats as any)?.usersByRole?.members ?? '—', color: colors.primary },
+            { label: 'Active', value: (stats as any)?.activeGyms ?? '—', color: colors.success },
           ]} />
         </Card>
 

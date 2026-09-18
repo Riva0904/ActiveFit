@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Patch, Post, Param, Query, Req, UseGuards,
+  Controller, Get, Patch, Post, Delete, Body, Param, Query, Req, UseGuards,
   ParseIntPipe, DefaultValuePipe, UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -8,6 +8,7 @@ import type { Request } from 'express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { ChatService } from './chat.service';
+import { AddParticipantsDto, CreateGroupDto, RenameGroupDto } from './dto/group.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -100,6 +101,87 @@ export class ChatController {
     return this.chatService.markDirectRead(user.gymId, user.id, peerId);
   }
 
+  // ── Groups: many-to-many rooms inside one gym ────────────────────────────
+  //
+  // Only a gym admin creates one, and only the owner renames it or changes who
+  // is in it. Reading and posting are open to every active participant — the
+  // gate is membership of the room, not the pair of roles, so two members who
+  // may not DM each other can still both talk in a group.
+
+  @Post('groups')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN)
+  createGroup(@CurrentUser() user: any, @Body() body: CreateGroupDto) {
+    return this.chatService.createGroup(user.gymId, user.id, user.role, body.name, body.memberIds ?? []);
+  }
+
+  @Get('groups')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  getGroups(@CurrentUser() user: any) {
+    return this.chatService.listGroups(user.gymId, user.id);
+  }
+
+  @Get('groups/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  getGroup(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.chatService.getGroup(user.gymId, user.id, id);
+  }
+
+  @Get('groups/:id/messages')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  getGroupMessages(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
+  ) {
+    return this.chatService.getGroupMessages(user.gymId, user.id, id, 50, skip);
+  }
+
+  @Patch('groups/:id/read')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN)
+  markGroupRead(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.chatService.markGroupRead(user.gymId, user.id, id);
+  }
+
+  @Patch('groups/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN)
+  renameGroup(@CurrentUser() user: any, @Param('id') id: string, @Body() body: RenameGroupDto) {
+    return this.chatService.renameGroup(user.gymId, user.id, id, body.name);
+  }
+
+  @Post('groups/:id/participants')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN)
+  addParticipants(@CurrentUser() user: any, @Param('id') id: string, @Body() body: AddParticipantsDto) {
+    return this.chatService.addParticipants(user.gymId, user.id, id, body.memberIds);
+  }
+
+  @Delete('groups/:id/participants/:userId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN)
+  removeParticipant(@CurrentUser() user: any, @Param('id') id: string, @Param('userId') userId: string) {
+    return this.chatService.removeParticipant(user.gymId, user.id, id, userId);
+  }
+
+  @Post('groups/:id/leave')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF)
+  leaveGroup(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.chatService.leaveGroup(user.gymId, user.id, id);
+  }
+
+  @Delete('groups/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN)
+  deleteGroup(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.chatService.deleteGroup(user.gymId, user.id, id);
+  }
+
   // ── SUPPORT: gym admin ↔ super admin ─────────────────────────────────────
 
   @Get('support/conversation')
@@ -132,6 +214,18 @@ export class ChatController {
   @Roles(Role.SUPER_ADMIN)
   getAllSupportConversations() {
     return this.chatService.getAllSupportConversations();
+  }
+
+  /**
+   * Every gym the platform can message, searchable — including gyms that have
+   * never written in, which `support/conversations` cannot return because it
+   * only lists threads that already exist.
+   */
+  @Get('support/gyms')
+  @UseGuards(RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  getSupportTargets(@Query('search') search?: string) {
+    return this.chatService.listSupportTargets(search);
   }
 
   @Get('support/conversations/:gymAdminId/messages')

@@ -8,10 +8,38 @@ import { UpdateSupplementDto } from './dto/update-supplement.dto';
 export class SupplementsService {
   constructor(private prisma: PrismaService, private paymentsService: PaymentsService) {}
 
-  async findAll(query: any, gymId?: string) {
+  /**
+   * A member's own Member row id, or null when the caller is not a member.
+   * Private-supplement visibility is keyed by member id, while the caller only
+   * carries a user id.
+   */
+  private async memberIdFor(user?: { id?: string; role?: string }, gymId?: string): Promise<string | null> {
+    if (!user?.id || user.role !== 'MEMBER' || !gymId) return null;
+    const member = await this.prisma.member.findFirst({ where: { userId: user.id, gymId }, select: { id: true } });
+    return member?.id ?? null;
+  }
+
+  /**
+   * What this caller may see. Staff, trainers and admins see the whole
+   * catalogue; a member sees the public catalogue plus whatever was recommended
+   * to them specifically.
+   *
+   * A member with no Member row (shouldn't happen, but a bad account would) sees
+   * only public items — never everything.
+   */
+  private visibilityWhere(user?: { role?: string }, memberId?: string | null) {
+    if (user?.role !== 'MEMBER') return {};
+    return memberId
+      ? { OR: [{ isPrivate: false }, { assignments: { some: { memberId } } }] }
+      : { isPrivate: false };
+  }
+
+  async findAll(query: any, gymId?: string, user?: { id?: string; role?: string }) {
     const { page = 1, limit = 12, search, category } = query;
     const skip = (page - 1) * limit;
-    const where: any = { isActive: true };
+    const memberId = await this.memberIdFor(user, gymId);
+
+    const where: any = { isActive: true, ...this.visibilityWhere(user, memberId) };
     if (gymId) where.gymId = gymId;
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (category) where.category = category;
@@ -24,11 +52,86 @@ export class SupplementsService {
     return { data: supplements, total, page: +page, limit: +limit, totalPages: Math.ceil(total / limit) };
   }
 
-  /** `gymId` = caller's tenant scope (undefined for SUPER_ADMIN); cross-tenant ids 404. */
-  async findOne(id: string, gymId?: string) {
-    const s = await this.prisma.supplement.findFirst({ where: { id, ...scopedWhere(gymId) } });
+  /** Just the items recommended to this member — the Store's "for you" shelf. */
+  async findRecommended(userId: string, gymId: string) {
+    const member = await this.prisma.member.findFirst({ where: { userId, gymId }, select: { id: true } });
+    if (!member) return [];
+    const picks = await this.prisma.supplementAssignment.findMany({
+      where: { memberId: member.id, gymId, supplement: { isActive: true } },
+      include: { supplement: true },
+      orderBy: { assignedAt: 'desc' },
+    });
+    return picks.map((p) => ({ ...p.supplement, recommendationNote: p.notes, assignedAt: p.assignedAt }));
+  }
+
+  /**
+   * `gymId` = caller's tenant scope (undefined for SUPER_ADMIN); cross-tenant ids 404.
+   * A private item is 404 for a member it was not assigned to — without this,
+   * hiding it from the list would still leave it reachable by id.
+   */
+  async findOne(id: string, gymId?: string, user?: { id?: string; role?: string }) {
+    const memberId = await this.memberIdFor(user, gymId);
+    const s = await this.prisma.supplement.findFirst({
+      where: { id, ...scopedWhere(gymId), ...this.visibilityWhere(user, memberId) },
+    });
     if (!s) throw new NotFoundException('Supplement not found');
     return s;
+  }
+
+  // ─── Per-member visibility ────────────────────────────────────────────────
+
+  async assignToMember(supplementId: string, memberIdOrUserId: string, gymId: string, notes?: string) {
+    const supplement = await this.prisma.supplement.findFirst({ where: { id: supplementId, gymId } });
+    if (!supplement) throw new NotFoundException('Supplement not found');
+
+    const member =
+      (await this.prisma.member.findFirst({ where: { id: memberIdOrUserId, gymId } })) ??
+      (await this.prisma.member.findFirst({ where: { userId: memberIdOrUserId, gymId } }));
+    if (!member) throw new NotFoundException('Member not found in this gym');
+
+    return this.prisma.supplementAssignment.upsert({
+      where: { supplementId_memberId: { supplementId, memberId: member.id } },
+      create: { supplementId, memberId: member.id, gymId, notes },
+      update: { notes },
+    });
+  }
+
+  async unassignFromMember(supplementId: string, memberIdOrUserId: string, gymId: string) {
+    const member =
+      (await this.prisma.member.findFirst({ where: { id: memberIdOrUserId, gymId } })) ??
+      (await this.prisma.member.findFirst({ where: { userId: memberIdOrUserId, gymId } }));
+    if (!member) throw new NotFoundException('Member not found in this gym');
+
+    const { count } = await this.prisma.supplementAssignment.deleteMany({
+      where: { supplementId, memberId: member.id, gymId },
+    });
+    if (count === 0) throw new NotFoundException('That supplement is not assigned to this member');
+    return { unassigned: true };
+  }
+
+  /** Who a supplement is currently recommended to. */
+  async listAssignees(supplementId: string, gymId: string) {
+    await this.findOne(supplementId, gymId);
+    const rows = await this.prisma.supplementAssignment.findMany({
+      where: { supplementId, gymId },
+      include: {
+        member: {
+          select: {
+            id: true,
+            memberCode: true,
+            user: { select: { id: true, firstName: true, lastName: true, avatar: true } },
+          },
+        },
+      },
+      orderBy: { assignedAt: 'desc' },
+    });
+    return rows.map((r) => ({
+      memberId: r.member.id,
+      memberCode: r.member.memberCode,
+      notes: r.notes,
+      assignedAt: r.assignedAt,
+      ...r.member.user,
+    }));
   }
 
   async create(data: any) {
@@ -55,10 +158,17 @@ export class SupplementsService {
   async createCheckout(userId: string, gymId: string, items: Array<{ supplementId: string; quantity: number }>, useUpi = false) {
     if (!items || items.length === 0) throw new BadRequestException('Cart is empty');
 
+    // Checkout has to apply the same visibility rule as the catalogue: hiding a
+    // private item from the list is not a control if it can still be bought by id.
+    const member = await this.prisma.member.findFirst({ where: { userId, gymId }, select: { id: true } });
+    const visibility = member
+      ? { OR: [{ isPrivate: false }, { assignments: { some: { memberId: member.id } } }] }
+      : { isPrivate: false };
+
     let totalAmount = 0;
     for (const item of items) {
       const supplement = await this.prisma.supplement.findFirst({
-        where: { id: item.supplementId, gymId, isActive: true },
+        where: { id: item.supplementId, gymId, isActive: true, ...visibility },
       });
       if (!supplement) throw new NotFoundException(`Supplement not found: ${item.supplementId}`);
       if (supplement.stock < item.quantity) throw new BadRequestException(`Insufficient stock for ${supplement.name}`);

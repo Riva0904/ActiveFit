@@ -14,4 +14,6 @@ export class UpdateSupplementDto {
   @ApiProperty({ required: false, type: [String] }) @IsOptional() @IsArray() @IsString({ each: true }) images?: string[];
   @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isFeatured?: boolean;
   @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isActive?: boolean;
+  /** Hidden from the gym-wide catalogue; only assigned members see it. */
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isPrivate?: boolean;
 }

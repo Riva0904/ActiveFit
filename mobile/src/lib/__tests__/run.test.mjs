@@ -80,6 +80,31 @@ test('buildRunPayload produces the CreateRunDto shape', () => {
   assert.equal(buildRunPayload([], start, end, 0.2).durationSec, 1);
 });
 
+test('buildRunPayload: a one-point run still builds a payload (distance 0)', () => {
+  // `stop()` used to return null below two points, which silently swallowed the
+  // run. It now always builds a payload so the screen can explain what happened.
+  const start = new Date('2026-09-18T06:00:00Z');
+  const end = new Date('2026-09-18T06:00:30Z');
+  const p = buildRunPayload([{ lat: 12.97, lng: 77.59, ts: 10 }], start, end, 30);
+  assert.equal(p.distanceMeters, 0);
+  assert.equal(p.calories, 0);
+  assert.equal(p.durationSec, 30);
+  assert.deepEqual(p.route, [{ lat: 12.97, lng: 77.59, ts: 10 }]);
+});
+
+test('buildRunPayload: calories follow the logged body weight, not a fixed 70 kg', () => {
+  const start = new Date('2026-09-18T06:00:00Z');
+  const end = new Date('2026-09-18T06:30:00Z');
+  const pts = [{ lat: 0, lng: 0, ts: 0 }, { lat: 0.01, lng: 0, ts: 300 }];
+  const light = buildRunPayload(pts, start, end, 1800, 55);
+  const heavy = buildRunPayload(pts, start, end, 1800, 95);
+  assert.equal(light.calories, estimateKcal(light.distanceMeters, 55));
+  assert.equal(heavy.calories, estimateKcal(heavy.distanceMeters, 95));
+  assert.ok(heavy.calories > light.calories, 'a heavier runner burns more over the same route');
+  // No weight known → the documented 70 kg default, unchanged.
+  assert.equal(buildRunPayload(pts, start, end, 1800).calories, estimateKcal(light.distanceMeters, 70));
+});
+
 // ─── background-tracker helpers ─────────────────────────────────────────────
 import { classifyGpsQuality, acceptFix, locationToPoint, mergeLocationBatch, elapsedSeconds, projectRoute } from '../run.ts';
 

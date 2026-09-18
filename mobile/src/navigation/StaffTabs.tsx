@@ -5,17 +5,21 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '../components';
+import { useAuthStore } from '../store/authStore';
+import { isCleaningStaff } from '../lib/roles';
+import { useChatUnread } from '../hooks/useChatUnread';
 import { colors, spacing, tint } from '../theme';
 
 // The desk screen is the admin attendance screen; it hides the QR scanner for
 // staff on its own, since /attendance/qr-check-in is gym-admin only.
 import AdminAttendanceScreen from '../screens/admin/AdminAttendanceScreen';
 import EnquiriesScreen from '../screens/staff/EnquiriesScreen';
+import MemberDuesScreen from '../screens/staff/MemberDuesScreen';
+// Generic self check-in screen — the cleaning crew's whole Desk equivalent.
+import TrainerAttendanceScreen from '../screens/trainer/AttendanceScreen';
 
 // Shared with the other shells.
-import MessagesScreen from '../screens/chat/MessagesScreen';
-import ChatContactsScreen from '../screens/chat/ContactsScreen';
-import DirectChatScreen from '../screens/chat/DirectChatScreen';
+import { chatScreens } from './chatScreens';
 import AddPersonScreen from '../screens/admin/AddPersonScreen';
 import ProfileScreen from '../screens/member/ProfileScreen';
 import EditProfileScreen from '../screens/member/EditProfileScreen';
@@ -26,12 +30,15 @@ import SalaryScreen from '../screens/trainer/SalaryScreen';
 
 const Tab = createBottomTabNavigator();
 const DeskStack = createStackNavigator();
+const DuesStack = createStackNavigator();
 const EnquiriesStack = createStackNavigator();
 const MessagesStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 
 const TAB_ICONS: Record<string, IconName> = {
   Desk: 'qrcode',
+  MyShift: 'calendar-check',
+  Dues: 'credit-card',
   Enquiries: 'inbox',
   Messages: 'message-circle',
   Profile: 'user',
@@ -63,6 +70,27 @@ function DeskStackNavigator() {
   );
 }
 
+function DuesStackNavigator() {
+  return (
+    <DuesStack.Navigator screenOptions={{ headerShown: false }}>
+      <DuesStack.Screen name="DuesMain" component={MemberDuesScreen} />
+    </DuesStack.Navigator>
+  );
+}
+
+/**
+ * The cleaning crew's shell. They are `Role.STAFF` like the front desk, but the
+ * desk's work is not theirs: no member sign-ups, no enquiries, no dues. What is
+ * left is their own attendance, leave, salary and messages.
+ */
+function CleaningAttendanceNavigator() {
+  return (
+    <DeskStack.Navigator screenOptions={{ headerShown: false }}>
+      <DeskStack.Screen name="MyAttendance" component={TrainerAttendanceScreen} />
+    </DeskStack.Navigator>
+  );
+}
+
 function EnquiriesStackNavigator() {
   return (
     <EnquiriesStack.Navigator screenOptions={{ headerShown: false }}>
@@ -74,9 +102,7 @@ function EnquiriesStackNavigator() {
 function MessagesStackNavigator() {
   return (
     <MessagesStack.Navigator screenOptions={{ headerShown: false }}>
-      <MessagesStack.Screen name="MessagesMain" component={MessagesScreen} />
-      <MessagesStack.Screen name="ChatContacts" component={ChatContactsScreen} />
-      <MessagesStack.Screen name="DirectChat" component={DirectChatScreen} />
+      {chatScreens(MessagesStack, 'MessagesMain')}
     </MessagesStack.Navigator>
   );
 }
@@ -90,9 +116,7 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
       <ProfileStack.Screen name="Leave" component={LeaveScreen} />
       <ProfileStack.Screen name="Salary" component={SalaryScreen} />
-      <ProfileStack.Screen name="Messages" component={MessagesScreen} />
-      <ProfileStack.Screen name="ChatContacts" component={ChatContactsScreen} />
-      <ProfileStack.Screen name="DirectChat" component={DirectChatScreen} />
+      {chatScreens(ProfileStack)}
     </ProfileStack.Navigator>
   );
 }
@@ -104,6 +128,9 @@ function ProfileStackNavigator() {
  */
 export default function StaffTabs() {
   const insets = useSafeAreaInsets();
+  const unread = useChatUnread();
+  const user = useAuthStore((s) => s.user);
+  const cleaning = isCleaningStaff(user);
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -123,9 +150,21 @@ export default function StaffTabs() {
         tabBarIcon: ({ focused, color }) => <TabIcon route={route.name} focused={focused} color={color} />,
       })}
     >
-      <Tab.Screen name="Desk" component={DeskStackNavigator} />
-      <Tab.Screen name="Enquiries" component={EnquiriesStackNavigator} />
-      <Tab.Screen name="Messages" component={MessagesStackNavigator} />
+      {cleaning ? (
+        <Tab.Screen name="MyShift" component={CleaningAttendanceNavigator} />
+      ) : (
+        <Tab.Screen name="Desk" component={DeskStackNavigator} />
+      )}
+      {!cleaning && <Tab.Screen name="Dues" component={DuesStackNavigator} />}
+      {!cleaning && <Tab.Screen name="Enquiries" component={EnquiriesStackNavigator} />}
+      <Tab.Screen
+        name="Messages"
+        component={MessagesStackNavigator}
+        options={{
+          tabBarBadge: unread > 0 ? (unread > 99 ? '99+' : unread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.primary, color: colors.white, fontSize: 10 },
+        }}
+      />
       <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>
   );

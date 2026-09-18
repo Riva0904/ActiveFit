@@ -1,10 +1,14 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { useDailyLog } from '../../hooks/useDailyLog';
 import { Card, EmptyState, Header, Icon, Loading, Screen, type IconName } from '../../components';
 import { colors, radius, spacing, tint, typography } from '../../theme';
+
+/** One tap is a rough meal's worth; precision here is not the point. */
+const CAL_STEP = 100;
 
 const MEAL_ICONS: Record<string, IconName> = {
   Breakfast: 'sun',
@@ -28,6 +32,10 @@ export default function DietDetailScreen({ route, navigation }: any) {
   const plan: any = data ?? {};
   const meals: any[] = plan.meals ?? plan.dietMeals ?? [];
 
+  const { log, setCalories, saving } = useDailyLog();
+  const eaten = log.caloriesIn ?? 0;
+  const target: number | null = typeof plan.totalCalories === 'number' ? plan.totalCalories : null;
+
   return (
     <Screen scroll>
       <Header
@@ -42,6 +50,54 @@ export default function DietDetailScreen({ route, navigation }: any) {
           <Text style={styles.infoValue}>{String(plan.goal).replace(/_/g, ' ')}</Text>
         </View>
       ) : null}
+
+      {/* What they actually ate, against what the plan asks for. */}
+      <Card padding="md">
+        <View style={styles.calTop}>
+          <View>
+            <Text style={styles.calValue}>
+              {eaten}<Text style={styles.calUnit}> kcal today</Text>
+            </Text>
+            <Text style={styles.calLabel}>
+              {target
+                ? eaten <= target
+                  ? `${target - eaten} kcal left of ${target}`
+                  : `${eaten - target} kcal over ${target}`
+                : 'No daily target on this plan'}
+            </Text>
+          </View>
+          <View style={styles.calBtns}>
+            <TouchableOpacity
+              style={[styles.calBtn, eaten === 0 && styles.calBtnOff]}
+              disabled={eaten === 0 || saving}
+              onPress={() => setCalories(Math.max(0, eaten - CAL_STEP))}
+            >
+              <Icon name="minus" size={16} color={eaten === 0 ? colors.textMuted : colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.calBtn, styles.calBtnAdd]}
+              disabled={saving}
+              onPress={() => setCalories(eaten + CAL_STEP)}
+            >
+              <Icon name="plus" size={16} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        {target ? (
+          <View style={styles.calTrack}>
+            <View
+              style={[
+                styles.calFill,
+                {
+                  width: `${Math.min(100, (eaten / target) * 100)}%`,
+                  backgroundColor: eaten > target ? colors.warning : colors.success,
+                },
+              ]}
+            />
+          </View>
+        ) : null}
+        <Text style={styles.calHint}>Tap + for each {CAL_STEP} kcal — rough is fine.</Text>
+      </Card>
 
       {isLoading ? (
         <Loading />
@@ -85,6 +141,21 @@ export default function DietDetailScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.lg },
+
+  calTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  calValue: { color: colors.text, ...typography.h2, ...typography.number },
+  calUnit: { color: colors.textMuted, ...typography.caption },
+  calLabel: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
+  calBtns: { flexDirection: 'row', gap: spacing.sm },
+  calBtn: {
+    width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border,
+  },
+  calBtnOff: { opacity: 0.5 },
+  calBtnAdd: { backgroundColor: colors.success, borderColor: colors.success },
+  calTrack: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceRaised, overflow: 'hidden' },
+  calFill: { height: '100%', borderRadius: 3 },
+  calHint: { color: colors.textMuted, ...typography.micro, marginTop: spacing.sm },
   infoLabel: { color: colors.textSecondary, ...typography.label },
   infoValue: { color: colors.text, ...typography.label, fontWeight: '600' },
   slotHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },

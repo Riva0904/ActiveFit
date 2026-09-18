@@ -15,6 +15,7 @@ const FEATHER = [
   'image', 'trash-2', 'info', 'alert-circle', 'copy', 'share-2', 'star', 'heart', 'settings',
   'file-text', 'package', 'minus', 'more-horizontal', 'camera', 'inbox', 'sun', 'moon', 'mail',
   'user-plus', 'user-x', 'user-check', 'filter', 'pie-chart', 'percent', 'phone', 'slash', 'list', 'grid',
+  'paperclip', 'droplet',
 ] as const;
 
 const MCI = [

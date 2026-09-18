@@ -25,7 +25,12 @@ export class UsersService {
     await this.entitlements.assertWithinLimit(gymId, key);
   }
 
-  async createUser(data: any, creatorRole: string, creatorGymId?: string) {
+  /**
+   * `creatorUserId` is needed only to tell a front-desk staffer from a cleaner:
+   * both are `Role.STAFF`, which `RolesGuard` cannot distinguish, so the
+   * sub-role check has to happen here.
+   */
+  async createUser(data: any, creatorRole: string, creatorGymId?: string, creatorUserId?: string) {
     // SUPER_ADMIN creates GYM_ADMIN
     // GYM_ADMIN creates MEMBER, TRAINER, or STAFF within their gym
     const GYM_ROLES = ['MEMBER', 'TRAINER', 'STAFF'];
@@ -48,6 +53,17 @@ export class UsersService {
       const targetRole = data.role ?? 'MEMBER';
       if (!STAFF_CREATABLE.includes(targetRole)) {
         throw new ForbiddenException('Staff can only create member or trainer accounts');
+      }
+      // Signing people up is the front desk's job. Cleaning staff share the
+      // STAFF role, so the guard lets them in — this is where they stop.
+      if (creatorUserId) {
+        const staff = await this.prisma.staff.findFirst({
+          where: { userId: creatorUserId, ...(creatorGymId ? { gymId: creatorGymId } : {}) },
+          select: { staffType: true },
+        });
+        if (staff && staff.staffType !== 'FRONT_DESK') {
+          throw new ForbiddenException('Only front desk staff can add people');
+        }
       }
     } else {
       throw new ForbiddenException('You cannot create accounts');

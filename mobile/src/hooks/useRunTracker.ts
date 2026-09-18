@@ -27,7 +27,11 @@ export interface RunTracker {
   start: () => Promise<boolean>;
   pause: () => void;
   resume: () => void;
-  /** Stops tracking and returns the API payload (null if nothing usable was recorded). */
+  /**
+   * Stops tracking and returns the API payload. Null only when no run was ever
+   * started — a run that recorded too little still returns a payload (distance
+   * 0) so the caller can tell the user what happened instead of failing mute.
+   */
   stop: () => ReturnType<typeof buildRunPayload> | null;
   reset: () => void;
   openLocationSettings: () => void;
@@ -155,7 +159,9 @@ export function useRunTracker(weightKg?: number): RunTracker {
     const elapsed = s.elapsedNow();
     s.finish();
     void stopAllTracking(watch);
-    if (startedAt === null || points.length < 2) return null;
+    // Only "never started" has no payload. A one-point run still builds one, with
+    // distance 0 — returning null there used to swallow the run silently.
+    if (startedAt === null) return null;
     return buildRunPayload(points, new Date(startedAt), new Date(), Math.max(1, elapsed), weightKg);
   }, [weightKg]);
 

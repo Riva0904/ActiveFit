@@ -21,6 +21,15 @@ export interface AuthUser {
   phone?: string | null;
   qrCode?: string | null;
   memberCode?: string | null;
+  /**
+   * Which kind of STAFF this is. The backend keeps a single `Role.STAFF`, so
+   * this is what decides between the front desk and the cleaning shell. Null for
+   * every other role.
+   */
+  staffType?: 'FRONT_DESK' | 'CLEANING' | null;
+  /** Present when the account has the matching profile row; handy for assignments. */
+  staffId?: string | null;
+  trainerId?: string | null;
 }
 
 export interface Tokens {
@@ -49,6 +58,9 @@ export interface MobileHomeData {
   activeDiet: { id: string; name: string } | null;
   isCheckedInToday: boolean;
   checkedInAt: string | null;
+  /** Sessions per week the member is aiming for, and how many days they made. */
+  weeklyGoal: number;
+  visitsThisWeek: number;
 }
 
 export interface TrainerHomeData {

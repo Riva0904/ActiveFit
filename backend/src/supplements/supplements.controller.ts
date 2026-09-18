@@ -19,7 +19,17 @@ export class SupplementsController {
   @Get()
   @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findAll(@Query() query: any, @CurrentUser() user: any) {
-    return this.supplementsService.findAll(query, user.gymId);
+    // The caller is passed through so a member sees the public catalogue plus
+    // only the items recommended to them.
+    return this.supplementsService.findAll(query, user.gymId, user);
+  }
+
+  /** The member's own "recommended for you" shelf. */
+  @Get('recommended')
+  @UseGuards(RolesGuard)
+  @Roles(Role.MEMBER)
+  findRecommended(@CurrentUser() user: any) {
+    return this.supplementsService.findRecommended(user.id, user.gymId);
   }
 
   // Only gym admins see the gym's whole order book; everyone else sees their own.
@@ -36,7 +46,33 @@ export class SupplementsController {
   @Get(':id')
   @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF, Role.GYM_ADMIN, Role.SUPER_ADMIN)
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.supplementsService.findOne(id, gymScopeOf(user));
+    return this.supplementsService.findOne(id, gymScopeOf(user), user);
+  }
+
+  @Get(':id/assignees')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
+  listAssignees(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.supplementsService.listAssignees(id, user.gymId);
+  }
+
+  @Post(':id/assign')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
+  assignToMember(
+    @Param('id') id: string,
+    @Body() body: { memberId: string; notes?: string },
+    @CurrentUser() user: any,
+  ) {
+    if (!body?.memberId) throw new BadRequestException('memberId is required');
+    return this.supplementsService.assignToMember(id, body.memberId, user.gymId, body.notes);
+  }
+
+  @Delete(':id/assign/:memberId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)
+  unassignFromMember(@Param('id') id: string, @Param('memberId') memberId: string, @CurrentUser() user: any) {
+    return this.supplementsService.unassignFromMember(id, memberId, user.gymId);
   }
 
   @Post()

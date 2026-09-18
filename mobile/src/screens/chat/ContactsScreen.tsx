@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Text } from '../../components/Text';
@@ -25,38 +25,49 @@ const GROUP_LABEL: Record<string, string> = {
 export default function ContactsScreen({ navigation }: any) {
   const role = useAuthStore((s) => s.user?.role);
   const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
+
+  // The server already filters (`GET /chat/contacts?search=`) and caps the list
+  // at 200, so filtering only on the device silently hid people past that cap in
+  // a large gym. Debounced so typing is not one request per keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(id);
+  }, [search]);
 
   const contactsQ = useQuery<Contact[]>({
-    queryKey: ['chat-contacts'],
-    queryFn: () => api.get('/chat/contacts') as any,
+    queryKey: ['chat-contacts', debounced],
+    queryFn: () => api.get('/chat/contacts', { params: debounced ? { search: debounced } : undefined }) as any,
     staleTime: 5 * 60_000,
   });
 
-  const sections = useMemo(() => {
-    const all = Array.isArray(contactsQ.data) ? contactsQ.data : [];
-    const q = search.trim().toLowerCase();
-    const matched = q
-      ? all.filter((c) => `${c.firstName} ${c.lastName} ${c.memberCode ?? ''}`.toLowerCase().includes(q))
-      : all;
+  const all = useMemo(() => (Array.isArray(contactsQ.data) ? contactsQ.data : []), [contactsQ.data]);
 
+  const sections = useMemo(() => {
     // One flat list with group headers: a SectionList would add a second
     // scrolling contract for no gain at this size.
     const rows: ({ type: 'header'; key: string; label: string } | { type: 'person'; key: string; person: Contact })[] = [];
     for (const group of ORDER) {
-      const people = matched.filter((c) => c.role === group);
+      const people = all.filter((c) => c.role === group);
       if (people.length === 0) continue;
-      rows.push({ type: 'header', key: `h-${group}`, label: GROUP_LABEL[group] ?? group });
+      rows.push({ type: 'header', key: `h-${group}`, label: `${GROUP_LABEL[group] ?? group} · ${people.length}` });
       people.forEach((p) => rows.push({ type: 'person', key: p.id, person: p }));
     }
     return rows;
-  }, [contactsQ.data, search]);
+  }, [all]);
 
   return (
     <Screen padded={false}>
       <View style={styles.pad}>
         <Header
           title="New message"
-          subtitle={role === 'MEMBER' ? 'Your trainers, the front desk and your gym admin' : 'Anyone at your gym'}
+          subtitle={
+            role === 'MEMBER'
+              ? 'Your trainers, the front desk and your gym admin'
+              : debounced
+              ? `${all.length} ${all.length === 1 ? 'match' : 'matches'}`
+              : `${all.length} ${all.length === 1 ? 'person' : 'people'} at your gym`
+          }
           onBack={() => navigation.goBack()}
         />
         <TextField value={search} onChangeText={setSearch} placeholder="Search people" />

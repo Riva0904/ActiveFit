@@ -12,6 +12,13 @@
 
 export type Role = 'SUPER_ADMIN' | 'GYM_ADMIN' | 'STAFF' | 'TRAINER' | 'MEMBER';
 
+/**
+ * What a STAFF account actually does. The backend keeps one `Role.STAFF` — a
+ * guard cannot express a sub-role — so the distinction rides alongside the role
+ * and narrows the capability row rather than adding a sixth one.
+ */
+export type StaffType = 'FRONT_DESK' | 'CLEANING';
+
 /** Which navigator a role gets. One shell per role, no overlap. */
 export type Shell = 'PLATFORM' | 'ADMIN' | 'STAFF' | 'TRAINER' | 'MEMBER';
 
@@ -19,6 +26,8 @@ export type Capability =
   // platform
   | 'isPlatformOperator'
   | 'canDrillIntoAnyGym'
+  | 'canEditSaaSPlans'
+  | 'canSeePlatformStats'
   // attendance
   | 'canScanQr'
   | 'canCheckInOthers'
@@ -31,6 +40,10 @@ export type Capability =
   // plans
   | 'canAuthorPlans'
   | 'canAssignPlans'
+  | 'canAssignTrainers'
+  // coaching
+  | 'canSeeAssignedMemberProgress'
+  | 'canSeeAssignedMemberAttendance'
   // front desk
   | 'canHandleEnquiries'
   | 'canConvertEnquiry'
@@ -44,11 +57,15 @@ export type Capability =
   | 'canViewGymFinance'
   | 'canConfirmManualUpi'
   | 'canManageGymSubscription'
+  | 'canSeeMemberDues'
+  | 'canManageMembershipPlans'
+  | 'canManageStore'
   // chat
   | 'canAnswerMemberChat'
   | 'canChatWithGym'
   | 'canChatWithPlatform'
   | 'canManagePlatformSupport'
+  | 'canCreateGroup'
   // member-only
   | 'hasMemberRecord'
   | 'canShop';
@@ -56,14 +73,16 @@ export type Capability =
 export const ROLES: ReadonlyArray<Role> = ['SUPER_ADMIN', 'GYM_ADMIN', 'STAFF', 'TRAINER', 'MEMBER'];
 
 export const ALL_CAPABILITIES: ReadonlyArray<Capability> = [
-  'isPlatformOperator', 'canDrillIntoAnyGym',
+  'isPlatformOperator', 'canDrillIntoAnyGym', 'canEditSaaSPlans', 'canSeePlatformStats',
   'canScanQr', 'canCheckInOthers', 'canSelfCheckIn', 'canSeeGymAttendance',
   'canManageMembers', 'canListAllMembers', 'canAddPeople',
-  'canAuthorPlans', 'canAssignPlans',
+  'canAuthorPlans', 'canAssignPlans', 'canAssignTrainers',
+  'canSeeAssignedMemberProgress', 'canSeeAssignedMemberAttendance',
   'canHandleEnquiries', 'canConvertEnquiry',
   'canRequestLeave', 'canApproveLeave', 'canSeeOwnSalary', 'canManagePayroll',
   'canManageExpenses', 'canViewGymFinance', 'canConfirmManualUpi', 'canManageGymSubscription',
-  'canAnswerMemberChat', 'canChatWithGym', 'canChatWithPlatform', 'canManagePlatformSupport',
+  'canSeeMemberDues', 'canManageMembershipPlans', 'canManageStore',
+  'canAnswerMemberChat', 'canChatWithGym', 'canChatWithPlatform', 'canManagePlatformSupport', 'canCreateGroup',
   'hasMemberRecord', 'canShop',
 ];
 
@@ -78,6 +97,8 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
   SUPER_ADMIN: {
     isPlatformOperator: true,
     canDrillIntoAnyGym: true,
+    canEditSaaSPlans: true,      // PATCH /saas-plans/:id is @Roles(SUPER_ADMIN)
+    canSeePlatformStats: true,   // GET /analytics/platform/stats
     canScanQr: false,            // /attendance/qr-check-in is GYM_ADMIN only
     canCheckInOthers: false,
     canSelfCheckIn: false,       // no gym, no attendance record
@@ -87,6 +108,9 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canAddPeople: false,      // drill-down is read-only: accounts are created by the gym itself
     canAuthorPlans: true,
     canAssignPlans: true,
+    canAssignTrainers: false,
+    canSeeAssignedMemberProgress: true,
+    canSeeAssignedMemberAttendance: true,
     canHandleEnquiries: false,   // enquiries are GYM_ADMIN/STAFF
     canConvertEnquiry: false,
     canRequestLeave: false,
@@ -97,16 +121,22 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canViewGymFinance: true,
     canConfirmManualUpi: false,
     canManageGymSubscription: false,
+    canSeeMemberDues: true,
+    canManageMembershipPlans: true,
+    canManageStore: true,
     canAnswerMemberChat: false,
     canChatWithGym: false,
     canChatWithPlatform: false,
     canManagePlatformSupport: true,
+    canCreateGroup: false,       // groups live inside one gym
     hasMemberRecord: false,
     canShop: false,
   },
   GYM_ADMIN: {
     isPlatformOperator: false,
     canDrillIntoAnyGym: false,
+    canEditSaaSPlans: false,
+    canSeePlatformStats: false,
     canScanQr: true,
     canCheckInOthers: true,
     canSelfCheckIn: false,
@@ -116,6 +146,9 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canAddPeople: true,
     canAuthorPlans: true,
     canAssignPlans: true,
+    canAssignTrainers: true,
+    canSeeAssignedMemberProgress: true,
+    canSeeAssignedMemberAttendance: true,
     canHandleEnquiries: true,
     canConvertEnquiry: true,
     canRequestLeave: false,
@@ -126,16 +159,22 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canViewGymFinance: true,
     canConfirmManualUpi: true,
     canManageGymSubscription: true,
+    canSeeMemberDues: true,
+    canManageMembershipPlans: true,
+    canManageStore: true,
     canAnswerMemberChat: true,
     canChatWithGym: false,
     canChatWithPlatform: true,
     canManagePlatformSupport: false,
+    canCreateGroup: true,        // POST /chat/groups is @Roles(GYM_ADMIN)
     hasMemberRecord: false,
     canShop: false,
   },
   STAFF: {
     isPlatformOperator: false,
     canDrillIntoAnyGym: false,
+    canEditSaaSPlans: false,
+    canSeePlatformStats: false,
     canScanQr: false,            // the QR kiosk is GYM_ADMIN only; staff use the code
     canCheckInOthers: true,
     canSelfCheckIn: true,
@@ -145,6 +184,9 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canAddPeople: true,          // front desk signs people up (member or trainer)
     canAuthorPlans: false,
     canAssignPlans: false,
+    canAssignTrainers: false,
+    canSeeAssignedMemberProgress: false,
+    canSeeAssignedMemberAttendance: false,
     canHandleEnquiries: true,
     canConvertEnquiry: false,
     canRequestLeave: true,
@@ -155,16 +197,22 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canViewGymFinance: false,
     canConfirmManualUpi: false,
     canManageGymSubscription: false,
+    canSeeMemberDues: true,
+    canManageMembershipPlans: false,
+    canManageStore: false,
     canAnswerMemberChat: true,
     canChatWithGym: false,
     canChatWithPlatform: false,
     canManagePlatformSupport: false,
+    canCreateGroup: false,       // may post in a group, may not create one
     hasMemberRecord: false,
     canShop: false,
   },
   TRAINER: {
     isPlatformOperator: false,
     canDrillIntoAnyGym: false,
+    canEditSaaSPlans: false,
+    canSeePlatformStats: false,
     canScanQr: false,
     canCheckInOthers: false,
     canSelfCheckIn: true,
@@ -174,6 +222,9 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canAddPeople: false,
     canAuthorPlans: true,
     canAssignPlans: true,
+    canAssignTrainers: false,
+    canSeeAssignedMemberProgress: true,
+    canSeeAssignedMemberAttendance: true,
     canHandleEnquiries: false,
     canConvertEnquiry: false,
     canRequestLeave: true,
@@ -184,16 +235,22 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canViewGymFinance: false,
     canConfirmManualUpi: false,
     canManageGymSubscription: false,
+    canSeeMemberDues: false,
+    canManageMembershipPlans: false,
+    canManageStore: false,
     canAnswerMemberChat: false,
     canChatWithGym: true,
     canChatWithPlatform: false,
     canManagePlatformSupport: false,
+    canCreateGroup: false,
     hasMemberRecord: false,
     canShop: false,
   },
   MEMBER: {
     isPlatformOperator: false,
     canDrillIntoAnyGym: false,
+    canEditSaaSPlans: false,
+    canSeePlatformStats: false,
     canScanQr: false,
     canCheckInOthers: false,
     canSelfCheckIn: true,
@@ -203,6 +260,9 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canAddPeople: false,
     canAuthorPlans: false,
     canAssignPlans: false,
+    canAssignTrainers: false,
+    canSeeAssignedMemberProgress: false,
+    canSeeAssignedMemberAttendance: false,
     canHandleEnquiries: false,
     canConvertEnquiry: false,
     canRequestLeave: false,
@@ -213,10 +273,14 @@ export const CAPABILITIES: Readonly<Record<Role, Readonly<Caps>>> = {
     canViewGymFinance: false,
     canConfirmManualUpi: false,
     canManageGymSubscription: false,
+    canSeeMemberDues: false,
+    canManageMembershipPlans: false,
+    canManageStore: false,
     canAnswerMemberChat: false,
     canChatWithGym: true,
     canChatWithPlatform: false,
     canManagePlatformSupport: false,
+    canCreateGroup: false,
     hasMemberRecord: true,
     canShop: true,
   },
@@ -231,7 +295,7 @@ const SHELLS: Readonly<Record<Role, Shell>> = {
 };
 
 const TABS: Readonly<Record<Shell, ReadonlyArray<string>>> = {
-  PLATFORM: ['Gyms', 'Approvals', 'Revenue', 'Support', 'Profile'],
+  PLATFORM: ['Overview', 'Gyms', 'Approvals', 'Revenue', 'Support', 'Profile'],
   ADMIN: ['Home', 'People', 'Attendance', 'Plans', 'Money', 'Profile'],
   STAFF: ['Desk', 'Enquiries', 'Messages', 'Profile'],
   TRAINER: ['Home', 'Members', 'Sessions', 'Plans', 'Attendance', 'Profile'],
@@ -251,13 +315,47 @@ export function tabsFor(shell: Shell): ReadonlyArray<string> {
   return TABS[shell] ?? TABS.MEMBER;
 }
 
-export function capsOf(role: string | undefined | null): Readonly<Caps> {
-  return isRole(role) ? CAPABILITIES[role] : CAPABILITIES.MEMBER;
+/**
+ * What a cleaning staffer loses relative to the front desk.
+ *
+ * Subtracted rather than written as a sixth role row, because every other
+ * capability is identical and duplicating thirty lines would be a second place
+ * for the two to drift apart. The backend refuses these anyway — `POST /users`
+ * checks `staffType`, and the desk screens simply have nothing to show.
+ */
+const CLEANING_STAFF_REVOKES: ReadonlyArray<Capability> = [
+  'canAddPeople',
+  'canHandleEnquiries',
+  'canCheckInOthers',
+  'canSeeGymAttendance',
+  'canSeeMemberDues',
+];
+
+export function capsOf(role: string | undefined | null, staffType?: StaffType | null): Readonly<Caps> {
+  const base = isRole(role) ? CAPABILITIES[role] : CAPABILITIES.MEMBER;
+  if (role !== 'STAFF' || staffType !== 'CLEANING') return base;
+
+  const narrowed = { ...base } as Caps;
+  for (const capability of CLEANING_STAFF_REVOKES) narrowed[capability] = false;
+  return narrowed;
 }
 
-export function can(user: { role?: string | null } | null | undefined, capability: Capability): boolean {
+/**
+ * `staffType` is read off the same user object the app already carries, so a
+ * screen calls `can(user, 'canAddPeople')` exactly as before and the cleaning
+ * narrowing applies without any call site knowing about it.
+ */
+export function can(
+  user: { role?: string | null; staffType?: string | null } | null | undefined,
+  capability: Capability,
+): boolean {
   if (!user || !isRole(user.role)) return false;
-  return CAPABILITIES[user.role][capability] === true;
+  return capsOf(user.role, user.staffType as StaffType | null | undefined)[capability] === true;
+}
+
+/** Cleaning staff get a reduced shell: attendance, leave, salary and messages. */
+export function isCleaningStaff(user: { role?: string | null; staffType?: string | null } | null | undefined): boolean {
+  return user?.role === 'STAFF' && user?.staffType === 'CLEANING';
 }
 
 /** Only a super admin works without a gym; every other role is tenant-scoped. */

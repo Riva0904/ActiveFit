@@ -131,6 +131,30 @@ export class AttendanceController {
     return this.attendanceService.getHistory(user.id, user.gymId, query);
   }
 
+  /**
+   * One member's attendance for their trainer or a gym admin. The gym-wide
+   * attendance routes stay closed to trainers; the service allows a trainer
+   * through only for a member assigned to them.
+   */
+  @Get('member/:memberId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.TRAINER, Role.GYM_ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Trainer/admin: one member's attendance summary" })
+  getMemberAttendance(
+    @Param('memberId') memberId: string,
+    @CurrentUser() user: any,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    return this.attendanceService.getMemberAttendance(
+      user,
+      memberId,
+      resolveGymScope(user),
+      month ? +month : undefined,
+      year ? +year : undefined,
+    );
+  }
+
   // ─── Staff/Admin: explicit manual check-in/check-out (not a toggle) ──────
 
   @Post('manual-check-in')

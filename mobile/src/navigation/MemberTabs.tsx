@@ -24,9 +24,7 @@ import PaymentHistoryScreen from '../screens/member/PaymentHistoryScreen';
 import NotificationsScreen from '../screens/member/NotificationsScreen';
 import MembershipRenewalScreen from '../screens/member/MembershipRenewalScreen';
 import SuperAdminChatScreen from '../screens/member/SuperAdminChatScreen';
-import MessagesScreen from '../screens/chat/MessagesScreen';
-import ChatContactsScreen from '../screens/chat/ContactsScreen';
-import DirectChatScreen from '../screens/chat/DirectChatScreen';
+import { chatScreens } from './chatScreens';
 import GamificationScreen from '../screens/member/GamificationScreen';
 import ReferralsScreen from '../screens/member/ReferralsScreen';
 import MyTrainerScreen from '../screens/member/MyTrainerScreen';
@@ -107,9 +105,7 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
       <ProfileStack.Screen name="MembershipRenewal" component={MembershipRenewalScreen} />
-      <ProfileStack.Screen name="Messages" component={MessagesScreen} />
-      <ProfileStack.Screen name="ChatContacts" component={ChatContactsScreen} />
-      <ProfileStack.Screen name="DirectChat" component={DirectChatScreen} />
+      {chatScreens(ProfileStack)}
       <ProfileStack.Screen name="SuperAdminChat" component={SuperAdminChatScreen} />
       <ProfileStack.Screen name="Gamification" component={GamificationScreen} />
       <ProfileStack.Screen name="Referrals" component={ReferralsScreen} />

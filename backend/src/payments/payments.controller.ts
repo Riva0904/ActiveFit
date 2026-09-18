@@ -52,6 +52,22 @@ export class PaymentsController {
     return this.paymentsService.findAll(query, user.gymId, user.id);
   }
 
+  /**
+   * Who owes what, for the front desk. STAFF is allowed here and nowhere else in
+   * this controller — the desk needs dues, not the gym's revenue.
+   */
+  @Get('member-dues')
+  @UseGuards(RolesGuard)
+  @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN, Role.STAFF)
+  getMemberDues(
+    @CurrentUser() user: any,
+    @Query('status') status?: 'PAID' | 'PENDING' | 'OVERDUE',
+    @Query('search') search?: string,
+    @Query('gymId') gymId?: string,
+  ) {
+    return this.paymentsService.getMemberDues(resolveGymScope(user, gymId), status, search);
+  }
+
   @Get('stats')
   @UseGuards(RolesGuard)
   @Roles(Role.GYM_ADMIN, Role.SUPER_ADMIN)

@@ -35,6 +35,97 @@ export class PaymentsService {
     return this.razorpay;
   }
 
+  /**
+   * Who has paid and who has not — the front desk's view of money.
+   *
+   * Deliberately its own endpoint rather than widening `/payments` or
+   * `/payments/stats`: the desk needs to know whether the person in front of
+   * them owes anything, not what the gym earns. Nothing here totals revenue.
+   */
+  async getMemberDues(gymId: string, filter?: 'PAID' | 'PENDING' | 'OVERDUE', search?: string) {
+    const q = (search ?? '').trim();
+
+    const members = await this.prisma.member.findMany({
+      where: {
+        gymId,
+        deletedAt: null,
+        ...(q && {
+          OR: [
+            { memberCode: { contains: q, mode: 'insensitive' as const } },
+            { user: { firstName: { contains: q, mode: 'insensitive' as const } } },
+            { user: { lastName: { contains: q, mode: 'insensitive' as const } } },
+            { user: { phone: { contains: q, mode: 'insensitive' as const } } },
+          ],
+        }),
+      },
+      select: {
+        id: true,
+        memberCode: true,
+        user: { select: { id: true, firstName: true, lastName: true, phone: true, avatar: true, isActive: true } },
+        memberSubscriptions: {
+          where: { deletedAt: null },
+          orderBy: { endDate: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            amount: true,
+            plan: { select: { name: true } },
+            payments: { select: { amount: true, status: true } },
+          },
+        },
+      },
+      orderBy: { memberCode: 'asc' },
+      take: 500,
+    });
+
+    const now = new Date();
+    const rows = members.map((m) => {
+      const sub = m.memberSubscriptions[0] ?? null;
+      const paid = (sub?.payments ?? [])
+        .filter((p) => p.status === 'COMPLETED')
+        .reduce((sum, p) => sum + p.amount, 0);
+      const due = Math.max(0, (sub?.amount ?? 0) - paid);
+      const expired = !!sub && new Date(sub.endDate) < now;
+
+      // "No subscription at all" is a pending sign-up, not a paid-up member —
+      // otherwise the desk would wave through someone who never bought anything.
+      const status: 'PAID' | 'PENDING' | 'OVERDUE' = !sub
+        ? 'PENDING'
+        : due <= 0
+        ? 'PAID'
+        : expired
+        ? 'OVERDUE'
+        : 'PENDING';
+
+      return {
+        memberId: m.id,
+        memberCode: m.memberCode,
+        ...m.user,
+        planName: sub?.plan.name ?? null,
+        subscriptionStatus: sub?.status ?? null,
+        endDate: sub?.endDate ?? null,
+        amount: sub?.amount ?? 0,
+        paid,
+        due,
+        status,
+      };
+    });
+
+    const filtered = filter ? rows.filter((r) => r.status === filter) : rows;
+
+    return {
+      data: filtered,
+      counts: {
+        paid: rows.filter((r) => r.status === 'PAID').length,
+        pending: rows.filter((r) => r.status === 'PENDING').length,
+        overdue: rows.filter((r) => r.status === 'OVERDUE').length,
+      },
+    };
+  }
+
   async findAll(query: any, gymId?: string, userId?: string) {
     const { page = 1, limit = 10, status, type } = query;
     const skip = (page - 1) * limit;

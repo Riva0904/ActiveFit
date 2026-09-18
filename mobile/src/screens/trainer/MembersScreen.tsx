@@ -1,61 +1,84 @@
 import React from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { colors } from '../../theme';
+import { Avatar, Card, EmptyState, Header, Icon, Loading, PressScale, Screen } from '../../components';
+import { colors, radius, spacing, typography } from '../../theme';
 
-export default function TrainerMembersScreen() {
-  const { data, isLoading } = useQuery({
+/**
+ * The trainer's roster. Each row now opens the member — attendance and body
+ * transformation — which the app had no screen for at all.
+ */
+export default function TrainerMembersScreen({ navigation }: any) {
+  const { data, isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['trainer-assigned-members'],
     queryFn: () => api.get('/pt-sessions/assigned-members') as any,
   });
 
-  const members: any[] = Array.isArray(data) ? data : [];
+  const members: any[] = Array.isArray(data) ? data : (data as any)?.data ?? [];
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Assigned Members</Text>
+    <Screen padded={false}>
+      <View style={styles.pad}>
+        <Header
+          title="My members"
+          subtitle={`${members.length} assigned to you`}
+        />
+      </View>
+
       {isLoading ? (
-        <ActivityIndicator color="#FF4D00" style={{ marginTop: 32 }} />
+        <Loading />
       ) : (
         <FlatList
           data={members}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 20 }}
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
+          ListEmptyComponent={
+            <EmptyState
+              icon="users"
+              title="No members assigned"
+              subtitle="Your gym admin assigns members to you from their profile page."
+            />
+          }
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {item.user?.firstName?.[0]}{item.user?.lastName?.[0]}
+            <PressScale
+              style={styles.row}
+              scaleTo={0.98}
+              onPress={() =>
+                navigation.navigate('TrainerMemberDetail', {
+                  memberId: item.id,
+                  name: `${item.user?.firstName ?? ''} ${item.user?.lastName ?? ''}`.trim(),
+                  member: item,
+                })
+              }
+            >
+              <Avatar uri={item.user?.avatar} firstName={item.user?.firstName} lastName={item.user?.lastName} size={46} />
+              <View style={styles.body}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {item.user?.firstName} {item.user?.lastName}
                 </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{item.user?.firstName} {item.user?.lastName}</Text>
                 <Text style={styles.code}>{item.memberCode}</Text>
               </View>
-            </View>
+              <Icon name="chevron-right" size={18} color={colors.textMuted} />
+            </PressScale>
           )}
-          ListEmptyComponent={<Text style={styles.empty}>No members assigned</Text>}
         />
       )}
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  header: { color: colors.text, fontSize: 22, fontWeight: '700', paddingHorizontal: 20, paddingTop: 56, marginBottom: 4 },
-  card: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border,
+  pad: { paddingHorizontal: spacing.screen },
+  list: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl, gap: spacing.sm },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
+    borderWidth: 1, borderColor: colors.surfaceRaised,
   },
-  avatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary,
-    alignItems: 'center', justifyContent: 'center', marginRight: 12,
-  },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  name: { color: colors.text, fontSize: 15, fontWeight: '600', marginBottom: 2 },
-  code: { color: colors.textSecondary, fontSize: 12 },
-  empty: { color: colors.textFaint, fontSize: 14, textAlign: 'center', marginTop: 32 },
+  body: { flex: 1, minWidth: 0 },
+  name: { color: colors.text, ...typography.h2 },
+  code: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
 });

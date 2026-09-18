@@ -94,6 +94,86 @@ export class TrainersService {
     });
   }
 
+  /** Members currently assigned to this trainer. */
+  async listAssignments(trainerId: string, gymId: string) {
+    const trainer = await this.prisma.trainer.findFirst({ where: { id: trainerId, gymId } });
+    if (!trainer) throw new NotFoundException('Trainer not found in this gym');
+
+    const assignments = await this.prisma.trainerAssignment.findMany({
+      where: { trainerId, gymId, isActive: true },
+      include: {
+        member: {
+          select: {
+            id: true,
+            memberCode: true,
+            user: { select: { id: true, firstName: true, lastName: true, avatar: true, phone: true } },
+          },
+        },
+      },
+      orderBy: { assignedAt: 'desc' },
+    });
+
+    return assignments.map((a) => ({
+      assignedAt: a.assignedAt,
+      notes: a.notes,
+      memberId: a.member.id,
+      memberCode: a.member.memberCode,
+      ...a.member.user,
+    }));
+  }
+
+  /**
+   * Ends an assignment. Soft, matching `assignMember`'s upsert — the row is kept
+   * so re-assigning the same pair does not collide with the unique key, and so
+   * past coaching history is not silently erased.
+   */
+  async unassignMember(trainerId: string, memberIdOrUserId: string, gymId: string) {
+    const trainer = await this.prisma.trainer.findFirst({ where: { id: trainerId, gymId } });
+    if (!trainer) throw new NotFoundException('Trainer not found in this gym');
+
+    const member =
+      (await this.prisma.member.findFirst({ where: { id: memberIdOrUserId, gymId } })) ??
+      (await this.prisma.member.findFirst({ where: { userId: memberIdOrUserId, gymId } }));
+    if (!member) throw new NotFoundException('Member not found in this gym');
+
+    const { count } = await this.prisma.trainerAssignment.updateMany({
+      where: { trainerId, memberId: member.id, gymId },
+      data: { isActive: false },
+    });
+    if (count === 0) throw new NotFoundException('That member is not assigned to this trainer');
+    return { unassigned: true };
+  }
+
+  /** The trainer a member is currently with, if any — drives the admin's person page. */
+  async findAssignedTrainer(memberIdOrUserId: string, gymId: string) {
+    const member =
+      (await this.prisma.member.findFirst({ where: { id: memberIdOrUserId, gymId } })) ??
+      (await this.prisma.member.findFirst({ where: { userId: memberIdOrUserId, gymId } }));
+    if (!member) throw new NotFoundException('Member not found in this gym');
+
+    const assignment = await this.prisma.trainerAssignment.findFirst({
+      where: { memberId: member.id, gymId, isActive: true },
+      include: {
+        trainer: {
+          select: {
+            id: true,
+            specializations: true,
+            user: { select: { id: true, firstName: true, lastName: true, avatar: true, phone: true } },
+          },
+        },
+      },
+      orderBy: { assignedAt: 'desc' },
+    });
+    if (!assignment) return null;
+
+    return {
+      trainerId: assignment.trainer.id,
+      specializations: assignment.trainer.specializations,
+      assignedAt: assignment.assignedAt,
+      ...assignment.trainer.user,
+    };
+  }
+
   async getPerformance(gymId: string) {
     const trainers = await this.prisma.trainer.findMany({
       where: { gymId },

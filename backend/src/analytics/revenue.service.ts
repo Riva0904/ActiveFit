@@ -101,4 +101,49 @@ export class RevenueService {
       activeGyms: byTier.length,
     };
   }
+
+  /**
+   * Platform-wide totals for the super admin dashboard.
+   *
+   * Counted in the database, not in the app: the mobile Gyms screen used to sum
+   * `gyms.length` and each gym's member count over the *first 100 gyms only*, so
+   * every number was wrong once the platform passed 100.
+   */
+  async getPlatformStats() {
+    const [totalGyms, activeGyms, totalUsers, usersByRole, subsByStatus] = await Promise.all([
+      this.prisma.gym.count({ where: { deletedAt: null } }),
+      this.prisma.gym.count({ where: { deletedAt: null, status: 'ACTIVE' } }),
+      this.prisma.user.count({ where: { deletedAt: null, role: { not: 'SUPER_ADMIN' } } }),
+      this.prisma.user.groupBy({
+        by: ['role'],
+        where: { deletedAt: null },
+        _count: { _all: true },
+      }),
+      this.prisma.gymSubscription.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+    ]);
+
+    const countFor = (rows: { _count: { _all: number } }[], key: string, field: string) =>
+      (rows as any[]).find((r) => r[field] === key)?._count._all ?? 0;
+
+    return {
+      totalGyms,
+      activeGyms,
+      // Everyone who uses the app, platform operators excluded.
+      totalUsers,
+      usersByRole: {
+        members: countFor(usersByRole as any, 'MEMBER', 'role'),
+        trainers: countFor(usersByRole as any, 'TRAINER', 'role'),
+        staff: countFor(usersByRole as any, 'STAFF', 'role'),
+        gymAdmins: countFor(usersByRole as any, 'GYM_ADMIN', 'role'),
+      },
+      subscriptions: {
+        active: countFor(subsByStatus as any, 'ACTIVE', 'status'),
+        trial: countFor(subsByStatus as any, 'TRIAL', 'status'),
+        expired: countFor(subsByStatus as any, 'EXPIRED', 'status'),
+      },
+    };
+  }
 }

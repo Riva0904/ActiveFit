@@ -54,6 +54,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (user.role === 'SUPER_ADMIN') {
         client.join('super-admin');
       }
+      // One room per group the user is still in, so a group message is a single
+      // emit rather than a loop over every participant's personal room.
+      if (user.gymId) {
+        const groupIds = await this.chatService.groupIdsFor(user.id);
+        for (const id of groupIds) client.join(`group:${id}`);
+      }
     } catch {
       client.disconnect();
     }
@@ -99,6 +105,83 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // The service throws for "not in this gym" and "may not message" — say so
       // rather than failing silently, so the UI can drop the thread.
       client.emit('chat:error', { message: e?.message ?? 'Failed to send message' });
+    }
+  }
+
+  // ─── Group chat ───────────────────────────────────────────────────────────
+  //
+  // Authorization lives in the service (`saveGroupMessage` asserts the sender is
+  // an active participant), so a socket that guessed a conversation id gets an
+  // error back rather than a delivered message.
+
+  @SubscribeMessage('chat:group-send')
+  async handleGroupSend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: {
+      conversationId?: string;
+      content: string;
+      attachmentUrl?: string;
+      attachmentName?: string;
+      attachmentType?: string;
+    },
+  ) {
+    const user = (client as any).user;
+    const hasContent = !!payload?.content?.trim();
+    const hasAttachment = !!payload?.attachmentUrl;
+    if (!user?.gymId || !payload?.conversationId || (!hasContent && !hasAttachment)) return;
+
+    try {
+      const { message, conversationId, recipientIds } = await this.chatService.saveGroupMessage(
+        user.gymId,
+        user.id,
+        payload.conversationId,
+        payload.content?.trim() ?? '',
+        hasAttachment ? { url: payload.attachmentUrl!, name: payload.attachmentName ?? '', type: payload.attachmentType ?? '' } : undefined,
+      );
+      const envelope = { ...message, conversationId };
+      this.server.to(`group:${conversationId}`).emit('chat:group-message', envelope);
+      // A participant who joined after connecting has not joined the socket room
+      // yet; their personal room keeps the inbox badge correct until they
+      // reconnect. Skip the sender, who already has the room copy.
+      for (const id of recipientIds) {
+        if (id !== user.id) this.server.to(`user:${id}`).emit('chat:group-inbox', { conversationId });
+      }
+    } catch (e: any) {
+      client.emit('chat:error', { message: e?.message ?? 'Failed to send group message' });
+    }
+  }
+
+  @SubscribeMessage('chat:group-typing')
+  handleGroupTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { conversationId?: string },
+  ) {
+    const user = (client as any).user;
+    if (!user?.gymId || !payload?.conversationId) return;
+    // `client.to` excludes the sender; membership is implied by being in the room.
+    client.to(`group:${payload.conversationId}`).emit('chat:group-typing', {
+      conversationId: payload.conversationId,
+      userId: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+    });
+  }
+
+  /**
+   * Called by the owner's client after it created, renamed, or changed the
+   * membership of a group. Everyone affected re-reads the group list; those
+   * newly added also join the room without waiting for a reconnect.
+   */
+  @SubscribeMessage('chat:group-sync')
+  async handleGroupSync(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { conversationId?: string; userIds?: string[] },
+  ) {
+    const user = (client as any).user;
+    if (!user?.gymId || !payload?.conversationId) return;
+    client.join(`group:${payload.conversationId}`);
+    this.server.to(`group:${payload.conversationId}`).emit('chat:group-updated', { conversationId: payload.conversationId });
+    for (const id of payload.userIds ?? []) {
+      this.server.to(`user:${id}`).emit('chat:group-updated', { conversationId: payload.conversationId });
     }
   }
 
@@ -164,6 +247,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (result.conversationType === 'SUPPORT') {
         this.server.to(`user:${result.conversationUserId}`).emit('chat:deleted', deletedPayload);
         this.server.to('super-admin').emit('chat:deleted', deletedPayload);
+      } else if (result.conversationType === 'GROUP') {
+        this.server.to(`group:${result.conversationId}`).emit('chat:deleted', deletedPayload);
       } else {
         // Only the two people on the thread.
         this.server.to(`user:${result.conversationUserId}`).emit('chat:deleted', deletedPayload);
@@ -194,6 +279,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (result.conversationType === 'SUPPORT') {
         this.server.to(`user:${result.conversationUserId}`).emit('chat:reaction', update);
         this.server.to('super-admin').emit('chat:reaction', update);
+      } else if (result.conversationType === 'GROUP') {
+        this.server.to(`group:${result.conversationId}`).emit('chat:reaction', update);
       } else {
         this.server.to(`user:${result.conversationUserId}`).emit('chat:reaction', update);
         if (result.conversationPeerId) {

@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { MobileService } from './mobile.service';
+import { SetWeeklyGoalDto, UpdateDailyLogDto } from './dto/update-daily-log.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
@@ -50,5 +51,26 @@ export class MobileController {
   @Roles(Role.MEMBER, Role.TRAINER, Role.STAFF)
   mobileCheckIn(@CurrentUser() user: any, @Body() body: { gymId?: string }) {
     return this.mobileService.selfCheckIn(user.id, body.gymId ?? user.gymId);
+  }
+
+  /** Today's checklist ticks, water and calories. `date` is the device's local day. */
+  @Get('daily-log')
+  @Roles(Role.MEMBER)
+  getDailyLog(@CurrentUser() user: any, @Query('date') date?: string) {
+    return this.mobileService.getDailyLog(user.id, user.gymId, date);
+  }
+
+  /** Partial update — only the fields present in the body are written. */
+  @Put('daily-log')
+  @Roles(Role.MEMBER)
+  upsertDailyLog(@CurrentUser() user: any, @Body() body: UpdateDailyLogDto) {
+    return this.mobileService.upsertDailyLog(user.id, user.gymId, body);
+  }
+
+  /** How many sessions a week the member is aiming for (1–7). */
+  @Put('weekly-goal')
+  @Roles(Role.MEMBER)
+  setWeeklyGoal(@CurrentUser() user: any, @Body() body: SetWeeklyGoalDto) {
+    return this.mobileService.setWeeklyGoal(user.id, user.gymId, body.weeklyGoal);
   }
 }

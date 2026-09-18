@@ -16,7 +16,16 @@ const mockPrisma = {
     create: jest.fn(),
     updateMany: jest.fn(),
   },
+  chatParticipant: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    updateMany: jest.fn(),
+    upsert: jest.fn(),
+    aggregate: jest.fn(),
+  },
   user: { findFirst: jest.fn(), findMany: jest.fn() },
+  $transaction: jest.fn((ops: any[]) => Promise.all(ops)),
 };
 
 const GYM = 'gym-001';
@@ -71,9 +80,20 @@ describe('ChatService', () => {
       Promise.resolve([me, peer].find((u) => u.id === where.id) ?? null),
     );
 
+  /**
+   * `listThreads` now queries conversations twice — once for DIRECT rows, once
+   * (via `listGroups`) for GROUP rows. A flat `mockResolvedValue` would hand the
+   * same rows to both and invent a group out of a direct thread, so the mock
+   * dispatches on the `type` in the where clause the way Postgres would.
+   */
+  const mockConversations = ({ direct = [], groups = [] }: { direct?: any[]; groups?: any[] }) =>
+    mockPrisma.chatConversation.findMany.mockImplementation(({ where }: any) =>
+      Promise.resolve(where?.type === 'GROUP' ? groups : direct),
+    );
+
   describe('listThreads', () => {
     it('returns only threads the caller is on', async () => {
-      mockPrisma.chatConversation.findMany.mockResolvedValue([]);
+      mockConversations({});
       await service.listThreads(GYM, MEMBER.id);
 
       const args = mockPrisma.chatConversation.findMany.mock.calls[0][0];
@@ -86,26 +106,62 @@ describe('ChatService', () => {
     });
 
     it('flattens each thread to the other person and that side’s unread count', async () => {
-      mockPrisma.chatConversation.findMany.mockResolvedValue([
-        { id: 'c1', userId: MEMBER.id, peerId: TRAINER.id, user: MEMBER, peer: TRAINER, lastMessage: 'hi', lastMessageAt: new Date(0), unreadUser: 3, unreadAdmin: 9 },
-      ]);
+      const row = { id: 'c1', userId: MEMBER.id, peerId: TRAINER.id, user: MEMBER, peer: TRAINER, lastMessage: 'hi', lastMessageAt: new Date(0), unreadUser: 3, unreadAdmin: 9 };
+      mockConversations({ direct: [row] });
       const [thread] = await service.listThreads(GYM, MEMBER.id);
       expect(thread.peer).toEqual(TRAINER);
       expect(thread.unread).toBe(3);
 
-      mockPrisma.chatConversation.findMany.mockResolvedValue([
-        { id: 'c1', userId: MEMBER.id, peerId: TRAINER.id, user: MEMBER, peer: TRAINER, lastMessage: 'hi', lastMessageAt: new Date(0), unreadUser: 3, unreadAdmin: 9 },
-      ]);
+      mockConversations({ direct: [row] });
       const [asTrainer] = await service.listThreads(GYM, TRAINER.id);
       expect(asTrainer.peer).toEqual(MEMBER);
       expect(asTrainer.unread).toBe(9);
     });
 
     it('hides threads nobody has written in', async () => {
-      mockPrisma.chatConversation.findMany.mockResolvedValue([
-        { id: 'c1', userId: MEMBER.id, peerId: TRAINER.id, user: MEMBER, peer: TRAINER, lastMessage: null, lastMessageAt: new Date(0), unreadUser: 0, unreadAdmin: 0 },
-      ]);
+      mockConversations({
+        direct: [{ id: 'c1', userId: MEMBER.id, peerId: TRAINER.id, user: MEMBER, peer: TRAINER, lastMessage: null, lastMessageAt: new Date(0), unreadUser: 0, unreadAdmin: 0 }],
+      });
       expect(await service.listThreads(GYM, MEMBER.id)).toEqual([]);
+    });
+
+    // A group the admin just made has no messages yet, but it must still show —
+    // unlike an empty direct thread, which is only noise.
+    it('keeps a brand-new group in the inbox and sorts everything by recency', async () => {
+      const older = new Date('2026-09-17T10:00:00Z');
+      const newer = new Date('2026-09-18T10:00:00Z');
+      mockConversations({
+        direct: [{ id: 'c1', userId: MEMBER.id, peerId: TRAINER.id, user: MEMBER, peer: TRAINER, lastMessage: 'hi', lastMessageAt: older, unreadUser: 1, unreadAdmin: 0 }],
+        groups: [{
+          id: 'g1', name: 'Morning batch', avatar: null, lastMessage: null, lastMessageAt: newer,
+          participants: [
+            { userId: MEMBER.id, role: 'MEMBER', unread: 4, isActive: true, user: MEMBER },
+            { userId: ADMIN.id, role: 'OWNER', unread: 0, isActive: true, user: ADMIN },
+          ],
+        }],
+      });
+
+      const threads = await service.listThreads(GYM, MEMBER.id);
+      expect(threads.map((t) => t.id)).toEqual(['g1', 'c1']);
+      expect(threads[0]).toMatchObject({ type: 'GROUP', name: 'Morning batch', unread: 4, participantCount: 2 });
+      expect(threads[1]).toMatchObject({ type: 'DIRECT', unread: 1 });
+    });
+  });
+
+  describe('unreadCount', () => {
+    it('sums direct threads and group participation', async () => {
+      mockPrisma.chatConversation.findMany.mockResolvedValue([
+        { userId: MEMBER.id, unreadUser: 2, unreadAdmin: 99 },   // I am the user side → 2
+        { userId: TRAINER.id, unreadUser: 99, unreadAdmin: 3 },  // I am the peer side → 3
+      ]);
+      mockPrisma.chatParticipant.aggregate.mockResolvedValue({ _sum: { unread: 5 } });
+      expect(await service.unreadCount(GYM, MEMBER.id)).toBe(10);
+    });
+
+    it('treats no group rows as zero rather than NaN', async () => {
+      mockPrisma.chatConversation.findMany.mockResolvedValue([]);
+      mockPrisma.chatParticipant.aggregate.mockResolvedValue({ _sum: { unread: null } });
+      expect(await service.unreadCount(GYM, MEMBER.id)).toBe(0);
     });
   });
 
@@ -202,6 +258,133 @@ describe('ChatService', () => {
     it('gives a super admin nobody', async () => {
       expect(await service.listContacts(GYM, 'sa', 'SUPER_ADMIN')).toEqual([]);
       expect(mockPrisma.user.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('groups', () => {
+    const CONV = 'g1';
+    const asParticipant = (role: 'OWNER' | 'MEMBER', isActive = true) =>
+      mockPrisma.chatParticipant.findUnique.mockResolvedValue({ conversationId: CONV, userId: MEMBER.id, role, isActive });
+
+    const groupExists = () =>
+      mockPrisma.chatConversation.findFirst.mockResolvedValue({ id: CONV, gymId: GYM, type: 'GROUP', deletedAt: null });
+
+    it('only a gym admin may create one', async () => {
+      await expect(service.createGroup(GYM, MEMBER.id, 'MEMBER', 'Batch', [])).rejects.toThrow(ForbiddenException);
+      await expect(service.createGroup(GYM, TRAINER.id, 'TRAINER', 'Batch', [])).rejects.toThrow(ForbiddenException);
+      await expect(service.createGroup(GYM, 'sa', 'SUPER_ADMIN', 'Batch', [])).rejects.toThrow(ForbiddenException);
+      expect(mockPrisma.chatConversation.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a nameless group and strips html from the name', async () => {
+      await expect(service.createGroup(GYM, ADMIN.id, 'GYM_ADMIN', '   ', [])).rejects.toThrow(BadRequestException);
+
+      mockPrisma.user.findMany.mockResolvedValue([MEMBER]);
+      mockPrisma.chatConversation.create.mockResolvedValue({ id: CONV, name: 'hi', avatar: null, lastMessage: null, lastMessageAt: new Date(0), participants: [] });
+      await service.createGroup(GYM, ADMIN.id, 'GYM_ADMIN', '<b>hi</b>', [MEMBER.id]);
+      expect(mockPrisma.chatConversation.create.mock.calls[0][0].data.name).toBe('hi');
+    });
+
+    it('makes the creator the owner and never adds them twice', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([MEMBER, TRAINER]);
+      mockPrisma.chatConversation.create.mockResolvedValue({ id: CONV, name: 'Batch', avatar: null, lastMessage: null, lastMessageAt: new Date(0), participants: [] });
+
+      // The creator is passed in the member list as well — a real client does this.
+      await service.createGroup(GYM, ADMIN.id, 'GYM_ADMIN', 'Batch', [MEMBER.id, TRAINER.id, ADMIN.id]);
+
+      const created = mockPrisma.chatConversation.create.mock.calls[0][0].data;
+      expect(created).toMatchObject({ gymId: GYM, userId: ADMIN.id, peerId: null, type: 'GROUP' });
+      expect(created.participants.create).toEqual([
+        { userId: ADMIN.id, role: 'OWNER' },
+        { userId: MEMBER.id, role: 'MEMBER' },
+        { userId: TRAINER.id, role: 'MEMBER' },
+      ]);
+    });
+
+    it('refuses people who are not active users of this gym', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([MEMBER]); // asked for two, found one
+      await expect(
+        service.createGroup(GYM, ADMIN.id, 'GYM_ADMIN', 'Batch', [MEMBER.id, 'outsider']),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.chatConversation.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses to read or post for a non-participant', async () => {
+      groupExists();
+      mockPrisma.chatParticipant.findUnique.mockResolvedValue(null);
+      await expect(service.getGroupMessages(GYM, MEMBER.id, CONV)).rejects.toThrow(ForbiddenException);
+      await expect(service.saveGroupMessage(GYM, MEMBER.id, CONV, 'hi')).rejects.toThrow(ForbiddenException);
+      expect(mockPrisma.chatMessage.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses someone who left, even though their row still exists', async () => {
+      groupExists();
+      asParticipant('MEMBER', false);
+      await expect(service.saveGroupMessage(GYM, MEMBER.id, CONV, 'hi')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('refuses a group id from another gym', async () => {
+      mockPrisma.chatConversation.findFirst.mockResolvedValue(null);
+      await expect(service.getGroupMessages(GYM, MEMBER.id, CONV)).rejects.toThrow(NotFoundException);
+    });
+
+    // A plain member may post: inside a room the gate is membership, not the
+    // role pair that blocks member → member direct messages.
+    it('lets any active participant post, and fans unread out to everyone else', async () => {
+      groupExists();
+      asParticipant('MEMBER');
+      mockPrisma.chatMessage.create.mockResolvedValue({ id: 'm1', sender: MEMBER });
+      mockPrisma.chatParticipant.findMany.mockResolvedValue([
+        { userId: MEMBER.id }, { userId: TRAINER.id }, { userId: ADMIN.id },
+      ]);
+
+      const result = await service.saveGroupMessage(GYM, MEMBER.id, CONV, '<i>hello</i>');
+
+      expect(mockPrisma.chatMessage.create.mock.calls[0][0].data.content).toBe('hello');
+      expect(mockPrisma.chatParticipant.updateMany.mock.calls[0][0]).toEqual({
+        where: { conversationId: CONV, isActive: true, userId: { not: MEMBER.id } },
+        data: { unread: { increment: 1 } },
+      });
+      expect(result.recipientIds).toEqual([MEMBER.id, TRAINER.id, ADMIN.id]);
+    });
+
+    it('lets only the owner rename, add and remove', async () => {
+      groupExists();
+      asParticipant('MEMBER');
+      await expect(service.renameGroup(GYM, MEMBER.id, CONV, 'New')).rejects.toThrow(ForbiddenException);
+      await expect(service.addParticipants(GYM, MEMBER.id, CONV, [TRAINER.id])).rejects.toThrow(ForbiddenException);
+      await expect(service.removeParticipant(GYM, MEMBER.id, CONV, TRAINER.id)).rejects.toThrow(ForbiddenException);
+      await expect(service.deleteGroup(GYM, MEMBER.id, CONV)).rejects.toThrow(ForbiddenException);
+      expect(mockPrisma.chatConversation.update).not.toHaveBeenCalled();
+    });
+
+    it('re-adding someone who left flips their row back on instead of colliding', async () => {
+      groupExists();
+      mockPrisma.chatParticipant.findUnique.mockResolvedValue({ conversationId: CONV, userId: ADMIN.id, role: 'OWNER', isActive: true });
+      mockPrisma.user.findMany.mockResolvedValue([TRAINER]);
+      mockPrisma.chatConversation.findUnique.mockResolvedValue({ id: CONV, name: 'Batch', avatar: null, lastMessage: null, lastMessageAt: new Date(0), participants: [] });
+
+      await service.addParticipants(GYM, ADMIN.id, CONV, [TRAINER.id]);
+
+      const call = mockPrisma.chatParticipant.upsert.mock.calls[0][0];
+      expect(call.where).toEqual({ conversationId_userId: { conversationId: CONV, userId: TRAINER.id } });
+      expect(call.update).toMatchObject({ isActive: true, unread: 0 });
+      expect(call.create).toMatchObject({ conversationId: CONV, userId: TRAINER.id, role: 'MEMBER' });
+    });
+
+    it('stops the owner removing or walking out on themselves', async () => {
+      groupExists();
+      mockPrisma.chatParticipant.findUnique.mockResolvedValue({ conversationId: CONV, userId: ADMIN.id, role: 'OWNER', isActive: true });
+      await expect(service.removeParticipant(GYM, ADMIN.id, CONV, ADMIN.id)).rejects.toThrow(BadRequestException);
+      await expect(service.leaveGroup(GYM, ADMIN.id, CONV)).rejects.toThrow(BadRequestException);
+    });
+
+    it('lets a non-owner leave', async () => {
+      groupExists();
+      asParticipant('MEMBER');
+      mockPrisma.chatParticipant.update.mockResolvedValue({});
+      expect(await service.leaveGroup(GYM, MEMBER.id, CONV)).toEqual({ left: true });
+      expect(mockPrisma.chatParticipant.update.mock.calls[0][0].data).toEqual({ isActive: false });
     });
   });
 

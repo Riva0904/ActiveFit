@@ -16,6 +16,9 @@ import PlanAssignScreen from '../screens/admin/PlanAssignScreen';
 import PaymentsScreen from '../screens/admin/PaymentsScreen';
 import ExpensesScreen from '../screens/admin/ExpensesScreen';
 import PayrollScreen from '../screens/admin/PayrollScreen';
+import ProfitLossScreen from '../screens/admin/ProfitLossScreen';
+import MembershipPlansScreen from '../screens/admin/MembershipPlansScreen';
+import AdminSupplementsScreen from '../screens/admin/AdminSupplementsScreen';
 import SubscriptionScreen from '../screens/admin/SubscriptionScreen';
 
 // Shared with the member app
@@ -24,9 +27,7 @@ import EditProfileScreen from '../screens/member/EditProfileScreen';
 import ChangePasswordScreen from '../screens/member/ChangePasswordScreen';
 import NotificationsScreen from '../screens/member/NotificationsScreen';
 import SuperAdminChatScreen from '../screens/member/SuperAdminChatScreen';
-import MessagesScreen from '../screens/chat/MessagesScreen';
-import ChatContactsScreen from '../screens/chat/ContactsScreen';
-import DirectChatScreen from '../screens/chat/DirectChatScreen';
+import { chatScreens } from './chatScreens';
 import AddPersonScreen from '../screens/admin/AddPersonScreen';
 import EnquiriesScreen from '../screens/staff/EnquiriesScreen';
 
@@ -44,6 +45,9 @@ const TAB_ICONS: Record<string, IconName> = {
   Attendance: 'qrcode',
   Plans: 'clipboard-text-outline',
   Money: 'cash-multiple',
+  // Without this the Profile tab fell through to the 'home' fallback and showed
+  // the same glyph as the first tab.
+  Profile: 'user',
 };
 
 function TabIcon({ route, focused, color }: { route: string; focused: boolean; color: string }) {
@@ -107,6 +111,9 @@ function MoneyStackNavigator() {
       <MoneyStack.Screen name="Payments" component={PaymentsScreen} />
       <MoneyStack.Screen name="Expenses" component={ExpensesScreen} />
       <MoneyStack.Screen name="Payroll" component={PayrollScreen} />
+      <MoneyStack.Screen name="ProfitLoss" component={ProfitLossScreen} />
+      <MoneyStack.Screen name="MembershipPlans" component={MembershipPlansScreen} />
+      <MoneyStack.Screen name="AdminSupplements" component={AdminSupplementsScreen} />
       <MoneyStack.Screen name="Subscription" component={SubscriptionScreen} />
     </MoneyStack.Navigator>
   );
@@ -120,9 +127,7 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
       <ProfileStack.Screen name="SuperAdminChat" component={SuperAdminChatScreen} />
-      <ProfileStack.Screen name="Messages" component={MessagesScreen} />
-      <ProfileStack.Screen name="ChatContacts" component={ChatContactsScreen} />
-      <ProfileStack.Screen name="DirectChat" component={DirectChatScreen} />
+      {chatScreens(ProfileStack)}
       <ProfileStack.Screen name="Subscription" component={SubscriptionScreen} />
     </ProfileStack.Navigator>
   );

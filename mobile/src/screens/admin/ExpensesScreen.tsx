@@ -82,7 +82,16 @@ export default function ExpensesScreen({ navigation }: any) {
           title="Expenses"
           subtitle={`${money(total)} in ${new Date(year, month - 1).toLocaleString('en-IN', { month: 'long' })}`}
           onBack={() => navigation.goBack()}
-          right={<PressScale onPress={() => { setEditing(null); setShowForm(true); }} style={styles.addBtn}><Icon name="plus" size={20} color={colors.white} /></PressScale>}
+          right={
+            <View style={styles.headerActions}>
+              <PressScale onPress={() => navigation.navigate('ProfitLoss')} style={styles.reportBtn}>
+                <Icon name="pie-chart" size={18} color={colors.primary} />
+              </PressScale>
+              <PressScale onPress={() => { setEditing(null); setShowForm(true); }} style={styles.addBtn}>
+                <Icon name="plus" size={20} color={colors.white} />
+              </PressScale>
+            </View>
+          }
         />
 
         <ChipRow>
@@ -252,6 +261,11 @@ function ExpenseForm({ visible, expense, onClose, onSaved }: { visible: boolean;
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: spacing.screen },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  reportBtn: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: tint(colors.primary, '18'),
+    borderWidth: 1, borderColor: tint(colors.primary, '38'), alignItems: 'center', justifyContent: 'center',
+  },
   addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
 
   breakdown: { marginTop: spacing.md, gap: spacing.sm },

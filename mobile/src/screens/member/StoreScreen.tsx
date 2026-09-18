@@ -19,6 +19,15 @@ export default function StoreScreen({ navigation }: any) {
     queryFn: () => api.get('/supplements') as any,
   });
 
+  // Items a gym admin picked out for this member specifically. Private ones are
+  // invisible in the main catalogue, so this shelf is the only place they show.
+  const { data: recommended } = useQuery({
+    queryKey: ['supplements', 'recommended'],
+    queryFn: () => api.get('/supplements/recommended') as any,
+    staleTime: 5 * 60_000,
+  });
+  const picks: any[] = Array.isArray(recommended) ? recommended : [];
+
   const allItems: any[] = Array.isArray(supplements) ? supplements : (supplements as any)?.data ?? [];
   const items = allItems.filter((item: any) => {
     const matchSearch = !search || item.name?.toLowerCase().includes(search.toLowerCase());
@@ -58,6 +67,44 @@ export default function StoreScreen({ navigation }: any) {
         style={{ flexGrow: 0, marginHorizontal: -spacing.screen, marginBottom: spacing.lg }}
         renderItem={({ item: cat }) => <Chip label={cat} selected={category === cat} onPress={() => setCategory(cat)} />}
       />
+
+      {picks.length > 0 && !search && category === 'All' ? (
+        <View style={styles.picksWrap}>
+          <Text style={styles.picksTitle}>Recommended for you</Text>
+          <FlatList
+            horizontal
+            data={picks}
+            keyExtractor={(p) => p.id}
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0, marginHorizontal: -spacing.screen }}
+            contentContainerStyle={styles.picksRow}
+            renderItem={({ item }) => {
+              const price = item.discountPrice && item.discountPrice < item.price ? item.discountPrice : item.price;
+              const img = Array.isArray(item.images) && item.images[0];
+              return (
+                <TouchableOpacity
+                  style={styles.pickCard}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('SupplementDetail', { supplementId: item.id, supplementName: item.name })}
+                >
+                  {img ? (
+                    <Image source={{ uri: img }} style={styles.pickImage} resizeMode="cover" />
+                  ) : (
+                    <View style={[styles.pickImage, styles.pickImageEmpty]}>
+                      <Icon name="pill" size={22} color={colors.textFaint} />
+                    </View>
+                  )}
+                  <Text style={styles.pickName} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.pickPrice}>₹{Math.round(price).toLocaleString('en-IN')}</Text>
+                  {item.recommendationNote ? (
+                    <Text style={styles.pickNote} numberOfLines={2}>{item.recommendationNote}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      ) : null}
 
       {isLoading ? (
         <Loading />
@@ -108,6 +155,19 @@ const styles = StyleSheet.create({
   searchIcon: { position: 'absolute', left: 14, top: 13, zIndex: 1 },
   search: { paddingLeft: 40 },
   catRow: { paddingHorizontal: spacing.screen, gap: spacing.sm },
+
+  picksWrap: { marginBottom: spacing.lg },
+  picksTitle: { color: colors.text, ...typography.h2, marginBottom: spacing.sm },
+  picksRow: { paddingHorizontal: spacing.screen, gap: spacing.md },
+  pickCard: {
+    width: 132, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
+    borderWidth: 1, borderColor: tint(colors.purple, '38'), gap: 4, ...shadow.card,
+  },
+  pickImage: { width: '100%', height: 76, borderRadius: radius.md, backgroundColor: colors.surfaceRaised },
+  pickImageEmpty: { alignItems: 'center', justifyContent: 'center' },
+  pickName: { color: colors.text, ...typography.caption, fontWeight: '700' },
+  pickPrice: { color: colors.primary, ...typography.caption, fontWeight: '800', ...typography.number },
+  pickNote: { color: colors.textMuted, ...typography.micro },
   card: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.surfaceRaised, ...shadow.card },
   img: { backgroundColor: tint(colors.white, '08'), borderRadius: radius.md, height: 90, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm, overflow: 'hidden' },
   imgReal: { width: '100%', height: '100%' },

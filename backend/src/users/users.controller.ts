@@ -21,7 +21,7 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN, Role.GYM_ADMIN, Role.STAFF)
   @ApiOperation({ summary: 'Create user (staff/admin create member or trainer, admin also staff, super admin creates gym admin)' })
   create(@Body() body: any, @CurrentUser() user: any) {
-    return this.usersService.createUser(body, user.role, user.gymId);
+    return this.usersService.createUser(body, user.role, user.gymId, user.id);
   }
 
   @Get()

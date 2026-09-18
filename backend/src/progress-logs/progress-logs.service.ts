@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PointsService } from '../gamification/points.service';
+import { resolveReadableMember } from '../common/utils/trainer-access';
 import { CreateProgressLogDto } from './dto/create-progress-log.dto';
 
 @Injectable()
@@ -16,6 +17,21 @@ export class ProgressLogsService {
 
     return this.prisma.progressLog.findMany({
       where: { memberId: member.id },
+      orderBy: { logDate: 'desc' },
+    });
+  }
+
+  /**
+   * One member's logs, read by their trainer or a gym admin.
+   *
+   * `resolveReadableMember` is the gate: a trainer only gets through for a
+   * member actually assigned to them, so this does not become a way to read the
+   * whole gym's body measurements.
+   */
+  async findForMember(caller: { id: string; role: string }, memberIdOrUserId: string, gymId: string) {
+    const memberId = await resolveReadableMember(this.prisma, caller, memberIdOrUserId, gymId);
+    return this.prisma.progressLog.findMany({
+      where: { memberId },
       orderBy: { logDate: 'desc' },
     });
   }

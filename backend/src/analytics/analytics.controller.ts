@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { SkipGymScope } from '../common/decorators/skip-gym-scope.decorator';
 import { EntitlementGuard } from '../entitlements/guards/entitlement.guard';
 import { RequiresFeature } from '../entitlements/decorators/requires-feature.decorator';
 import { RetentionService } from './retention.service';
@@ -70,5 +71,13 @@ export class AnalyticsController {
   @Roles(Role.SUPER_ADMIN)
   getPlatformRevenue() {
     return this.revenueService.getPlatformRevenue();
+  }
+
+  /** How many gyms and how many people are on the platform. */
+  @Get('platform/stats')
+  @Roles(Role.SUPER_ADMIN)
+  @SkipGymScope()
+  getPlatformStats() {
+    return this.revenueService.getPlatformStats();
   }
 }

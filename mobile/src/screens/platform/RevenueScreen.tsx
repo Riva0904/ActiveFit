@@ -14,7 +14,7 @@ const TIER_COLOR: Record<string, string> = {
   ENTERPRISE: colors.purple,
 };
 
-export default function RevenueScreen() {
+export default function RevenueScreen({ navigation }: any) {
   const revenue = useQuery({
     queryKey: ['platform-revenue'],
     queryFn: () => api.get('/saas-plans/revenue') as any,
@@ -58,8 +58,21 @@ export default function RevenueScreen() {
         </Card>
       </Enter>
 
+      <Enter index={1}>
+        <Card onPress={() => navigation.navigate('SaaSPlans')} padding="md">
+          <View style={styles.packsRow}>
+            <Icon name="crown-outline" size={20} color={colors.purple} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.packsTitle}>Subscription packs</Text>
+              <Text style={styles.packsHint}>Edit prices, limits and commission</Text>
+            </View>
+            <Icon name="chevron-right" size={18} color={colors.textMuted} />
+          </View>
+        </Card>
+      </Enter>
+
       {tiers.length > 0 && (
-        <Enter index={1}>
+        <Enter index={2}>
           <SectionTitle title="By pack" />
           <Card>
             {tiers.map((t: any, i: number) => {
@@ -78,7 +91,7 @@ export default function RevenueScreen() {
         </Enter>
       )}
 
-      <Enter index={2}>
+      <Enter index={3}>
         <SectionTitle title="Commission from gyms" />
         <Card>
           <View style={styles.commissionTop}>
@@ -107,6 +120,10 @@ const styles = StyleSheet.create({
   tierName: { color: colors.text, ...typography.body, fontWeight: '700', flex: 1 },
   tierGyms: { color: colors.textMuted, ...typography.caption, width: 64, textAlign: 'right' },
   tierRevenue: { color: colors.text, ...typography.body, ...typography.number, width: 96, textAlign: 'right' },
+
+  packsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  packsTitle: { color: colors.text, ...typography.body, fontWeight: '700' },
+  packsHint: { color: colors.textMuted, ...typography.caption, marginTop: 2 },
 
   commissionTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   commissionValue: { color: colors.text, ...typography.title, ...typography.number },

@@ -302,17 +302,22 @@ describe('Supplements — tenant scoping', () => {
     jest.clearAllMocks();
   });
 
+  // `scopeAt` is the argument index carrying the tenant scope. It is the last
+  // one everywhere except `findOne`, which now also receives the caller so a
+  // member cannot fetch a supplement that was made private to someone else.
   it.each([
-    ['findOne', (c: SupplementsController, u: any) => c.findOne('x', u)],
-    ['update', (c: SupplementsController, u: any) => c.update('x', { name: 'n' }, u)],
-    ['updateStock', (c: SupplementsController, u: any) => c.updateStock('x', 5, u)],
-    ['updateOrderStatus', (c: SupplementsController, u: any) => c.updateOrderStatus('x', 'CONFIRMED', u)],
-    ['remove', (c: SupplementsController, u: any) => c.remove('x', u)],
-  ])('controller %s: scope resolution', (name, call) => {
+    ['findOne', (c: SupplementsController, u: any) => c.findOne('x', u), 1],
+    ['update', (c: SupplementsController, u: any) => c.update('x', { name: 'n' }, u), -1],
+    ['updateStock', (c: SupplementsController, u: any) => c.updateStock('x', 5, u), -1],
+    ['updateOrderStatus', (c: SupplementsController, u: any) => c.updateOrderStatus('x', 'CONFIRMED', u), -1],
+    ['remove', (c: SupplementsController, u: any) => c.remove('x', u), -1],
+  ])('controller %s: scope resolution', (name, call, scopeAt) => {
+    const scopeOf = (args: any[]) => (scopeAt === -1 ? args.at(-1) : args[scopeAt as number]);
+
     call(controller, GYM_ADMIN_A);
-    expect((svcMock as any)[name].mock.calls[0].at(-1)).toBe('gym-A');
+    expect(scopeOf((svcMock as any)[name].mock.calls[0])).toBe('gym-A');
     call(controller, SUPER);
-    expect((svcMock as any)[name].mock.calls[1].at(-1)).toBeUndefined();
+    expect(scopeOf((svcMock as any)[name].mock.calls[1])).toBeUndefined();
     expect(() => call(controller, GYMLESS_ADMIN)).toThrow(ForbiddenException);
   });
 

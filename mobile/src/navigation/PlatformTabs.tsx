@@ -9,10 +9,13 @@ import { Text } from '../components/Text';
 import { useGymScope } from '../hooks/useGymScope';
 import { colors, radius, spacing, tint, typography } from '../theme';
 
+import PlatformDashboardScreen from '../screens/platform/PlatformDashboardScreen';
 import GymsScreen from '../screens/platform/GymsScreen';
 import GymDetailScreen from '../screens/platform/GymDetailScreen';
 import ApprovalsScreen from '../screens/platform/ApprovalsScreen';
 import RevenueScreen from '../screens/platform/RevenueScreen';
+import SaaSPlansScreen from '../screens/platform/SaaSPlansScreen';
+import SaaSPlanEditScreen from '../screens/platform/SaaSPlanEditScreen';
 import PlatformSettingsScreen from '../screens/platform/PlatformSettingsScreen';
 import SuperAdminChatScreen from '../screens/member/SuperAdminChatScreen';
 
@@ -26,9 +29,11 @@ import AdminTabs from './AdminTabs';
 const Tab = createBottomTabNavigator();
 const RootStack = createStackNavigator();
 const GymsStack = createStackNavigator();
+const RevenueStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 
 const TAB_ICONS: Record<string, IconName> = {
+  Overview: 'grid',
   Gyms: 'bank-outline',
   Approvals: 'inbox',
   Revenue: 'cash-multiple',
@@ -59,6 +64,16 @@ function GymsStackNavigator() {
       <GymsStack.Screen name="GymsMain" component={GymsScreen} />
       <GymsStack.Screen name="GymDetail" component={GymDetailScreen} />
     </GymsStack.Navigator>
+  );
+}
+
+function RevenueStackNavigator() {
+  return (
+    <RevenueStack.Navigator screenOptions={{ headerShown: false }}>
+      <RevenueStack.Screen name="RevenueMain" component={RevenueScreen} />
+      <RevenueStack.Screen name="SaaSPlans" component={SaaSPlansScreen} />
+      <RevenueStack.Screen name="SaaSPlanEdit" component={SaaSPlanEditScreen} />
+    </RevenueStack.Navigator>
   );
 }
 
@@ -96,9 +111,10 @@ function PlatformTabNavigator() {
         tabBarIcon: ({ focused, color }) => <TabIcon route={route.name} focused={focused} color={color} />,
       })}
     >
+      <Tab.Screen name="Overview" component={PlatformDashboardScreen} />
       <Tab.Screen name="Gyms" component={GymsStackNavigator} />
       <Tab.Screen name="Approvals" component={ApprovalsScreen} />
-      <Tab.Screen name="Revenue" component={RevenueScreen} />
+      <Tab.Screen name="Revenue" component={RevenueStackNavigator} />
       <Tab.Screen name="Support" component={SuperAdminChatScreen} />
       <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>

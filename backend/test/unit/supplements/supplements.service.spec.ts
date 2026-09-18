@@ -12,6 +12,9 @@ const mockSupplement = {
 const mockPrisma: any = {
   supplement: { findMany: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), updateMany: jest.fn(), count: jest.fn() },
   supplementOrder: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn(), count: jest.fn() },
+  // Checkout resolves the buyer's Member row to apply private-item visibility.
+  member: { findFirst: jest.fn() },
+  supplementAssignment: { findMany: jest.fn(), upsert: jest.fn(), deleteMany: jest.fn() },
   payment: { update: jest.fn() },
 };
 // Interactive transaction: hand the same stub back as `tx`
@@ -120,7 +123,11 @@ describe('SupplementsService', () => {
     it('404s on a product from another gym / inactive', async () => {
       mockPrisma.supplement.findFirst.mockResolvedValue(null);
       await expect(service.createCheckout('user-001', 'gym-001', [{ supplementId: 'sup-x', quantity: 1 }])).rejects.toThrow(NotFoundException);
-      expect(mockPrisma.supplement.findFirst.mock.calls[0][0].where).toEqual({ id: 'sup-x', gymId: 'gym-001', isActive: true });
+      // `isPrivate: false` is the visibility floor: with no Member row resolved,
+      // the buyer may only reach the public catalogue.
+      expect(mockPrisma.supplement.findFirst.mock.calls[0][0].where).toEqual({
+        id: 'sup-x', gymId: 'gym-001', isActive: true, isPrivate: false,
+      });
     });
 
     it('rejects insufficient stock up front', async () => {
@@ -192,5 +199,120 @@ describe('SupplementsService', () => {
       await service.getOrders({}, 'gym-001', 'user-001');
       expect(mockPrisma.supplementOrder.findMany.mock.calls[0][0].where).toEqual({ gymId: 'gym-001', userId: 'user-001' });
     });
+  });
+});
+
+/**
+ * Private supplements: an item a gym admin recommends to one member must be
+ * invisible to every other member — in the catalogue, by direct id, and at
+ * checkout. Hiding it from the list alone would not be a control.
+ */
+describe('SupplementsService — per-member visibility', () => {
+  let service: SupplementsService;
+
+  const MEMBER = { id: 'user-1', role: 'MEMBER' };
+  const GYM = 'gym-001';
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SupplementsService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: PaymentsService, useValue: payments },
+      ],
+    }).compile();
+    service = module.get(SupplementsService);
+    jest.clearAllMocks();
+  });
+
+  const asMember = (memberId: string | null) =>
+    mockPrisma.member.findFirst.mockResolvedValue(memberId ? { id: memberId } : null);
+
+  it('shows a member public items plus their own recommendations', async () => {
+    asMember('mem-1');
+    mockPrisma.supplement.findMany.mockResolvedValue([]);
+    mockPrisma.supplement.count.mockResolvedValue(0);
+
+    await service.findAll({}, GYM, MEMBER);
+
+    const where = mockPrisma.supplement.findMany.mock.calls[0][0].where;
+    expect(where.OR).toEqual([
+      { isPrivate: false },
+      { assignments: { some: { memberId: 'mem-1' } } },
+    ]);
+  });
+
+  it('shows a member with no member row only public items — never everything', async () => {
+    asMember(null);
+    mockPrisma.supplement.findMany.mockResolvedValue([]);
+    mockPrisma.supplement.count.mockResolvedValue(0);
+
+    await service.findAll({}, GYM, MEMBER);
+
+    const where = mockPrisma.supplement.findMany.mock.calls[0][0].where;
+    expect(where.isPrivate).toBe(false);
+    expect(where.OR).toBeUndefined();
+  });
+
+  it.each(['GYM_ADMIN', 'STAFF', 'TRAINER', 'SUPER_ADMIN'])('does not narrow the catalogue for %s', async (role) => {
+    mockPrisma.supplement.findMany.mockResolvedValue([]);
+    mockPrisma.supplement.count.mockResolvedValue(0);
+
+    await service.findAll({}, GYM, { id: 'u', role });
+
+    const where = mockPrisma.supplement.findMany.mock.calls[0][0].where;
+    expect(where.OR).toBeUndefined();
+    expect(where.isPrivate).toBeUndefined();
+    // No member lookup is even attempted for a non-member caller.
+    expect(mockPrisma.member.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('applies the same rule to a direct id fetch, so a private item is a 404', async () => {
+    asMember('mem-1');
+    mockPrisma.supplement.findFirst.mockResolvedValue(null); // the where clause excluded it
+
+    await expect(service.findOne('sup-private', GYM, MEMBER)).rejects.toThrow(NotFoundException);
+
+    const where = mockPrisma.supplement.findFirst.mock.calls[0][0].where;
+    expect(where.OR).toEqual([
+      { isPrivate: false },
+      { assignments: { some: { memberId: 'mem-1' } } },
+    ]);
+  });
+
+  it('refuses to check out a private item the member was not assigned', async () => {
+    asMember('mem-1');
+    mockPrisma.supplement.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.createCheckout(MEMBER.id, GYM, [{ supplementId: 'sup-private', quantity: 1 }]),
+    ).rejects.toThrow(NotFoundException);
+
+    const where = mockPrisma.supplement.findFirst.mock.calls[0][0].where;
+    expect(where.OR).toEqual([
+      { isPrivate: false },
+      { assignments: { some: { memberId: 'mem-1' } } },
+    ]);
+    expect(payments.createRazorpayOrder).not.toHaveBeenCalled();
+  });
+
+  it('assigns by member id or user id, and is idempotent', async () => {
+    mockPrisma.supplement.findFirst.mockResolvedValue({ id: 'sup-1', gymId: GYM });
+    mockPrisma.member.findFirst
+      .mockResolvedValueOnce(null)            // not a member-table id
+      .mockResolvedValueOnce({ id: 'mem-1' }); // resolved via userId
+    mockPrisma.supplementAssignment.upsert.mockResolvedValue({});
+
+    await service.assignToMember('sup-1', 'user-1', GYM, 'Take after workout');
+
+    expect(mockPrisma.supplementAssignment.upsert.mock.calls[0][0].where).toEqual({
+      supplementId_memberId: { supplementId: 'sup-1', memberId: 'mem-1' },
+    });
+  });
+
+  it('refuses to assign a supplement from another gym', async () => {
+    mockPrisma.supplement.findFirst.mockResolvedValue(null);
+    await expect(service.assignToMember('sup-other-gym', 'mem-1', GYM)).rejects.toThrow(NotFoundException);
+    expect(mockPrisma.supplementAssignment.upsert).not.toHaveBeenCalled();
   });
 });

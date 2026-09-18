@@ -1,21 +1,30 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, StyleSheet, FlatList, TextInput, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
+} from 'react-native';
 import { Text } from '../../components/Text';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { getSocket } from '../../lib/socket';
 import { colors } from '../../theme';
 
-interface Conversation {
-  id: string;
+/**
+ * One row per gym on the platform, whether or not it has ever written in. The
+ * old screen listed only existing SUPPORT threads, so a gym that never messaged
+ * was unreachable — there was no way to start the conversation from here.
+ */
+interface SupportTarget {
   gymId: string;
-  userId: string;
-  lastMessage?: string;
-  lastMessageAt: string;
-  unreadAdmin: number;
-  user: { id: string; firstName: string; lastName: string; role: string; avatar?: string };
-  gym: { id: string; name: string; logo?: string };
+  gymName: string;
+  gymLogo?: string | null;
+  city?: string | null;
+  admin: { id: string; firstName: string; lastName: string; avatar?: string | null; role: string };
+  conversationId: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  unread: number;
 }
 
 function GymInitials({ name }: { name: string }) {
@@ -39,118 +48,123 @@ function timeAgo(dateStr: string) {
 
 export default function SuperAdminChatScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
-  const [selected, setSelected] = useState<Conversation | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<SupportTarget | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
+  const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
   const [socketReady, setSocketReady] = useState(false);
   const flatRef = useRef<FlatList>(null);
   const socketRef = useRef<any>(null);
 
-  // Load conversation list
-  const { isLoading: loadingConvs } = useQuery({
-    queryKey: ['super-admin-conversations'],
-    queryFn: async () => {
-      const res: any = await api.get('/chat/support/conversations');
-      const list: Conversation[] = Array.isArray(res) ? res : res?.data ?? [];
-      setConversations(list);
-      return list;
-    },
-  });
+  // The socket handler is registered once and must not close over a stale
+  // `selected` — reading it from a ref is what stops a reply landing in the
+  // previously opened gym's thread.
+  const selectedRef = useRef<SupportTarget | null>(null);
+  selectedRef.current = selected;
 
-  // Load messages when conversation selected
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  const { data, isLoading: loadingGyms } = useQuery<SupportTarget[]>({
+    queryKey: ['support-gyms', debounced],
+    queryFn: () => api.get('/chat/support/gyms', { params: debounced ? { search: debounced } : undefined }) as any,
+    staleTime: 30_000,
+  });
+  const gyms = Array.isArray(data) ? data : [];
+
+  // Load messages when a gym is opened.
   useEffect(() => {
     if (!selected) return;
+    const { admin, gymId } = selected;
     setLoadingMsgs(true);
     setMessages([]);
-    api.get(`/chat/support/conversations/${selected.userId}/messages?gymId=${selected.gymId}`)
+    api.get(`/chat/support/conversations/${admin.id}/messages`, { params: { gymId } })
       .then((res: any) => {
         const msgs: any[] = Array.isArray(res) ? res : res?.data ?? [];
-        setMessages(msgs.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+        setMessages(msgs.sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt)));
       })
       .catch(() => {})
       .finally(() => setLoadingMsgs(false));
 
-    // Mark read
-    api.patch(`/chat/support/conversations/${selected.userId}/read?gymId=${selected.gymId}`).catch(() => {});
-    setConversations((prev) => prev.map((c) => c.id === selected.id ? { ...c, unreadAdmin: 0 } : c));
-  }, [selected?.id]);
+    api.patch(`/chat/support/conversations/${admin.id}/read`, null, { params: { gymId } })
+      .then(() => queryClient.invalidateQueries({ queryKey: ['support-gyms'] }))
+      .catch(() => {});
+  }, [selected?.gymId, selected?.admin.id, queryClient]);
 
-  // Socket setup
   useEffect(() => {
     let mounted = true;
-    (() => {
-      try {
-        const socket = getSocket();
+    let socket: any;
+    try {
+      socket = getSocket();
+      socketRef.current = socket;
+
+      const onMessage = (msg: any) => {
         if (!mounted) return;
-        socketRef.current = socket;
+        // Always refresh the list so unread counts and previews stay honest.
+        queryClient.invalidateQueries({ queryKey: ['support-gyms'] });
 
-        socket.on('chat:support-message', (msg: any) => {
-          // Update conversation list
-          setConversations((prev) => {
-            const updated = prev.map((c) => {
-              const isThis = c.userId === msg.sender?.id || c.userId === selected?.userId;
-              if (!isThis) return c;
-              return {
-                ...c,
-                lastMessage: msg.content,
-                lastMessageAt: msg.createdAt,
-                unreadAdmin: selected?.userId === c.userId ? 0 : c.unreadAdmin + 1,
-              };
-            });
-            return updated.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-          });
+        const open = selectedRef.current;
+        if (!open) return;
+        const from = msg.senderId ?? msg.sender?.id;
+        const onThisThread = from === open.admin.id || from === user?.id;
+        if (!onThisThread) return;
 
-          // Append to open conversation
-          if (selected) {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === msg.id)) return prev;
-              return [...prev, msg];
-            });
-            setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
-          }
+        setMessages((prev) => {
+          if (msg.id && prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
         });
+        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+      };
+      const onConnect = () => mounted && setSocketReady(true);
+      const onDisconnect = () => mounted && setSocketReady(false);
 
-        socket.on('connect', () => setSocketReady(true));
-        socket.on('disconnect', () => setSocketReady(false));
-        if (!socket.connected) socket.connect();
-        setSocketReady(socket.connected);
-      } catch (e) {
-        console.warn('SuperAdmin chat socket error', e);
-      }
-    })();
-    return () => {
-      mounted = false;
-      socketRef.current?.off('chat:support-message');
-    };
-  }, [selected]);
+      socket.on('chat:support-message', onMessage);
+      socket.on('connect', onConnect);
+      socket.on('disconnect', onDisconnect);
+      if (!socket.connected) socket.connect();
+      setSocketReady(socket.connected);
+
+      return () => {
+        mounted = false;
+        // Named handlers: a bare `socket.off('chat:support-message')` removed
+        // every listener for the event, app-wide.
+        socket?.off('chat:support-message', onMessage);
+        socket?.off('connect', onConnect);
+        socket?.off('disconnect', onDisconnect);
+      };
+    } catch {
+      return undefined;
+    }
+  }, [queryClient, user?.id]);
 
   function sendMessage() {
-    if (!text.trim() || !selected) return;
-    setSending(true);
+    const content = text.trim();
+    if (!content || !selected) return;
+    // Optimistic: the server creates the thread on first send, so a never-used
+    // gym goes from empty to a live conversation right here.
+    const optimistic = { _temp: true, content, createdAt: new Date().toISOString(), senderId: user?.id };
+    setMessages((prev) => [...prev, optimistic]);
+    setText('');
+    setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
     try {
-      const socket = getSocket();
-      socket.emit('chat:support-send', {
-        toGymAdminId: selected.userId,
+      socketRef.current?.emit('chat:support-send', {
+        toGymAdminId: selected.admin.id,
         gymId: selected.gymId,
-        content: text.trim(),
+        content,
       });
-      setText('');
-      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
-    } catch (e: any) {
-      console.warn('Send failed', e?.message);
-    } finally {
-      setSending(false);
+    } catch {
+      setMessages((prev) => prev.filter((m) => m !== optimistic));
     }
   }
 
-  function isOwn(msg: any) {
-    return msg.senderId === user?.id || msg.sender?.id === user?.id;
-  }
+  const isOwn = (msg: any) => msg.senderId === user?.id || msg.sender?.id === user?.id;
 
-  // ── Conversation list view ──
+  // ── Gym list ──
   if (!selected) {
     return (
       <View style={styles.container}>
@@ -158,64 +172,73 @@ export default function SuperAdminChatScreen({ navigation }: any) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Text style={styles.back}>‹</Text>
           </TouchableOpacity>
-          <View>
-            <Text style={styles.title}>Gym Admin Chats</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Gym admin support</Text>
             <Text style={styles.sub}>
-              {conversations.length} gym{conversations.length !== 1 ? 's' : ''}
-              {' '}· {socketReady ? 'Live' : 'Connecting…'}
+              {gyms.length} gym{gyms.length !== 1 ? 's' : ''} · {socketReady ? 'Live' : 'Connecting…'}
             </Text>
           </View>
           <View style={[styles.statusDot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
         </View>
 
-        {loadingConvs ? (
-          <ActivityIndicator color="#FF4D00" style={{ flex: 1 }} />
-        ) : conversations.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={{ fontSize: 52, marginBottom: 12 }}>🏢</Text>
-            <Text style={styles.emptyTitle}>No gym conversations</Text>
-            <Text style={styles.emptySub}>Gym admins can message you from their support tab</Text>
-          </View>
+        <View style={styles.searchWrap}>
+          <TextInput
+            style={styles.search}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search gyms by name or city"
+            placeholderTextColor={colors.textFaint}
+            autoCorrect={false}
+          />
+        </View>
+
+        {loadingGyms ? (
+          <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
         ) : (
-          <ScrollView>
-            {conversations.map((conv) => (
-              <TouchableOpacity
-                key={conv.id}
-                style={styles.convRow}
-                onPress={() => setSelected(conv)}
-                activeOpacity={0.7}
-              >
-                <GymInitials name={conv.gym?.name ?? 'Gym'} />
+          <FlatList
+            data={gyms}
+            keyExtractor={(g) => g.gymId}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Text style={{ fontSize: 52, marginBottom: 12 }}>🏢</Text>
+                <Text style={styles.emptyTitle}>{debounced ? 'No gyms match' : 'No gyms yet'}</Text>
+                <Text style={styles.emptySub}>
+                  {debounced ? 'Try a different name or city' : 'Gyms appear here as soon as they are created'}
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity style={styles.convRow} onPress={() => setSelected(item)} activeOpacity={0.7}>
+                <GymInitials name={item.gymName} />
                 <View style={styles.convInfo}>
                   <View style={styles.convTop}>
-                    <Text style={styles.convName} numberOfLines={1}>{conv.gym?.name ?? 'Gym'}</Text>
-                    {conv.lastMessageAt && (
-                      <Text style={styles.convTime}>{timeAgo(conv.lastMessageAt)}</Text>
-                    )}
+                    <Text style={styles.convName} numberOfLines={1}>{item.gymName}</Text>
+                    {item.lastMessageAt ? <Text style={styles.convTime}>{timeAgo(item.lastMessageAt)}</Text> : null}
                   </View>
                   <View style={styles.convBottom}>
                     <Text style={styles.convAdmin} numberOfLines={1}>
-                      {conv.user.firstName} {conv.user.lastName}
+                      {item.admin.firstName} {item.admin.lastName}{item.city ? ` · ${item.city}` : ''}
                     </Text>
-                    {conv.unreadAdmin > 0 && (
+                    {item.unread > 0 && (
                       <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadText}>{conv.unreadAdmin > 9 ? '9+' : conv.unreadAdmin}</Text>
+                        <Text style={styles.unreadText}>{item.unread > 9 ? '9+' : item.unread}</Text>
                       </View>
                     )}
                   </View>
-                  {conv.lastMessage && (
-                    <Text style={styles.convPreview} numberOfLines={1}>{conv.lastMessage}</Text>
-                  )}
+                  <Text style={[styles.convPreview, !item.lastMessage && styles.convPreviewNew]} numberOfLines={1}>
+                    {item.lastMessage ?? 'No messages yet — tap to start'}
+                  </Text>
                 </View>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            )}
+          />
         )}
       </View>
     );
   }
 
-  // ── Chat view ──
+  // ── Thread ──
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -227,40 +250,32 @@ export default function SuperAdminChatScreen({ navigation }: any) {
           <Text style={styles.back}>‹</Text>
         </TouchableOpacity>
         <View style={styles.convHeaderInfo}>
-          <GymInitials name={selected.gym?.name ?? 'Gym'} />
-          <View>
-            <Text style={styles.title}>{selected.gym?.name}</Text>
-            <Text style={styles.sub}>{selected.user.firstName} {selected.user.lastName} · GYM ADMIN</Text>
+          <GymInitials name={selected.gymName} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title} numberOfLines={1}>{selected.gymName}</Text>
+            <Text style={styles.sub}>{selected.admin.firstName} {selected.admin.lastName} · GYM ADMIN</Text>
           </View>
         </View>
         <View style={[styles.statusDot, { backgroundColor: socketReady ? colors.success : colors.textMuted }]} />
       </View>
 
       {loadingMsgs ? (
-        <ActivityIndicator color="#FF4D00" style={{ flex: 1 }} />
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
       ) : (
         <FlatList
           ref={flatRef}
           data={messages}
-          keyExtractor={(m, i) => m.id ?? String(i)}
+          keyExtractor={(m, i) => m.id ?? `t-${i}`}
           contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16, flexGrow: 1 }}
           onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => {
             const own = isOwn(item);
-            const ts = new Date(item.createdAt).toLocaleTimeString('en-IN', {
-              hour: '2-digit', minute: '2-digit',
-            });
+            const ts = new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
             return (
               <View style={[styles.msgRow, own && styles.msgRowOwn]}>
                 <View style={[styles.bubble, own ? styles.bubbleOwn : styles.bubbleOther]}>
-                  {!own && (
-                    <Text style={styles.senderName}>
-                      {item.sender?.firstName ?? 'Gym Admin'}
-                    </Text>
-                  )}
-                  <Text style={[styles.msgText, own && styles.msgTextOwn]}>
-                    {item.content ?? item.message}
-                  </Text>
+                  {!own && <Text style={styles.senderName}>{item.sender?.firstName ?? 'Gym admin'}</Text>}
+                  <Text style={[styles.msgText, own && styles.msgTextOwn]}>{item.content ?? item.message}</Text>
                   <Text style={[styles.ts, own && styles.tsOwn]}>{ts}</Text>
                 </View>
               </View>
@@ -270,7 +285,7 @@ export default function SuperAdminChatScreen({ navigation }: any) {
             <View style={styles.empty}>
               <Text style={{ fontSize: 48, marginBottom: 12 }}>💬</Text>
               <Text style={styles.emptyTitle}>No messages yet</Text>
-              <Text style={styles.emptySub}>Start the conversation</Text>
+              <Text style={styles.emptySub}>Send the first message to {selected.gymName}</Text>
             </View>
           }
         />
@@ -281,18 +296,18 @@ export default function SuperAdminChatScreen({ navigation }: any) {
           style={styles.input}
           value={text}
           onChangeText={setText}
-          placeholder={`Reply to ${selected.gym?.name}…`}
-          placeholderTextColor="#4B5563"
+          placeholder={`Message ${selected.gymName}…`}
+          placeholderTextColor={colors.textFaint}
           multiline
           maxLength={500}
         />
         <TouchableOpacity
           style={[styles.sendBtn, !text.trim() && styles.sendBtnOff]}
           onPress={sendMessage}
-          disabled={!text.trim() || sending}
+          disabled={!text.trim()}
           activeOpacity={0.85}
         >
-          {sending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.sendIcon}>➤</Text>}
+          <Text style={styles.sendIcon}>➤</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -320,9 +335,15 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   back: { color: colors.primary, fontSize: 28, lineHeight: 30 },
   convHeaderInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
-  title: { color: colors.text, fontSize: 16, fontWeight: '700', flex: 1 },
+  title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   sub: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
+
+  searchWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  search: {
+    backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border,
+    color: colors.text, fontSize: 14, paddingHorizontal: 14, paddingVertical: 10,
+  },
 
   convRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
@@ -335,11 +356,12 @@ const styles = StyleSheet.create({
   convBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   convAdmin: { color: colors.textSecondary, fontSize: 12, flex: 1 },
   unreadBadge: {
-    width: 20, height: 20, borderRadius: 10,
+    minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5,
     backgroundColor: colors.purple, alignItems: 'center', justifyContent: 'center',
   },
   unreadText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   convPreview: { color: colors.textFaint, fontSize: 12 },
+  convPreviewNew: { fontStyle: 'italic' },
 
   msgRow: { flexDirection: 'row', marginBottom: 3 },
   msgRowOwn: { justifyContent: 'flex-end' },

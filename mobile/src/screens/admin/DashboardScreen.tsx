@@ -83,6 +83,8 @@ export default function AdminDashboardScreen({ navigation }: any) {
     { label: 'Payments', icon: 'credit-card', tab: 'Money', screen: 'Payments', badge: pendingCount },
     { label: 'Expenses', icon: 'receipt', tab: 'Money', screen: 'Expenses' },
     { label: 'Payroll', icon: 'cash-multiple', tab: 'Money', screen: 'Payroll' },
+    { label: 'Membership', icon: 'credit-card', tab: 'Money', screen: 'MembershipPlans' },
+    { label: 'Store', icon: 'pill', tab: 'Money', screen: 'AdminSupplements' },
     { label: 'Plans', icon: 'clipboard-text-outline', tab: 'Plans', screen: 'PlansMain' },
     { label: 'Enquiries', icon: 'inbox', tab: 'Home', screen: 'Enquiries', badge: s?.openEnquiries ?? 0 },
   ];
